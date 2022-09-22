@@ -72,7 +72,7 @@ class CHARMMParameters:
                     prm = {}
                     continue
                 if prm_type:
-                    eval("self.read_" + prm_type + "(line, prm)")
+                    eval(f"self.read_{prm_type}(line, prm)")
         self.parameters[prm_type] = copy.copy(prm)
 
     def read_BONDS(self, bond, prm):
@@ -80,14 +80,14 @@ class CHARMMParameters:
         if len(bond) == 4:
             prm["-".join(bond[0:2])] = map(float, bond[2:])
         else:
-            print("Invalid BOND: " + " ".join(bond))
+            print(f"Invalid BOND: {' '.join(bond)}")
 
     def read_ANGLES(self, angle, prm):
         # CT1            CC321        HCA2     33.430        110.10     !22.53     2.17900
         if len(angle) == 5 or len(angle) == 7:
             prm["-".join(angle[0:3])] = map(float, angle[3:])
         else:
-            print("Invalid ANGLE: " + " ".join(angle))
+            print(f"Invalid ANGLE: {' '.join(angle)}")
 
     def read_DIHEDRALS(self, dihe, prm):
         # CC321C    OC3C61    CC311D    NC2D1        0.62    1        0.0
@@ -98,28 +98,28 @@ class CHARMMParameters:
             else:
                 prm[key] = [map(float, dihe[4:])]
         else:
-            print("Invalid DIHEDRAL: " + " ".join(dihe))
+            print(f"Invalid DIHEDRAL: {' '.join(dihe)}")
 
     def read_IMPROPER(self, impr, prm):
         # NC2D1     CC2O1     CC311D    HCP1        20.00    0     0.00
         if len(impr) == 7:
             prm["-".join(impr[0:4])] = map(float, impr[4:])
         else:
-            print("Invalid IMPROPER: " + " ".join(impr))
+            print(f"Invalid IMPROPER: {' '.join(impr)}")
 
     def read_NONBONDED(self, vdw, prm):
         # CT3            0.0             -0.0780        2.040 ! 0.0 -0.01 1.9 ! alkane, 4/98, yin, adm jr.
         if len(vdw) == 4 or len(vdw) == 7:
             prm[vdw[0]] = map(float, vdw[2:])
         else:
-            print("Invalid NONBONDED: " + " ".join(vdw))
+            print(f"Invalid NONBONDED: {' '.join(vdw)}")
 
     def read_NBFIX(self, nb, prm):
         # SOD        OCL            -0.07502        3.23
         if len(nb) == 4:
             prm["-".join(nb[0:2])] = map(float, nb[2:])
         else:
-            print("Invalid NBFIX: " + " ".join(nb))
+            print(f"Invalid NBFIX: {' '.join(nb)}")
 
     def read_CMAP(self, cmap, prm):
         return -1
@@ -129,4 +129,4 @@ class CHARMMParameters:
         if len(atom) == 4:
             prm[atom[2]] = float(atom[3])
         else:
-            print("Invalid ATOM/MASS: " + " ".join(atom))
+            print(f"Invalid ATOM/MASS: {' '.join(atom)}")

@@ -584,11 +584,11 @@ class Sampler:
         ee = np.argsort(energies)
         print(
             "Best energy: ",
-            "%e" % energies[ee[0]],
+            f"{energies[ee[0]]:e}",
             "|| Median energy: ",
-            "%e" % np.median(energies),
+            f"{np.median(energies):e}",
             "|| Worst energy: ",
-            "%e" % energies[ee[-1]],
+            f"{energies[ee[-1]]:e}",
         )
         return ee
 
@@ -927,7 +927,7 @@ class SamplerPSO:
                 elif k2 in dihe_parameters:
                     k = k2
                 else:
-                    print("Missing parameters for " + k1)
+                    print(f"Missing parameters for {k1}")
                     print("This dihedral will be skipped")
                     lookup.append("skip")
                     continue
@@ -1166,11 +1166,11 @@ class SamplerPSO:
         ee = np.argsort(energies)
         print(
             "Best energy: ",
-            "%e" % energies[ee[0]],
+            f"{energies[ee[0]]:e}",
             "|| Median energy: ",
-            "%e" % np.median(energies),
+            f"{np.median(energies):e}",
             "|| Worst energy: ",
-            "%e" % energies[ee[-1]],
+            f"{energies[ee[-1]]:e}",
         )
         return ee
 

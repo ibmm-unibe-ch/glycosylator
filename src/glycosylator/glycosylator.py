@@ -114,7 +114,7 @@ class Glycosylator:
         try:
             conn = sqlite3.connect(filename)
         except:
-            print("Error while connecting to the database " + filename)
+            print(f"Error while connecting to the database {filename}")
             return -1
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM glycans")
@@ -161,16 +161,14 @@ class Glycosylator:
         try:
             conn = sqlite3.connect(filename)
         except:
-            print("Error while connecting to the database " + filename)
+            print(f"Error while connecting to the database {filename}")
             return -1
         cursor = conn.cursor()
         tn = "glycans"
         gn = "glycan_name"
         gt = "glycan_tree"
-        cursor.execute("DROP TABLE IF EXISTS {tn}".format(tn=tn))
-        cursor.execute(
-            "CREATE TABLE {tn} ({gn} text, {gt} text)".format(tn=tn, gn=gn, gt=gt)
-        )
+        cursor.execute(f"DROP TABLE IF EXISTS {tn}")
+        cursor.execute(f"CREATE TABLE {tn} ({gn} text, {gt} text)")
 
         for key in self.connect_topology.keys():
             units = self.connect_topology[key]["UNIT"]
@@ -182,11 +180,7 @@ class Glycosylator:
                 glycan.append(" ".join(v))
             glycan = "|".join(glycan)
 
-            cursor.execute(
-                "INSERT INTO {tn} VALUES ('{gn}', '{gt}')".format(
-                    tn=tn, gn=key, gt=glycan
-                )
-            )
+            cursor.execute(f"INSERT INTO {tn} VALUES ('{key}', '{glycan}')")
 
         conn.commit()
         conn.close()
@@ -195,7 +189,7 @@ class Glycosylator:
         self.glycan_keys = {}
         for res in self.connect_topology:
             key = [
-                r[0] + " " + " ".join(r[2]) for r in self.connect_topology[res]["UNIT"]
+                f"{r[0]} {' '.join(r[2])}" for r in self.connect_topology[res]["UNIT"]
             ]
             self.glycan_keys[res] = key
 
@@ -242,7 +236,7 @@ class Glycosylator:
 
         fragids = []
         for s, c in zip(segn, chids):
-            fragids.append(s + "," + c)
+            fragids.append(f"{s},{c}")
         fragids = set(fragids)
         for i in fragids:
             sel = ["name CA"]
@@ -365,33 +359,31 @@ class Glycosylator:
         psfbuffer = []
         psfbuffer.append("package require psfgen")
         psfbuffer.append("psfcontext reset")
-        psfbuffer.append("topology {}".format(self.topofile))
+        psfbuffer.append(f"topology {self.topofile}")
 
         for g in self.glycanMolecules.values():
             ag = g.atom_group
             segname = g.get_segname()
-            writePDB(segname + ".pdb", ag)
-            psfbuffer.append("segment {} {{pdb {}.pdb}}".format(segname, segname))
+            writePDB(f"{segname}.pdb", ag)
+            psfbuffer.append(f"segment {segname} {{pdb {segname}.pdb}}")
             patches = g.get_patches()
             for patch in patches:
                 id1, id2 = patch
                 patch_name = patches[patch]
                 s1, c, r1, i = id1.split(",")
                 s2, c, r2, i = id2.split(",")
-                psfbuffer.append(
-                    "patch {} {}:{} {}:{}".format(patch_name, s1, r1, s2, r2)
-                )
-            psfbuffer.append("coordpdb {}.pdb".format(s1))
+                psfbuffer.append(f"patch {patch_name} {s1}:{r1} {s2}:{r2}")
+            psfbuffer.append(f"coordpdb {s1}.pdb")
             psfbuffer.append("guesscoord")
             psfbuffer.append("")
         psfbuffer.append("writepsf glycans.psf")
         psfbuffer.append("writepdb glycans.pdb")
         psfbuffer.append("")
         psfbuffer.append("psfcontext reset")
-        psfbuffer.append("topology {}".format(self.topofile))
+        psfbuffer.append(f"topology {self.topofile}")
         if proteinName:
-            psfbuffer.append("readpsf {}.psf".format(proteinName))
-            psfbuffer.append("coordpdb {}.pdb".format(proteinName))
+            psfbuffer.append(f"readpsf {proteinName}.psf")
+            psfbuffer.append(f"coordpdb {proteinName}.pdb")
         else:
             psfbuffer.append("#!!!!ADD PROTEIN NAME HERE!!!!")
             psfbuffer.append("readpsf protein.psf")
@@ -403,11 +395,11 @@ class Glycosylator:
         for res in self.glycanMolecules:
             s, c, r, i = res.split(",")
             sg, cg, rg, ig = self.glycanMolecules[res].rootRes.split(",")
-            psfbuffer.append("patch NGLB {}:{} {}:{}".format(s, r, sg, rg))
+            psfbuffer.append(f"patch NGLB {s}:{r} {sg}:{rg}")
         psfbuffer.append("regenerate angles dihedrals")
         if proteinName:
-            psfbuffer.append("writepsf {}_glycosylated.psf".format(proteinName))
-            psfbuffer.append("writepdb {}_glycosylated.pdb".format(proteinName))
+            psfbuffer.append(f"writepsf {proteinName}_glycosylated.psf")
+            psfbuffer.append(f"writepdb {proteinName}_glycosylated.pdb")
         else:
             psfbuffer.append("writepsf glycoprotein.psf")
             psfbuffer.append("writepdb glycoprotein.pdb")
@@ -421,7 +413,7 @@ class Glycosylator:
         sel = []
         for p, s in zip(self.prefix, res_id.split(",")):
             if s:
-                sel.append(p + " " + s)
+                sel.append(f"{p} {s}")
         sel = " and ".join(sel)
         return self.glycoprotein.select(sel)
 
@@ -481,9 +473,7 @@ class Glycosylator:
                 a2 = a[1:]
         # a2 is assumed to be the glycan atoms and a1 from protein
         sel = self.glycoprotein.select(
-            "(not protein and name {}) or (resname {} and name {})".format(
-                a2, resname, a1
-            )
+            f"(not protein and name {a2}) or (resname {resname} and name {a1})"
         )
         kd = KDTree(sel.getCoords())
         kd.search(1.7)
@@ -523,18 +513,18 @@ class Glycosylator:
             selg = []
             for p, s in zip(self.prefix, r.split(",")):
                 if s:
-                    selg.append(p + " " + s)
+                    selg.append(f"{p} {s}")
             rootAtom = self.glycoprotein.select(
-                " and ".join(selg) + " and name C1"
+                f"{' and '.join(selg)} and name C1"
             ).getSerials()[0]
 
             for node in g.nodes():
                 selg = []
                 for p, s in zip(self.prefix, node.split(",")):
                     if s:
-                        selg.append(p + " " + s)
+                        selg.append(f"{p} {s}")
                 sel.append(" and ".join(selg))
-            sel = "(" + ") or (".join(sel) + ")"
+            sel = f"({') or ('.join(sel)})"
             sel_all.append(sel)
             glycan = prody.Molecule(k)
             glycan.set_AtomGroup(
@@ -545,7 +535,7 @@ class Glycosylator:
             self.glycanMolecules[k] = glycan
         if sel_all:
             self.protein = self.glycoprotein.select(
-                "not ((" + ") or (".join(sel_all) + "))"
+                f"not (({') or ('.join(sel_all)}))"
             ).copy()
         else:
             self.protein = self.glycoprotein.copy()
@@ -587,7 +577,7 @@ class Glycosylator:
                 an2 = atom_names[a2]
                 patch = self.find_patch(an1, an2)
                 if patch:
-                    G.add_edge(id1, id2, patch=patch, atoms=an1 + ":" + an2)
+                    G.add_edge(id1, id2, patch=patch, atoms=f"{an1}:{an2}")
                 # G.add_edge(*e)
                 names[id1] = rn1
                 names[id2] = rn2
@@ -692,7 +682,7 @@ class Glycosylator:
 
                 for p, s in zip(prefix, inv_template_glycan_tree[unit].split(",")):
                     if s:
-                        sel.append(p + " " + s)
+                        sel.append(f"{p} {s}")
                 sel = " and ".join(sel)
                 sel_residue = template_glycan.select(sel)
                 # autopsf prefers if resids are incremental
@@ -758,7 +748,7 @@ class Glycosylator:
                 sel = []
                 for p, s in zip(prefix, built_glycan[previous].split(",")):
                     if s:
-                        sel.append(p + " " + s)
+                        sel.append(f"{p} {s}")
                 sel = " and ".join(sel)
                 previous_residue = glycan.select(sel)
                 if new_residue:
@@ -809,7 +799,7 @@ class Glycosylator:
 
         # set serial number
         for i in range(len(glycan)):
-            glycan.select("index " + str(i)).setSerials([i + 1])
+            glycan.select(f"index {str(i)}").setSerials([i + 1])
 
         return glycan, glycan_bonds
 
@@ -971,7 +961,7 @@ class Glycosylator:
 
         target = []
         for r in connect_tree.keys():
-            target.append(G.node[r]["resname"] + " " + connect_tree[r])
+            target.append(f"{G.node[r]['resname']} {connect_tree[r]}")
         len_target = len(target)
 
         for gk in self.glycan_keys:
@@ -998,11 +988,11 @@ class Glycosylator:
             fileName: path to output file (str)
         """
         file = open(fileName, "w")  # open the file
-        file.write("RESI " + glycan_name + "\n")
+        file.write(f"RESI {glycan_name}\n")
         units = connect_tree.items()
         units.sort(key=lambda id: len(id[1]))
         for unit in units:
-            file.write("UNIT " + unit[0].get_resname() + " C1 " + unit[1] + "\n")
+            file.write(f"UNIT {unit[0].get_resname()} C1 {unit[1]}\n")
         file.close()
 
     def find_patch(self, atom1, atom2, anomer=""):
@@ -1063,7 +1053,7 @@ class Glycosylator:
                         "name": an,
                         "type": a[1],
                         "charge": a[2],
-                        "id": current + "," + an,
+                        "id": f"{current},{an}",
                         "element": masses[a[1]][-1],
                     }
             # correct atom type
@@ -1090,7 +1080,7 @@ class Glycosylator:
                             "name": an[1:],
                             "type": a[1],
                             "charge": a[2],
-                            "id": previous + "," + an[1:],
+                            "id": f"{previous},{an[1:]}",
                             "element": masses[a[1]][-1],
                         }
                 elif an[0] == "2":
@@ -1099,7 +1089,7 @@ class Glycosylator:
                             "name": an[1:],
                             "type": a[1],
                             "charge": a[2],
-                            "id": current + "," + an[1:],
+                            "id": f"{current},{an[1:]}",
                             "element": masses[a[1]][-1],
                         }
         return atom_type
@@ -1116,15 +1106,11 @@ class Glycosylator:
             root, tree = glycans[k]
             seg1, chid1, res1, i = k.split(",")
             seg2, chid2, res2, i = root.split(",")
-            patches.append(
-                "patch {} {}:{} {}:{}".format("NGLB", seg1, res1, seg2, res2)
-            )
+            patches.append(f"patch NGLB {seg1}:{res1} {seg2}:{res2}")
 
             for e1, e2 in tree.edges():
                 link = tree[e1][e2]["patch"]
                 seg1, chid1, res1, i = e1.split(",")
                 seg2, chid2, res2, i = e2.split(",")
-                patches.append(
-                    "patch {} {}:{} {}:{}".format(link, seg1, res1, seg2, res2)
-                )
+                patches.append(f"patch {link} {seg1}:{res1} {seg2}:{res2}")
         return patches

@@ -296,12 +296,12 @@ class Drawer:
             for s in successors:
                 patch = tree[root][s]["patch"]
                 if branches > 1:
-                    glyPAC += "[(" + patch + ")" + names[s]
+                    glyPAC += f"[({patch}){names[s]}"
                     glyPAC = self.tree_to_text(tree, s, names, glyPAC, visited)
                     glyPAC += "]"
                     branches -= 1
                 else:
-                    glyPAC += "(" + patch + ")" + names[s]
+                    glyPAC += f"({patch}){names[s]}"
             root = s
         return glyPAC
 
