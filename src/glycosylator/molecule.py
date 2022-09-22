@@ -436,7 +436,7 @@ class Molecule:
             paths: list of all paths of a length starting from node
         """
         if excludeSet == None:
-            excludeSet = set([node])
+            excludeSet = {node}
         else:
             excludeSet.add(node)
 
