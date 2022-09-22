@@ -5,6 +5,8 @@ import numpy as np
 from matplotlib.collections import PatchCollection
 from matplotlib.patches import Circle, Polygon, Rectangle
 
+from utils import alphanum_sort
+
 
 class Drawer:
     """Class to display glycans."""

@@ -1,3 +1,5 @@
+import itertools
+
 import networkx as nx
 import prody
 
@@ -80,7 +82,7 @@ class MoleculeBuilder:
         top_bonds = self.Topology.get_bonds(resname)
 
         id_r = "%s,%s,%d,," % (segname, chain, resid)
-        for a1, a2 in pairwise(top_bonds):
+        for a1, a2 in itertools.pairwise(top_bonds):
             bonds.append((id_r + a1, id_r + a2))
 
         return residue, atoms_name, bonds
@@ -201,10 +203,10 @@ class MoleculeBuilder:
         # patch_atoms = sorted(set([atom.replace('*', '')[1:] for ic in ics for atom in ic[0:4] if atom.replace('*', '')[0]=='2']))
         patch_atoms = sorted(
             {
-                    atom.replace("*", "")
-                    for ic in ics
-                    for atom in ic[0:4]
-                    if atom.replace("*", "")[0] == "2"
+                atom.replace("*", "")
+                for ic in ics
+                for atom in ic[0:4]
+                if atom.replace("*", "")[0] == "2"
             }
         )
         self.build_patch_missing_atom_coord(
@@ -237,14 +239,16 @@ class MoleculeBuilder:
             chid2 = residue2.getChids()[0]
             resi2 = str(residue2.getResnums()[0])
             ic2 = str(residue2.getIcodes()[0])
-        for a1, a2 in pairwise(self.Topology.patches[patch]["BOND"]):
+        for a1, a2 in itertools.pairwise(self.Topology.patches[patch]["BOND"]):
             b = []
             for a in [a1, a2]:
                 if a[0] == "1":
                     b.append("{},{},{},{},{}".format(segn1, chid1, resi1, ic1, a[1:]))
                 if a[0] == "2":
                     if residue2:
-                        b.append("{},{},{},{},{}".format(segn2, chid2, resi2, ic2, a[1:]))
+                        b.append(
+                            "{},{},{},{},{}".format(segn2, chid2, resi2, ic2, a[1:])
+                        )
                     else:
                         print(
                             "Warning BOND: missing residue2 required for patch " + patch
@@ -428,7 +432,7 @@ class MoleculeBuilder:
     def get_bonds(self, residue):
         rn = residue.getRenames()[0]
         bonds = []
-        for a1, a2 in pairwise(self.Topology[rn]["BOND"]):
+        for a1, a2 in itertools.pairwise(self.Topology[rn]["BOND"]):
             i1 = residue.select("name " + a1).getSerials[0]
             i2 = residue.select("name " + a2).getSerials[0]
             bonds += (i1, i2)

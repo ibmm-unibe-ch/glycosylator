@@ -12,9 +12,8 @@ def readLinesFromFile(fileName):
     Returns:
         lines: list with all the lines in a file
     """
-    file = open(fileName, "r")  # open the file
-    lines = file.readlines()  # read all the lines in the file to the list "lines"
-    file.close()  # close the file
+    with open(fileName, "r") as f:
+        lines = f.readlines()
     return lines
 
 
@@ -45,14 +44,7 @@ def topological_sort(unsorted_graph):
             print(unsorted_graph)
             print(sorted_graph)
             return ""
-            break
     return sorted_graph[::-1]
-
-
-def pairwise(iterable):
-    "s -> (s0, s1), (s2, s3), (s4, s5), ..."
-    a = iter(iterable)
-    return zip(a, a)
 
 
 def rotation_matrix(axis, theta):
