@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "Glycosylator"
+description = "Python framework for the identification, modeling, and modification of glycans in protein structure"
+version = "1.0.0"
+readme = "README.md"
+# license = {text = "ADDLICENSE"}
+# authors = []
+dependencies = [
+    "numpy",
+    "matplotlib",
+    "prody",
+    "networkx",
+    "pmw",
+]
+
+[project.optional-dependencies]
+dev = [
+    "black",
+    "isort",   
+]
+
+
