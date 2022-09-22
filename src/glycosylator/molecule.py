@@ -103,7 +103,7 @@ class Molecule:
             self.atom_group = PDBmolecule
             self.chain = chain.pop()
             self.segn = segn.pop()
-            a1 = self.atom_group.select("serial " + str(self.rootAtom))
+            a1 = self.atom_group.select(f"serial {str(self.rootAtom)}")
             segn = a1.getSegnames()
             chid = a1.getChids()
             res = a1.getResnums()
@@ -161,7 +161,7 @@ class Molecule:
         sel = []
         for p, s in zip(self.prefix, res_id.split(",")):
             if s:
-                sel.append(p + " " + s)
+                sel.append(f"{p} {s}")
         sel = " and ".join(sel)
         return self.atom_group.select(sel)
 
@@ -169,9 +169,9 @@ class Molecule:
         """Returns an AtomGroup of given atom id; composed of 'segname,chain,resid,icode'"""
         for p, s in zip(self.prefix, a_id.split(",")):
             if s:
-                sel.append(p + " " + s)
+                sel.append(f"{p} {s}")
         sel = " and ".join(sel)
-        sel += " and name " + atom_name
+        sel += f" and name {atom_name}"
         return self.atom_group.select(sel)
 
     def set_atom_type(self, atom_type):
@@ -211,7 +211,7 @@ class Molecule:
                 an2 = atom_names[a2]
                 G.add_node(id1, resname=rn1)
                 G.add_node(id2, resname=rn2)
-                G.add_edge(id1, id2, patch="", atoms=an1 + ":" + an2)
+                G.add_edge(id1, id2, patch="", atoms=f"{an1}:{an2}")
         # create directed graph and remove all unnecessary edges
         if G:
             self.interresidue_connectivity = G.to_directed()
@@ -288,10 +288,10 @@ class Molecule:
             self.atom_group = AGmolecule
             self.chain = chain.pop()
             self.segn = segn.pop()
-            a1 = self.atom_group.select("serial " + str(self.rootAtom))
+            a1 = self.atom_group.select(f"serial {str(self.rootAtom)}")
             if not a1:
                 self.rootAtom = self.atom_group.getSerials()[0]
-                a1 = self.atom_group.select("serial " + str(self.rootAtom))
+                a1 = self.atom_group.select(f"serial {str(self.rootAtom)}")
             segn = a1.getSegnames()
             chid = a1.getChids()
             res = a1.getResnums()
@@ -326,7 +326,7 @@ class Molecule:
             residue: proDy AtomGroup
             newbonds: list of bonds to be added
         """
-        if self.atom_group.select("resid " + ri + "and chain " + chid):
+        if self.atom_group.select(f"resid {ri}and chain {chid}"):
             print(
                 "WARNING! A residue with the same id (resid and chain) already exists. The new residue has not been added"
             )
@@ -361,7 +361,7 @@ class Molecule:
                     b[1] -= 1
                 newbonds.append(b)
         self.atom_group = self.atom_group.select(
-            "not serial " + dele_atoms.join(" ")
+            f"not serial {dele_atoms.join(' ')}"
         ).copy()
         # renumber atoms
         self.atom_group.setSerial(np.arange(self.atom_group.numAtoms()))
@@ -397,12 +397,9 @@ class Molecule:
                         )
             if not sel:
                 sel = (
-                    "within "
-                    + str(default_bond_length)
-                    + " of serial "
-                    + str(a.getSerial())
+                    f"within {str(default_bond_length)} of serial {str(a.getSerial())}"
                 )
-            sel = "(" + sel + ") and (not serial " + str(a.getSerial()) + ")"
+            sel = f"({sel}) and (not serial {str(a.getSerial())})"
 
             # search for all neighboring atoms
             neighbors = self.atom_group.select(sel)
@@ -454,7 +451,7 @@ class Molecule:
     def set_rootAtom(self, rootAtom):
         """Sets the rootAtom and updates all the directed graph"""
         self.rootAtom = rootAtom
-        a1 = self.atom_group.select("serial " + str(self.rootAtom))
+        a1 = self.atom_group.select(f"serial {str(self.rootAtom)}")
         self.rootRes = (
             a1.getSegnames()[0]
             + ","
@@ -490,7 +487,7 @@ class Molecule:
             directed_edge = []
             atoms = []
             for node in edge:
-                atoms.append(self.atom_group.select("serial " + str(node)))
+                atoms.append(self.atom_group.select(f"serial {str(node)}"))
                 if node in self.cycle_id:
                     key = self.cycle_id[node]
                     if key not in self.directed_connectivity:
@@ -531,7 +528,7 @@ class Molecule:
                 self.interresidue_connectivity.add_node(r1, resname=a1.getResnames()[0])
                 self.interresidue_connectivity.add_node(r2, resname=a2.getResnames()[0])
                 self.interresidue_connectivity.add_edge(
-                    r1, r2, patch="", atoms=a1.getNames()[0] + ":" + a2.getNames()[0]
+                    r1, r2, patch="", atoms=f"{a1.getNames()[0]}:{a2.getNames()[0]}"
                 )
 
     def define_torsionals(self, hydrogens=True):
@@ -618,9 +615,9 @@ class Molecule:
                 atoms += n.split("-")
             else:
                 atoms.append(str(n))
-        sel = self.atom_group.select("serial " + " ".join(atoms))
+        sel = self.atom_group.select(f"serial {' '.join(atoms)}")
         t = torsional[1:-1]
-        v1, v2 = self.atom_group.select("serial " + " ".join(map(str, t))).getCoords()[
+        v1, v2 = self.atom_group.select(f"serial {' '.join(map(str, t))}").getCoords()[
             np.argsort(t), :
         ]
         axis = v2 - v1
@@ -662,7 +659,7 @@ class Molecule:
         #                return -1
 
         idx = np.argsort(torsional)
-        vec_sel = self.atom_group.select("serial " + " ".join(map(str, torsional)))
+        vec_sel = self.atom_group.select(f"serial {' '.join(map(str, torsional))}")
         c0, c1, c2, c3 = vec_sel.getCoords()[idx, :]
 
         q1 = c1 - c0
@@ -706,9 +703,9 @@ class Molecule:
                 # get id of central atoms
                 for a in atoms:
                     if a[0] == "1":
-                        serials.append(inv_ids[r1 + "," + a[1:]])
+                        serials.append(inv_ids[f"{r1},{a[1:]}"])
                     else:
-                        serials.append(inv_ids[r2 + "," + a[1:]])
+                        serials.append(inv_ids[f"{r2},{a[1:]}"])
                 # search for torsional angle index and measure delta angle
                 for i, t in enumerate(self.torsionals):
                     if serials[1] == t[1] and serials[2] == t[2]:

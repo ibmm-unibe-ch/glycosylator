@@ -81,7 +81,7 @@ class MoleculeBuilder:
         bonds = []
         top_bonds = self.Topology.get_bonds(resname)
 
-        id_r = "%s,%s,%d,," % (segname, chain, resid)
+        id_r = f"{segname},{chain},{int(resid)},,"
         for a1, a2 in itertools.pairwise(top_bonds):
             bonds.append((id_r + a1, id_r + a2))
 
@@ -128,8 +128,8 @@ class MoleculeBuilder:
         atoms_in_residue = residue.getNames()
         for a in atoms:
             if a in atoms_in_residue:
-                atom = residue.select("name " + a)
-                catom = complete_residue.select("name " + a)
+                atom = residue.select(f"name {a}")
+                catom = complete_residue.select(f"name {a}")
                 self.copy_atom(atom, catom)
             else:
                 missing_atoms.append(a)
@@ -212,7 +212,7 @@ class MoleculeBuilder:
         self.build_patch_missing_atom_coord(
             link_residue, denovo_residue, patch_atoms, ics
         )
-        missing_atoms = [a for a in missing_atoms if "2" + a not in patch_atoms]
+        missing_atoms = [a for a in missing_atoms if f"2{a}" not in patch_atoms]
         ics = self.Topology.topology[resname]["IC"]
         self.build_missing_atom_coord(denovo_residue, missing_atoms, ics)
 
@@ -243,15 +243,13 @@ class MoleculeBuilder:
             b = []
             for a in [a1, a2]:
                 if a[0] == "1":
-                    b.append("{},{},{},{},{}".format(segn1, chid1, resi1, ic1, a[1:]))
+                    b.append(f"{segn1},{chid1},{resi1},{ic1},{a[1:]}")
                 if a[0] == "2":
                     if residue2:
-                        b.append(
-                            "{},{},{},{},{}".format(segn2, chid2, resi2, ic2, a[1:])
-                        )
+                        b.append(f"{segn2},{chid2},{resi2},{ic2},{a[1:]}")
                     else:
                         print(
-                            "Warning BOND: missing residue2 required for patch " + patch
+                            f"Warning BOND: missing residue2 required for patch {patch}"
                         )
             bonds.append(b)
         return bonds
@@ -280,16 +278,12 @@ class MoleculeBuilder:
 
             for a in atoms:
                 if a[0] == "1":
-                    dele_atoms.append(
-                        "{},{},{},{},{}".format(segn1, chid1, resi1, ic1, a[1:])
-                    )
+                    dele_atoms.append(f"{segn1},{chid1},{resi1},{ic1},{a[1:]}")
                 if a[0] == "2":
                     if residue2:
-                        dele_atoms.append(
-                            "{},{},{},{},{}".format(segn2, chid2, resi2, ic2, a[1:])
-                        )
+                        dele_atoms.append(f"{segn2},{chid2},{resi2},{ic2},{a[1:]}")
                     else:
-                        print("Warning: missing residue2 required for patch " + patch)
+                        print(f"Warning: missing residue2 required for patch {patch}")
         return dele_atoms
 
     def delete_atoms(self, molecule, dele_atoms):
@@ -304,10 +298,10 @@ class MoleculeBuilder:
             s1 = []
             for p, s in zip(prefix, a.split(",")):
                 if s:
-                    s1.append(p + " " + s)
+                    s1.append(f"{p} {s}")
 
             sel.append(" and ".join(s1))
-        sel = "not (" + " or ".join(sel) + ")"
+        sel = f"not ({' or '.join(sel)})"
 
         return molecule.select(sel).copy()
 
@@ -336,7 +330,7 @@ class MoleculeBuilder:
         )
         counter = 0
         for a in dummy_atoms:
-            dummy_residue.select("name " + a).setCoords([dummy_coords[counter]])
+            dummy_residue.select(f"name {a}").setCoords([dummy_coords[counter]])
             counter += 1
         denovo_residue, dele_atoms, bonds = self.build_from_patch(
             dummy_residue, resid, resname, chain, segname, dummy_patch
@@ -358,7 +352,7 @@ class MoleculeBuilder:
         atoms = [g[0] for g in sorted_graph if g[0] in required_atoms]
         for a in atoms:
             atomname = a[1:]
-            atom = residue.select("name " + atomname)
+            atom = residue.select(f"name {atomname}")
             ic = self.Topology.get_IC(ICs, a)
             if ic:
                 ic = ic[0]
@@ -390,13 +384,13 @@ class MoleculeBuilder:
         sorted_graph = topological_sort(unsorted_graph)
         atoms = [g[0] for g in sorted_graph if g[0] in required_atoms]
         for a in atoms:
-            atom = residue.select("name " + a)
+            atom = residue.select(f"name {a}")
             ic = self.Topology.get_IC(ICs, a)
             if ic:
                 ic = ic[0]
-                xa1 = residue.select("name " + ic[0]).getCoords()[0]
-                xa2 = residue.select("name " + ic[1]).getCoords()[0]
-                xa3 = residue.select("name " + ic[2].replace("*", "")).getCoords()[0]
+                xa1 = residue.select(f"name {ic[0]}").getCoords()[0]
+                xa2 = residue.select(f"name {ic[1]}").getCoords()[0]
+                xa3 = residue.select(f"name {ic[2].replace('*', '')}").getCoords()[0]
                 atom.setCoords(self.build_cartesian(xa1, xa2, xa3, ic[8], ic[7], ic[6]))
 
     def build_cartesian(self, a1, a2, a3, r, theta, phi):
@@ -433,7 +427,7 @@ class MoleculeBuilder:
         rn = residue.getRenames()[0]
         bonds = []
         for a1, a2 in itertools.pairwise(self.Topology[rn]["BOND"]):
-            i1 = residue.select("name " + a1).getSerials[0]
-            i2 = residue.select("name " + a2).getSerials[0]
+            i1 = residue.select(f"name {a1}").getSerials[0]
+            i2 = residue.select(f"name {a2}").getSerials[0]
             bonds += (i1, i2)
         return bonds
