@@ -15,6 +15,7 @@ dependencies = [
     "prody",
     "networkx",
     "pmw",
+    "scipy",
 ]
 
 [project.optional-dependencies]
