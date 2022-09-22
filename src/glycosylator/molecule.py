@@ -361,7 +361,7 @@ class Molecule:
                     b[1] -= 1
                 newbonds.append(b)
         self.atom_group = self.atom_group.select(
-            "not serial " + del_atoms.join(" ")
+            "not serial " + dele_atoms.join(" ")
         ).copy()
         # renumber atoms
         self.atom_group.setSerial(np.arange(self.atom_group.numAtoms()))

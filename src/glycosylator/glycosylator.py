@@ -481,7 +481,9 @@ class Glycosylator:
                 a2 = a[1:]
         # a2 is assumed to be the glycan atoms and a1 from protein
         sel = self.glycoprotein.select(
-            "(not protein and name {}) or (resname {} and name {})".format(a2, resname, a1)
+            "(not protein and name {}) or (resname {} and name {})".format(
+                a2, resname, a1
+            )
         )
         kd = KDTree(sel.getCoords())
         kd.search(1.7)
