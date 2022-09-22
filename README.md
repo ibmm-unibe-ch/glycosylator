@@ -1,3 +1,5 @@
+### This is a work in progress rewrite of glycosylator for python 3
+
 ![alt text](./icons/glycosylator_logo.png)
 # A Python framework for the rapid modeling of glycans
 Glycosylator is a Python framework for the identification, modeling and
