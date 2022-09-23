@@ -1,7 +1,7 @@
 import networkx as nx
 import prody
 
-from utils import *
+from .utils import *
 
 
 class Molecule:
