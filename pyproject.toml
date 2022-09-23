@@ -7,7 +7,7 @@ name = "Glycosylator"
 description = "Python framework for the identification, modeling, and modification of glycans in protein structure"
 version = "1.0.0"
 readme = "README.md"
-license = "MIT"
+license = {file = "LICENSE"}
 # authors = []
 dependencies = [
     "numpy",
@@ -23,5 +23,3 @@ dev = [
     "black",
     "isort",   
 ]
-
-
