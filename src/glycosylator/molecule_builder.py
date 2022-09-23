@@ -3,9 +3,9 @@ import itertools
 import networkx as nx
 import prody
 
-from charmm_parameters import CHARMMParameters
-from charmm_topology import CHARMMTopology
-from utils import *
+from .charmm_parameters import CHARMMParameters
+from .charmm_topology import CHARMMTopology
+from .utils import *
 
 
 class MoleculeBuilder:

@@ -1,6 +1,6 @@
 import copy
 
-from utils import *
+from .utils import *
 
 
 class CHARMMParameters:

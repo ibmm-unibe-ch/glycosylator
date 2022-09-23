@@ -28,7 +28,7 @@ import networkx as nx
 import numpy as np
 from prody import *
 
-from utils import *
+from .utils import *
 
 
 class Glycosylator:
