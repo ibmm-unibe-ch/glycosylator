@@ -1,7 +1,8 @@
 import networkx as nx
+import numpy as np
 import prody
 
-from .utils import *
+from ..utils import rotation_matrix
 
 
 class Molecule:
