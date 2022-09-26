@@ -63,13 +63,14 @@ class Molecule:
         self.prefix = ["segment", "chain", "resid", "icode"]
         # Defines distance for bond length between different element used in guess_bonds()
         self.elements = ["C", "H", "N", "O"]
-        self.bond_length = {}
-        self.bond_length["C-H"] = 1.20
-        self.bond_length["H-N"] = 1.20
-        self.bond_length["H-O"] = 1.20
-        self.bond_length["C-C"] = 1.7
-        self.bond_length["C-N"] = 1.7
-        self.bond_length["C-O"] = 1.7
+        self.bond_length = {
+            "C-H": 1.20,
+            "H-N": 1.20,
+            "H-O": 1.20,
+            "C-C": 1.7,
+            "C-N": 1.7,
+            "C-O": 1.7,
+        }
 
     def writePDB(self, filename, selection="all"):
         """Saves molecule to a PDB file
