@@ -3,9 +3,6 @@ from queue import Queue
 import networkx as nx
 import prody
 
-from .bond_graph import build_bond_graph
-from .residue_graph import build_residue_graph
-
 
 class TooManyChains(Exception):
     """Raise when Molecule class has an AtomGroup with more than one chain/segment"""
@@ -33,7 +30,7 @@ class Molecule:
         # self.torsionals
 
     @classmethod
-    def read_PDB(cls, pdb: str, root_atom: int = 1, **kwargs):
+    def from_PDB(cls, pdb: str, root_atom: int = 1, **kwargs):
         atom_group = prody.parsePDB(pdb, **kwargs)
         return Molecule(atom_group, root_atom)
 
