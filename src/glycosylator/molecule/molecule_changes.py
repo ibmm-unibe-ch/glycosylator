@@ -1,3 +1,5 @@
+from queue import Queue
+
 import networkx as nx
 import prody
 
@@ -23,36 +25,62 @@ class Molecule:
             self.root_atom.getChid(), self.root_atom.getResnum()
         ]
 
-        self.bond_graph: nx.graph = build_bond_graph(self.atom_group)
-        self.residue_graph: nx.graph = build_residue_graph(
-            self.atom_group, self.root_residue
-        )
+        self.bond_graph: nx.graph = self.build_bond_graph()
+        self.residue_graph: nx.digraph = self.build_residue_graph()
 
-        self.guess_angles()
-        self.guess_dihedrals()
+        # self.guess_angles()
+        # self.guess_dihedrals()
         # self.torsionals
 
     @classmethod
-    def read_PDB(cls, pdb: str, name=None, root_atom: int = 1, **kwargs):
+    def read_PDB(cls, pdb: str, root_atom: int = 1, **kwargs):
         atom_group = prody.parsePDB(pdb, **kwargs)
-        if not name:
-            name = atom_group.getTitle()
-
         return Molecule(atom_group, root_atom)
 
     def write_PDB(self, filename: str, selection: str = "all"):
         prody.writePDB(filename, self.atom_group.select(selection))
 
+    def build_bond_graph(self):
+        bonds = self.atom_group.inferBonds()
+        bond_graph = nx.Graph()
+        bond_graph.add_edges_from([bond.getIndices() for bond in bonds])
+        return bond_graph  # bond_graph.edges() ?
+
+    def build_residue_graph(self):
+        residue_graph = nx.DiGraph()
+        residue_graph.add_node(self.root_residue.getResindex())
+
+        residues = [residue for residue in self.atom_group.iterResidues()]
+        # residue index for each atom
+        res_indices = self.atom_group.getResindices()
+
+        queue = [self.root_residue.getResindex()]
+        while queue:
+            old_resi = queue.pop(0)
+            residue = residues[old_resi]
+            for atom in residue:
+                # list of neighboring residues not yet in graph
+                neighbor_residues = [
+                    new_resi
+                    for neighbor in self.bond_graph.neighbors(atom.getIndex())
+                    if (new_resi := res_indices[neighbor]) not in residue_graph.nodes
+                ]
+                edges = [(old_resi, new_resi) for new_resi in neighbor_residues]
+                residue_graph.add_edges_from(edges)
+                queue.extend(neighbor_residues)
+
+        return residue_graph
+
     def guess_angles(self):
         """Searches for all angles in a molecule based on the connectivity"""
         self.angles = []
-        for node in self.connectivity.nodes():
+        for node in self.bond_graph.nodes():
             self.angles.extend(_find_paths(self.connectivity, node, 2))
 
     def guess_dihedrals(self):
         """Searches for all dihedrals in a molecule based on the connectivity"""
         self.dihedrals = []
-        for node in self.connectivity.nodes():
+        for node in self.bond_graph.nodes():
             self.dihedrals.extend(_find_paths(self.connectivity, node, 3))
 
     def guess_torsionals(self, hydrogens=True):
