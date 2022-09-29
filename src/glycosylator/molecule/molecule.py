@@ -416,39 +416,13 @@ class Molecule:
         """Searches for all angles in a molecule based on the connectivity"""
         self.angles = []
         for node in self.connectivity.nodes():
-            self.angles.extend(self.find_paths(self.connectivity, node, 2))
+            self.angles.extend(_find_paths(self.connectivity, node, 2))
 
     def guess_dihedrals(self):
         """Searches for all dihedrals in a molecule based on the connectivity"""
         self.dihedrals = []
         for node in self.connectivity.nodes():
-            self.dihedrals.extend(self.find_paths(self.connectivity, node, 3))
-
-    def find_paths(self, G, node, length, excludeSet=None):
-        """Finds all paths of a given length
-        Parameters:
-            G: graph (netwrokx)
-            node: starting node
-            length: length of path
-            excludedSet: set
-        Returns:
-            paths: list of all paths of a length starting from node
-        """
-        if excludeSet == None:
-            excludeSet = {node}
-        else:
-            excludeSet.add(node)
-
-        if length == 0:
-            return [[node]]
-        paths = [
-            [node] + path
-            for neighbor in G.neighbors(node)
-            if neighbor not in excludeSet
-            for path in self.find_paths(G, neighbor, length - 1, excludeSet)
-        ]
-        excludeSet.remove(node)
-        return paths
+            self.dihedrals.extend(_find_paths(self.connectivity, node, 3))
 
     def set_rootAtom(self, rootAtom):
         """Sets the rootAtom and updates all the directed graph"""
@@ -722,3 +696,30 @@ class Molecule:
                 delta_angles,
             ]
         return interresidue_torsionals
+
+
+def _find_paths(self, G, node, length, excludeSet=None):
+    """Finds all paths of a given length
+    Parameters:
+        G: graph (netwrokx)
+        node: starting node
+        length: length of path
+        excludedSet: set
+    Returns:
+        paths: list of all paths of a length starting from node
+    """
+    if excludeSet == None:
+        excludeSet = {node}
+    else:
+        excludeSet.add(node)
+
+    if length == 0:
+        return [[node]]
+    paths = [
+        [node] + path
+        for neighbor in G.neighbors(node)
+        if neighbor not in excludeSet
+        for path in _find_paths(G, neighbor, length - 1, excludeSet)
+    ]
+    excludeSet.remove(node)
+    return paths
