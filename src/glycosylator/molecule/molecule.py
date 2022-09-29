@@ -698,7 +698,7 @@ class Molecule:
         return interresidue_torsionals
 
 
-def _find_paths(self, G, node, length, excludeSet=None):
+def _find_paths(G, node, length, excludeSet=None):
     """Finds all paths of a given length
     Parameters:
         G: graph (netwrokx)
