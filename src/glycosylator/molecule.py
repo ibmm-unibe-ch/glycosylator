@@ -178,7 +178,6 @@ class Molecule:
         M = _rotation_matrix(axis, np.radians(theta))
         coords = M.dot(coords.transpose())
         sel.setCoords(coords.transpose() + v2 - np.dot(M, v2))
-        return c_angle
 
 
 def _validate_atom_group(atom_group: prody.AtomGroup):
