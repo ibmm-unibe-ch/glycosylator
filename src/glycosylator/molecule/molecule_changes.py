@@ -1,3 +1,5 @@
+import math
+
 import networkx as nx
 import numpy as np
 import prody
@@ -221,7 +223,8 @@ def _rotation_matrix(axis, theta):
         rotation matrix
 
     """
-
+    # TODO: replace math with np
+    # TODO: is there a single np function to do this?
     axis = np.asarray(axis)
     theta = np.asarray(theta)
     axis = axis / math.sqrt(np.dot(axis, axis))
