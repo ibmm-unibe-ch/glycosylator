@@ -44,30 +44,20 @@ class Molecule:
         return bond_graph
 
     def build_residue_graph(self) -> nx.DiGraph:
-        # initialise directed graph
-        residue_graph = nx.DiGraph()
-        residue_graph.add_node(self.root_residue.getResindex())
-
-        # list of prody.Residue instaces for each physical residue
-        residues = [residue for residue in self.atom_group.iterResidues()]
-        # index of residue to which atoms belong to
         res_indices = self.atom_group.getResindices()
-
-        # breadth-first search
-        queue = deque(self.root_residue.getResindex())
-        while queue:
-            old_resi = queue.popleft()
-            residue = residues[old_resi]
-            for atom in residue:
-                # list of neighboring residues not yet in graph
-                neighbor_residues = [
-                    new_resi
-                    for neighbor in self.bond_graph.neighbors(atom.getIndex())
-                    if (new_resi := res_indices[neighbor]) not in residue_graph.nodes
-                ]
-                edges = [(old_resi, new_resi) for new_resi in neighbor_residues]
-                residue_graph.add_edges_from(edges)
-                queue.extend(neighbor_residues)
+        inter_res_bonds = [
+            (a, b)
+            for a, b, in self.bond_graph.edges
+            if res_indices[a]
+            != res_indices[b]  # atoms that are part of different residues
+        ]
+        # cannot make directed graph immediately because cannot guarantee
+        # that the edges (a,b) are in the correct orientation coming away from root
+        residue_graph = nx.Graph.add_edges_from(inter_res_bonds)
+        # convert to a directed graph
+        residue_graph = nx.bfs_tree(
+            residue_graph, source=self.root_residue.getResindex()
+        )
         return residue_graph
 
     def guess_angles(self):
