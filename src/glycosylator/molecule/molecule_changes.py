@@ -25,9 +25,9 @@ class Molecule:
         self.bond_graph: nx.Graph = self.build_bond_graph()
         self.residue_graph: nx.DiGraph = self.build_residue_graph()
 
-        # self.guess_angles()
-        # self.guess_dihedrals()
-        # self.torsionals
+        self.guess_angles()
+        self.guess_dihedrals()
+        self.torsionals
 
     @classmethod
     def from_PDB(cls, pdb: str, root_atom: int = 1, **kwargs):
@@ -79,50 +79,24 @@ class Molecule:
         Initializes:
             torsionals: a list of serial number of atom defining a torsional angle (quadruplet)
         """
+        cycles = nx.cycle_basis(self.bond_graph)
+        # TODO: can cycle_id just be a flat set of all atoms in any cycles?
+        cycle_id = {atom: i for i, cycle in enumerate(cycles) for atom in cycle}
+
+        elements = self.atom_group.getElements()
         torsionals = []
-        if not hydrogens:
-            elements = nx.get_node_attributes(self.bond_graph, "element")
-            if not elements:
-                print(
-                    "Elements have not been defined (use assign_atom_type). Hydrogens cannot be excluded."
-                )
-                hydrogens = True
-
-        for dihe in self.dihedrals:
-            # check that quadruplet is not in cycle
-            if dihe[1] in self.cycle_id and dihe[2] in self.cycle_id:
+        for dihedral in self.dihedrals:
+            if dihedral[1] in cycle_id and dihedral[2] in cycle_id:
+                # skip dihedral if both middle atoms in a cycle
                 continue
-
-            d_dihe = []
-            for a in dihe[1:-1]:
-                if a in self.cycle_id:
-                    a = self.cycle_id[a]
-                d_dihe.append(a)
-
-            # check direction of dihedral
-            if self.directed_connectivity.has_edge(d_dihe[0], d_dihe[1]):
-                pass
-            elif self.directed_connectivity.has_edge(d_dihe[1], d_dihe[0]):
-                dihe.reverse()
-            else:
-                continue
-
-            # check if hydrogen
             if not hydrogens:
-                if elements[dihe[0]] == "H" or elements[dihe[-1]] == "H":
+                if elements[dihedral[0]] == "H" or elements[dihedral[-1]] == "H":
+                    # skip dihedral if either of outer atoms are hydrogen
                     continue
-            # check if already in torsionals list
-            exists = False
-            if self.torsionals:
-                for t in self.torsionals:
-                    if dihe[1] == t[1] and dihe[2] == t[2]:
-                        exists = True
-                        break
+            torsionals.append(dihedral)
 
-            if exists:
-                continue
-
-            self.torsionals.append(dihe)
+        # TODO: torsionals need to be unique, currently will ABCD will different to DCBA and both appear
+        self.torsionals = torsionals
 
 
 def _validate_atom_group(atom_group: prody.AtomGroup):
