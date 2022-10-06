@@ -22,7 +22,7 @@ class Molecule:
             self.root_atom.getChid(), self.root_atom.getResnum()
         ]
 
-        self.bond_graph: nx.Graph = self.build_bond_graph()
+        self.bond_graph: nx.DiGraph = self.build_bond_graph()
         self.residue_graph: nx.DiGraph = self.build_residue_graph()
 
         self.guess_angles()
@@ -41,6 +41,7 @@ class Molecule:
         bonds = self.atom_group.inferBonds()
         bond_graph = nx.Graph()
         bond_graph.add_edges_from([bond.getIndices() for bond in bonds])
+        bond_graph = nx.bfs_tree(bond_graph, self.root_atom.getIndex())
         return bond_graph
 
     def build_residue_graph(self) -> nx.DiGraph:
@@ -93,9 +94,14 @@ class Molecule:
                 if elements[dihedral[0]] == "H" or elements[dihedral[-1]] == "H":
                     # skip dihedral if either of outer atoms are hydrogen
                     continue
-            torsionals.append(dihedral)
+            # use the direction of bond_graph to orient dihedral
+            # to then check for uniqueness
+            # i.e. ABCD and DCBA are same and should not be repeated
+            if self.bond_graph.has_edge(dihedral[2], dihedral[1]):
+                dihedral.reverse()
+            if dihedral not in torsionals:
+                torsionals.append(dihedral)
 
-        # TODO: torsionals need to be unique, currently will ABCD will different to DCBA and both appear
         self.torsionals = torsionals
 
 
