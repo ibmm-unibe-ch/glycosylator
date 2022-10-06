@@ -46,10 +46,10 @@ class Molecule:
     def build_residue_graph(self) -> nx.DiGraph:
         res_indices = self.atom_group.getResindices()
         inter_res_bonds = [
-            (a, b)
-            for a, b, in self.bond_graph.edges
-            if res_indices[a]
-            != res_indices[b]  # atoms that are part of different residues
+            (res_indices[atom_i], res_indices[atom_j])
+            for atom_i, atom_j in self.bond_graph.edges
+            if res_indices[atom_i]
+            != res_indices[atom_j]  # atoms that are part of different residues
         ]
         # cannot make directed graph immediately because cannot guarantee
         # that the edges (a,b) are in the correct orientation coming away from root
