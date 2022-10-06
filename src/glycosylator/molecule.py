@@ -28,7 +28,7 @@ class Molecule:
 
         self.guess_angles()
         self.guess_dihedrals()
-        self.torsionals
+        self.guess_torsionals()
 
     @classmethod
     def from_PDB(cls, pdb: str, root_atom: int = 1, **kwargs):
@@ -53,9 +53,10 @@ class Molecule:
             if res_indices[atom_i]
             != res_indices[atom_j]  # atoms that are part of different residues
         ]
+        residue_graph = nx.Graph()
         # cannot make directed graph immediately because cannot guarantee
         # that the edges (a,b) are in the correct orientation coming away from root
-        residue_graph = nx.Graph.add_edges_from(inter_res_bonds)
+        residue_graph.add_edges_from(inter_res_bonds)
         # convert to a directed graph
         residue_graph = nx.bfs_tree(
             residue_graph, source=self.root_residue.getResindex()
@@ -81,7 +82,7 @@ class Molecule:
         Initializes:
             torsionals: a list of serial number of atom defining a torsional angle (quadruplet)
         """
-        cycles = nx.cycle_basis(self.bond_graph)
+        cycles = nx.cycle_basis(self.bond_graph.to_undirected(as_view=True))
         # TODO: can cycle_id just be a flat set of all atoms in any cycles?
         cycle_id = {atom: i for i, cycle in enumerate(cycles) for atom in cycle}
 
