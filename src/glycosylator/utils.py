@@ -47,33 +47,6 @@ def topological_sort(unsorted_graph):
     return sorted_graph[::-1]
 
 
-def rotation_matrix(axis, theta):
-    """Computes the rotation matrix about an arbitrary axis in 3D
-    Code from: http://stackoverflow.com/questions/6802577/python-rotation-of-3d-vector
-    Parameters:
-        axis: axis
-        theta: rotation angle
-    Return:
-        rotation matrix
-
-    """
-
-    axis = np.asarray(axis)
-    theta = np.asarray(theta)
-    axis = axis / math.sqrt(np.dot(axis, axis))
-    a = math.cos(theta / 2.0)
-    b, c, d = -axis * math.sin(theta / 2.0)
-    aa, bb, cc, dd = a * a, b * b, c * c, d * d
-    bc, ad, ac, ab, bd, cd = b * c, a * d, a * c, a * b, b * d, c * d
-    return np.array(
-        [
-            [aa + bb - cc - dd, 2 * (bc + ad), 2 * (bd - ac)],
-            [2 * (bc - ad), aa + cc - bb - dd, 2 * (cd + ab)],
-            [2 * (bd + ac), 2 * (cd - ab), aa + dd - bb - cc],
-        ]
-    )
-
-
 def rotation_matrix2(angle, direction, point=None):
     """Return matrix to rotate about axis defined by point and direction."""
     sina = math.sin(angle)
