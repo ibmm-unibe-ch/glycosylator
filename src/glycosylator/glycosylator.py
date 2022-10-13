@@ -26,7 +26,7 @@ import sqlite3
 
 import networkx as nx
 import numpy as np
-from prody import *
+import prody
 
 from .utils import *
 
@@ -50,6 +50,10 @@ class Glycosylator:
             glycans: dictionary with protein residue as keys and graph of connected glycan as values
             names: dictionary of residue names for linked glycans
         """
+        if force_field != "charmm":
+            raise NotImplementedError(
+                "Non-CHARMM force fields have not been implemented yet"
+            )
         self.topofile = topofile
         self.builder = prody.MoleculeBuilder(topofile, paramfile)
         self.connect_topology = {}
@@ -63,7 +67,7 @@ class Glycosylator:
         self.names = {}
         self.prefix = ["segment", "chain", "resid", "icode"]
 
-    def init_glycoprotein(self):
+    def _reset_glycoprotein(self):
         """Initializes all the variables"""
         self.glycoprotein = None
         self.protein = None
@@ -73,7 +77,7 @@ class Glycosylator:
         self.glycans = {}
         self.names = {}
 
-    def read_connectivity_topology(self, connectfile):
+    def read_connectivity_topology(self, connect_file_path):
         """Parse file defining the topology of connectivity trees.
         This function will initialize connect_topology and glycan_keys
 
@@ -84,12 +88,13 @@ class Glycosylator:
         Parameter:
             fileName: path to connectivity file
         """
-        lines = readLinesFromFile(connectfile)
+        with open(connect_file_path, "r") as f:
+            lines = [line.strip() for line in f.readlines()]
         residue = {}
         self.connect_topology = {}
         nbr_units = 0
         for line in lines:  # Loop through each line
-            line = line.split("\n")[0].split("!")[0].split()  # remove comments and endl
+            line = line.split("!")[0].split()  # remove comments and endl
             if line:
                 if line[0] == "RESI":
                     if residue:
@@ -226,30 +231,23 @@ class Glycosylator:
         Parameters:
             protein: Atomgroup of
         """
-        self.init_glycoprotein()
+        self._reset_glycoprotein()
         if type(protein) == str:
-            protein = parsePDB(protein)
+            protein = prody.parsePDB(protein)
         self.glycoprotein = protein
         sel = self.glycoprotein.select("name CA")
         segn = sel.getSegnames()
         chids = sel.getChids()
 
-        fragids = []
-        for s, c in zip(segn, chids):
-            fragids.append(f"{s},{c}")
-        fragids = set(fragids)
-        for i in fragids:
+        frag_ids = {f"{s},{c}" for s, c in zip(segn, chids)}
+        for i in frag_ids:
             sel = ["name CA"]
             for p, s in zip(["segment ", "chain "], i.split(",")):
                 if s:
                     sel.append(p + s)
             sel = " and ".join(sel)
             sel = self.glycoprotein.select(sel)
-            # Old versions of Prody does have getSequence
-            try:
-                self.sequences[i] = sel.getSequence()
-            except:
-                self.sequences[i] = self.getSequence(sel)
+            self.sequences[i] = sel.getSequence()
 
             self.sequons.update(self.find_sequons(sel, self.sequences[i]))
 
@@ -257,21 +255,6 @@ class Glycosylator:
         for g in self.glycans.values():
             nx.set_node_attributes(g[1], self.names, "resname")
         self.extract_glycans()
-
-    def save_glycoprotein(self, filename):
-        """Saves glycoprotein to PDB file
-        Parameter:
-            filename: path
-        """
-        glycosylated_protein = self.protein.copy()
-        count = 0
-        for g in self.glycanMolecules.values():
-            glycosylated_protein += g.atom_group
-            count += 1
-            if count > 5:
-                break
-
-        writePDB(filename, glycosylated_protein)
 
     def write_glycoprotein(self, filename):
         """Numpy array requires a continous memory block. When merging several atomGroup, the memory explodes. This function will alocate the memory first and then transfer propreties of AtomGroup"""
@@ -327,7 +310,7 @@ class Glycosylator:
             altloc += list(ag.getAltlocs())
             natoms = nnatoms
 
-        glycoprotein = AtomGroup("Glycoprotein")
+        glycoprotein = prody.AtomGroup("Glycoprotein")
         glycoprotein.setCoords(coords)
 
         glycoprotein.setNames(atoms_name)
@@ -341,7 +324,7 @@ class Glycosylator:
         glycoprotein.setIcodes(icode)
         glycoprotein.setElements(element)
         glycoprotein.setAltlocs(altloc)
-        writePDB(filename, glycoprotein)
+        prody.writePDB(filename, glycoprotein)
 
     def write_psfgen(self, dirName, proteinName=None):
         """This function will create the configure file for psfgen. The glycans will be split from the rest of the structure.
@@ -364,7 +347,7 @@ class Glycosylator:
         for g in self.glycanMolecules.values():
             ag = g.atom_group
             segname = g.get_segname()
-            writePDB(f"{segname}.pdb", ag)
+            prody.writePDB(f"{segname}.pdb", ag)
             psfbuffer.append(f"segment {segname} {{pdb {segname}.pdb}}")
             patches = g.get_patches()
             for patch in patches:
@@ -475,7 +458,7 @@ class Glycosylator:
         sel = self.glycoprotein.select(
             f"(not protein and name {a2}) or (resname {resname} and name {a1})"
         )
-        kd = KDTree(sel.getCoords())
+        kd = prody.KDTree(sel.getCoords())
         kd.search(1.7)
         atoms = kd.getIndices()
         if atoms is None:
@@ -540,11 +523,6 @@ class Glycosylator:
         else:
             self.protein = self.glycoprotein.copy()
 
-    def define_anomer(self, id1, id2, a1, a2):
-        r1 = self.get_residue(id1)
-        r2 = self.get_residue(ids)
-        r1.select(name)
-
     def connect_all_glycans(self, G):
         """Builds a connectivity graph for molecules (not protein) in AtomGroup. Edges with unknown patches will be removed
         Parameters:
@@ -553,7 +531,7 @@ class Glycosylator:
             names: dictionary with residue id (get_id) as keys and residue name as value
         """
         sel = self.glycoprotein.select("not protein")
-        kd = KDTree(sel.getCoords())
+        kd = prody.KDTree(sel.getCoords())
         kd.search(1.7)
         atoms = kd.getIndices()
         atom_names = sel.getNames()
