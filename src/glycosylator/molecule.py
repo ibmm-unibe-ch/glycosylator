@@ -13,7 +13,7 @@ class Molecule:
     def __init__(
         self,
         atom_group: prody.AtomGroup,
-        root_atom: int,
+        root_atom: int = 1,
     ):
         _validate_atom_group(atom_group)
         self.atom_group: prody.AtomGroup = atom_group
