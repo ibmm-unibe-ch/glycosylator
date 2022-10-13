@@ -22,9 +22,11 @@ class MoleculeBuilder:
             self.Topology = CHARMMTopology(topofile)
             self.Parameters = CHARMMParameters(paramfile)
         else:
-            print("unknown force field.")
+            raise NotImplementedError(
+                "Non-CHARMM force fields have not been implemented yet"
+            )
 
-    def init_new_residue(self, resid, resname, chain, segname, i=1):
+    def init_new_residue(self, resnum, resname, chain, segname, i=1):
         """Initializes a residue from scratch
         Parameters:
             resid: residue id (int)
@@ -36,56 +38,43 @@ class MoleculeBuilder:
             atoms_name: name of of all the atoms in residue
             bonds: list of bonds (segn,chid,resi,atom_name)
         """
-        residue = prody.AtomGroup(resname + str(resid))
+        residue = prody.AtomGroup(f"{resname}{resnum}")
         # add all the atoms
         atoms = self.Topology.get_atoms(resname)
-        natoms = len(atoms)
-        coords = np.zeros((natoms, 3))
+        coords = np.zeros((len(atoms), 3))
         residue.setCoords(coords)
-        resn = []
-        resi = []
-        atoms_name = []
-        chid = []
-        segn = []
-        occupancy = []
-        beta = []
-        serial = []
-        element = []
-        icode = []
-        altloc = []
-        for a in atoms:
-            atoms_name.append(a[0])
-            resn.append(resname)
-            resi.append(resid)
-            chid.append(chain)
-            segn.append(segname)
-            occupancy.append(1)
-            beta.append(0)
-            serial.append(i)
-            i += 1
-            icode.append("")
-            element.append(a[0][0])
-            altloc.append("")
 
-        residue.setNames(atoms_name)
-        residue.setResnums(resi)
-        residue.setResnames(resn)
+        # each entry in atoms is of form ['C1', 'CC3162', 0.34]
+        atom_names = [atom[0] for atom in atoms]
+        resnames = [resname] * len(atoms)
+        resnums = [resnum] * len(atoms)
+        chid = [chain] * len(atoms)
+        segnames = [segname] * len(atoms)
+        occupancies = [1] * len(atoms)
+        betas = [0] * len(atoms)
+        serials = list(range(i, len(atoms) + i))
+        elements = [atom[0][0] for atom in atoms]
+        icodes = [""] * len(atoms)
+        altlocs = [""] * len(atoms)
+
+        residue.setNames(atom_names)
+        residue.setResnums(resnums)
+        residue.setResnames(resnames)
         residue.setChids(chid)
-        residue.setSegnames(segn)
-        residue.setOccupancies(occupancy)
-        residue.setBetas(beta)
-        residue.setSerials(serial)
-        residue.setIcodes(icode)
-        residue.setElements(element)
-        residue.setAltlocs(altloc)
-        bonds = []
+        residue.setSegnames(segnames)
+        residue.setOccupancies(occupancies)
+        residue.setBetas(betas)
+        residue.setSerials(serials)
+        residue.setIcodes(icodes)
+        residue.setElements(elements)
+        residue.setAltlocs(altlocs)
         top_bonds = self.Topology.get_bonds(resname)
 
-        id_r = f"{segname},{chain},{int(resid)},,"
-        for a1, a2 in itertools.pairwise(top_bonds):
-            bonds.append((id_r + a1, id_r + a2))
+        #####
+        id_r = f"{segname},{chain},{int(resnum)},,"
+        bonds = [(id_r + a1, id_r + a2) for a1, a2 in itertools.pairwise(top_bonds)]
 
-        return residue, atoms_name, bonds
+        return residue, atom_names, bonds
 
     def copy_atom(self, src_atom, dst_atom):
         """copies all the attributes of one atom to another
@@ -95,10 +84,10 @@ class MoleculeBuilder:
         """
         dst_atom.setCoords(src_atom.getCoords())
         dst_atom.setNames(src_atom.getNames())
-        #        dst_atom.setResnums(src_atom.getResnums())
+        # dst_atom.setResnums(src_atom.getResnums())
         dst_atom.setResnames(src_atom.getResnames())
-        #        dst_atom.setChids(src_atom.getChids())
-        #        dst_atom.setSegnames(src_atom.getSegnames())
+        # dst_atom.setChids(src_atom.getChids())
+        # dst_atom.setSegnames(src_atom.getSegnames())
         dst_atom.setOccupancies(src_atom.getOccupancies())
         dst_atom.setBetas(src_atom.getBetas())
         dst_atom.setSerials(src_atom.getSerials())
@@ -106,7 +95,7 @@ class MoleculeBuilder:
         dst_atom.setElements(src_atom.getElements())
         dst_atom.setAltlocs(src_atom.getAltlocs())
 
-    def add_missing_atoms(self, residue, resid=None, chain=None, segname=None):
+    def find_missing_atoms(self, residue, resnum=None, chain=None, segname=None):
         """Add all missing atoms to a ProDy residue from topology
         Parameters:
             residue: ProDy residue (AtomGroup)
@@ -115,25 +104,25 @@ class MoleculeBuilder:
             missing_atoms: list of missing atom names
             bonds: list of new bonds
         """
-        if not resid:
-            resid = residue.getResnums()[0]
+        if not resnum:
+            resnum = residue.getResnums()[0]
         if not chain:
             chain = residue.getChids()[0]
         if not segname:
             segname = residue.getSegnames()[0]
-        complete_residue, atoms, bonds = self.init_new_residue(
-            resid, residue.getResnames()[0], chain, segname
+        complete_residue, atom_names, bonds = self.init_new_residue(
+            resnum, residue.getResnames()[0], chain, segname
         )
         missing_atoms = []
-        atoms_in_residue = residue.getNames()
-        for a in atoms:
-            if a in atoms_in_residue:
-                atom = residue.select(f"name {a}")
-                catom = complete_residue.select(f"name {a}")
+        res_atom_names = residue.getNames()
+        for name in atom_names:
+            if name in res_atom_names:
+                atom = residue.select(f"name {name}")
+                catom = complete_residue.select(f"name {name}")
                 self.copy_atom(atom, catom)
             else:
-                missing_atoms.append(a)
-        complete_residue.setResnums([resid] * len(complete_residue))
+                missing_atoms.append(name)
+        complete_residue.setResnums([resnum] * len(complete_residue))
         return complete_residue, missing_atoms, bonds
 
     def apply_patch(self, patch, residue1, residue2):
@@ -171,7 +160,7 @@ class MoleculeBuilder:
         for a in atoms:
             if a in atomsIC:
                 required_atoms.append(a)
-                if not a in unsorted_graph:
+                if a not in unsorted_graph:
                     unsorted_graph[a] = []
                 for ic in self.Topology.get_IC(ics, a):
                     for aic in ic[0:3]:
@@ -356,22 +345,17 @@ class MoleculeBuilder:
             ic = self.Topology.get_IC(ICs, a)
             if ic:
                 ic = ic[0]
-                c = 0
+                xa_list = []
                 for atom_ic in ic[0:4]:
                     if atom_ic.replace("*", "")[0] == "2":
-                        exec(
-                            "xa"
-                            + str(c)
-                            + "= residue.select('name ' + atom_ic.replace('*', '')[1:]).getCoords()[0]"
-                        )
+                        sel = residue.select("name " + atom_ic.replace("*", "")[1:])
+                        xa_list.append(sel.getCoords()[0])
                     else:
-                        exec(
-                            "xa"
-                            + str(c)
-                            + "= link_residue.select('name ' + atom_ic.replace('*', '')[1:]).getCoords()[0]"
+                        sel = link_residue.select(
+                            "name " + atom_ic.replace("*", "")[1:]
                         )
-                    c += 1
-                atom.setCoords(self.build_cartesian(xa0, xa1, xa2, ic[8], ic[7], ic[6]))
+                        xa_list.append(sel.getCoords()[0])
+                atom.setCoords(self.build_cartesian(*xa_list, ic[8], ic[7], ic[6]))
 
     def build_missing_atom_coord(self, residue, missing_atoms, ICs):
         """Builds all missing atoms based on the provided internal coordinates
