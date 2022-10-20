@@ -28,6 +28,8 @@ import networkx as nx
 import numpy as np
 import prody
 
+from .molecule import Molecule
+from .molecule_builder import MoleculeBuilder
 from .utils import *
 
 
@@ -55,7 +57,7 @@ class Glycosylator:
                 "Non-CHARMM force fields have not been implemented yet"
             )
         self.topofile = topofile
-        self.builder = prody.MoleculeBuilder(topofile, paramfile)
+        self.builder = MoleculeBuilder(topofile, paramfile)
         self.connect_topology = {}
         self.glycan_keys = {}
         self.glycoprotein = None
@@ -509,10 +511,7 @@ class Glycosylator:
                 sel.append(" and ".join(selg))
             sel = f"({') or ('.join(sel)})"
             sel_all.append(sel)
-            glycan = prody.Molecule(k)
-            glycan.set_AtomGroup(
-                self.glycoprotein.select(sel).copy(), rootAtom=rootAtom
-            )
+            glycan = Molecule(self.glycoprotein.select(sel).copy(), rootAtom=rootAtom)
             glycan.interresidue_connectivity = g.copy()
             self.assign_patches(glycan)
             self.glycanMolecules[k] = glycan
@@ -617,6 +616,8 @@ class Glycosylator:
         dummy_patch = "DUMMY_MAN"
         prefix = ["segment", "chain", "resid", "icode"]
 
+        # either: retrieve glycan from data by name
+        # or use the glycan provided
         if glycan_name in self.connect_topology:
             glycan_topo = self.get_connectivity_tree(glycan_name)
         elif glycan_molecule:
@@ -626,8 +627,8 @@ class Glycosylator:
             glycan_topo, template_glycan_tree = self.build_glycan_topo(glycan_molecule)
             template_glycan = glycan_molecule.atom_group
         else:
-            print("Unkown Glycan")
-            return [], []
+            raise ValueError("Unknown glycan")
+
         # Variable for storing the new glycan
         glycan = None
         glycan_bonds = []
@@ -777,7 +778,7 @@ class Glycosylator:
 
         # set serial number
         for i in range(len(glycan)):
-            glycan.select(f"index {str(i)}").setSerials([i + 1])
+            glycan.select(f"index {i}").setSerials([i + 1])
 
         return glycan, glycan_bonds
 
@@ -807,29 +808,26 @@ class Glycosylator:
             glycanMolecules: dictionary with id as key and Molecule instance as value. Default: glycans detected in by Glycosylator
             build_all: boolean defining if the topology has to be rebuilt
         """
-        glycanMolecules = (
-            glycanMolecules if glycanMolecules is not None else self.glycanMolecules
-        )
+        glycanMolecules = glycanMolecules if glycanMolecules else self.glycanMolecules
 
-        for m in glycanMolecules:
-            glycan_molecule = glycanMolecules[m]
-            residue = self.get_residue(m)
-            if not glycan_molecule.atom_group:
+        for i, glycan in glycanMolecules.items():
+            residue = self.get_residue(i)
+            if not glycan.atom_group:
                 continue
             if build_all:
                 atom_group, bonds = self.glycosylate(
                     None,
-                    glycan_molecule=glycan_molecule,
+                    glycan_molecule=glycan,
                     link_residue=residue,
                     link_patch=patch,
                 )
-                glycan_molecule.set_AtomGroup(
+                glycan.set_AtomGroup(
                     atom_group, rootAtom=atom_group.getSerials()[0], bonds=bonds
                 )
-            self.assign_patches(glycan_molecule)
-            atom_type = self.assign_atom_type(glycan_molecule)
-            glycan_molecule.set_atom_type(atom_type)
-            glycan_molecule.define_torsionals(hydrogens=False)
+            self.assign_patches(glycan)
+            atom_type = self.assign_atom_type(glycan)
+            glycan.set_atom_type(atom_type)
+            glycan.define_torsionals(hydrogens=False)
 
     def get_connectivity_tree(self, glycan_name):
         """Builds connectivity tree of a glycan described in the connectivity topology
