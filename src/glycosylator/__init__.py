@@ -1,6 +1,5 @@
-from .charmm_parameters import CHARMMParameters
-from .charmm_topology import CHARMMTopology
 from .drawer import Drawer
+from .file_parsers import CHARMMParameters, CHARMMTopology
 from .glycosylator import Glycosylator
 from .molecule import Molecule
 from .molecule_builder import MoleculeBuilder
