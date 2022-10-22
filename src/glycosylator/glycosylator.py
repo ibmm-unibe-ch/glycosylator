@@ -145,22 +145,6 @@ class Glycosylator:
             self.connect_topology[name] = residue
         self.build_keys()
 
-    def add_glycan_to_connectivity_topology(self, name, connect_tree, overwrite=True):
-        """Add new glycan to connect_topology dictionary
-        Parameters:
-            name: name of new glycan
-            connect_tree: dictionary with connectivity tree
-            overwrite: should an existing glycan be overwritten
-        """
-        if name in self.connect_topology and not overwrite:
-            print(
-                "Glycan with same name "
-                + name
-                + "already exists. Please change name or allow overwritting"
-            )
-            return -1
-        self.connect_topology[name] = connect_tree
-
     def export_connectivity_topology(self, filename):
         """Export connectivity topology to sql database
         This function will
@@ -191,6 +175,22 @@ class Glycosylator:
 
         conn.commit()
         conn.close()
+
+    def add_glycan_to_connectivity_topology(self, name, connect_tree, overwrite=True):
+        """Add new glycan to connect_topology dictionary
+        Parameters:
+            name: name of new glycan
+            connect_tree: dictionary with connectivity tree
+            overwrite: should an existing glycan be overwritten
+        """
+        if name in self.connect_topology and not overwrite:
+            print(
+                "Glycan with same name "
+                + name
+                + "already exists. Please change name or allow overwritting"
+            )
+            return -1
+        self.connect_topology[name] = connect_tree
 
     def build_keys(self):
         self.glycan_keys = {}
