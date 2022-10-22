@@ -78,12 +78,13 @@ class Glycosylator:
         root_residue_index = residue_graph.graph["root_residue_index"]
         try:
             next_residue_index = next(residue_graph.successors(root_residue_index))
+        # if no successors, return False
         except StopIteration:
             return False
         linking_atoms = residue_graph[root_residue_index][next_residue_index]["atoms"]
         atom_names = {atom.getName() for atom in linking_atoms}
         for patch in patches:
-            # linking_atoms example: ['2C1', '1ND2']
+            # patch_atoms example: ['2C1', '1ND2']
             # str starting with "1" is atom from a protein residue
             # str starting with "2" is atom from a glycan residue
             patch_atoms = self.builder.Topology.patches[patch]["BOND"][0:2]
@@ -104,7 +105,10 @@ class Glycosylator:
         #         for bond in self._glycans_and_links_sel.toAtomGroup().inferBonds()
         #     ]
         # )
-        self.glycoprotein.inferBonds()
         # kdtree = prody.KDTree(self._glycans_and_links_sel.getCoords())
         # kdtree.search(1.7)
         # self.glycoprotein.setBonds(kdtree.getIndices())
+
+        # can't get bond search for selection to work, so have to brute force whole glycoprotein
+        # which is slow
+        self.glycoprotein.inferBonds()
