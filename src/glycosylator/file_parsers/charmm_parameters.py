@@ -62,9 +62,8 @@ class CHARMMParameters:
                 if line[0] in tags:
                     if prm:
                         if prm_type in self.parameters:
-                            self.parameters[prm_type] = dict(
-                                self.parameters[prm_type].items() + prm.items()
-                            )
+                            self.parameters[prm_type] = self.parameters[prm_type] | prm
+
                         else:
                             self.parameters[prm_type] = copy.copy(prm)
                     prm_type = line[0]
