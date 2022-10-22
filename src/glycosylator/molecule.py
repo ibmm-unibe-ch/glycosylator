@@ -3,6 +3,7 @@ import math
 import networkx as nx
 import numpy as np
 import prody
+from prody import Atom, AtomGroup
 
 from .glycan_representations import AtomGraph, ResidueGraph
 
@@ -14,13 +15,13 @@ class TooManyChains(Exception):
 class Molecule:
     def __init__(
         self,
-        atom_group: prody.AtomGroup,
-        root_atom: int = 1,
+        atom_group: AtomGroup,
+        root_atom: Atom,
     ):
         _validate_atom_group(atom_group)
         self.atom_group: prody.AtomGroup = atom_group
 
-        self.root_atom: prody.Atom = self.atom_group[root_atom - 1]
+        self.root_atom: prody.Atom = root_atom
         self.root_residue: prody.Residue = self.atom_group[
             self.root_atom.getChid(), self.root_atom.getResnum()
         ]
@@ -32,10 +33,10 @@ class Molecule:
         self.guess_dihedrals()
         self.guess_torsionals()
 
-    @classmethod
-    def from_PDB(cls, pdb: str, root_atom: int = 1, **kwargs):
-        atom_group = prody.parsePDB(pdb, **kwargs)
-        return Molecule(atom_group, root_atom)
+    # @classmethod
+    # def from_PDB(cls, pdb: str, root_atom: int = 1, **kwargs):
+    #     atom_group = prody.parsePDB(pdb, **kwargs)
+    #     return Molecule(atom_group, root_atom)
 
     def write_PDB(self, filename: str, selection: str = "all"):
         prody.writePDB(filename, self.atom_group.select(selection))
@@ -159,8 +160,9 @@ class Molecule:
 
 def _validate_atom_group(atom_group: prody.AtomGroup):
     """validates that the AtomGroup consists of a single physical molecule"""
-    if atom_group.numChains() != 1 or atom_group.numSegments() != 1:
-        raise TooManyChains()
+    pass
+    # if atom_group.numChains() != 1 or atom_group.numSegments() != 1:
+    #     raise TooManyChains()
 
 
 def _find_paths(G, node, length, excludeSet=None):

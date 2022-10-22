@@ -2,7 +2,7 @@ from abc import abstractmethod
 
 import networkx as nx
 import prody
-from prody import Atom, AtomGroup
+from prody import Atom, AtomGroup, Selection
 
 
 class AtomGraph(nx.DiGraph):
@@ -20,10 +20,10 @@ class AtomGraph(nx.DiGraph):
 
         # numFragments needs bond information;
         # .inferBonds() will set bond information if none is present
-        if atom_group.getBonds() is None:
-            atom_group.inferBonds()
-        if atom_group.numFragments() != 1:
-            raise ValueError("atom_group contains more than one fragment")
+        # if atom_group.getBonds() is None:
+        #     atom_group.inferBonds()
+        # if atom_group.numFragments() != 1:
+        #     raise ValueError("atom_group contains more than one fragment")
 
         # create bond graph to pass to initialiser
         directed_bond_graph = AtomGraph._create_directed_bond_graph(
@@ -43,8 +43,9 @@ class AtomGraph(nx.DiGraph):
         atom_group: AtomGroup = self.graph["atom_group"]
         # need to run getResindices once to initialise these values within the atomgroup
         atom_group.getResindices()
+        atoms = {atom.getIndex(): atom for atom in self.graph["atom_group"]}
         for atom_index, data in self.nodes(data=True):
-            atom = atom_group[atom_index]
+            atom = atoms[atom_index]
             data.update({label: atom.getData(label) for label in atom.getDataLabels()})
             data.update({"atom": atom})
 
@@ -52,8 +53,9 @@ class AtomGraph(nx.DiGraph):
     def _create_directed_bond_graph(
         atom_group: AtomGroup, root_atom_index: int
     ) -> nx.DiGraph:
-        bonds = [bond.getIndices() for bond in atom_group.getBonds()]
+        bonds = [bond.getIndices() for bond in atom_group.iterBonds()]
         bond_graph = nx.Graph()
+        bond_graph.add_nodes_from([atom.getIndex() for atom in atom_group.iterAtoms()])
         bond_graph.add_edges_from(bonds)
         bond_graph = nx.bfs_tree(bond_graph, root_atom_index)
         return bond_graph
