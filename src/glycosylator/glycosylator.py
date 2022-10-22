@@ -206,28 +206,6 @@ class Glycosylator:
         else:
             residue["UNIT"].append([unit[1], " ", []])
 
-    def build_glycan_gaph(self, connect_tree):
-        """Builds a graph representation of a connectivity tree
-        Parameters:
-            connect_tree: dictionnary of connectivity of a poly glycan
-        Returns:
-            unsorted_graph: dictionary repersenting the connectivity graph
-        """
-        inv_connect_tree = {v: k for k, v in connect_tree.items()}
-        unsorted_graph = {}
-        for g in connect_tree:
-            if not g in unsorted_graph:
-                unsorted_graph[g] = []
-            key = connect_tree[g]
-            if not key:
-                continue
-            gr = inv_connect_tree[" ".join(key.split()[:-1])]
-            if gr in unsorted_graph:
-                unsorted_graph[gr].append(g)
-            else:
-                unsorted_graph[gr] = [g]
-        return unsorted_graph
-
     def load_glycoprotein(self, protein):
         """Load and detects glycans in a glycoprotein
         Parameters:
