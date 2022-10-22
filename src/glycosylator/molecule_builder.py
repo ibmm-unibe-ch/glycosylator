@@ -3,8 +3,7 @@ import itertools
 import networkx as nx
 import prody
 
-from .charmm_parameters import CHARMMParameters
-from .charmm_topology import CHARMMTopology
+from .file_parsers import CHARMMParameters, CHARMMTopology
 from .utils import *
 
 
