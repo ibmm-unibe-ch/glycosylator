@@ -4,6 +4,8 @@ import networkx as nx
 import numpy as np
 import prody
 
+from .glycan_representations import AtomGraph, ResidueGraph
+
 
 class TooManyChains(Exception):
     """Raise when Molecule class has an AtomGroup with more than one chain/segment"""
@@ -23,8 +25,8 @@ class Molecule:
             self.root_atom.getChid(), self.root_atom.getResnum()
         ]
 
-        self.bond_graph: nx.DiGraph = self.build_bond_graph()
-        self.residue_graph: nx.DiGraph = self.build_residue_graph()
+        self.bond_graph: AtomGraph = AtomGraph(self.atom_group, self.root_atom)
+        self.residue_graph: ResidueGraph = ResidueGraph(self.bond_graph)
 
         self.guess_angles()
         self.guess_dihedrals()
@@ -37,31 +39,6 @@ class Molecule:
 
     def write_PDB(self, filename: str, selection: str = "all"):
         prody.writePDB(filename, self.atom_group.select(selection))
-
-    def build_bond_graph(self) -> nx.Graph:
-        bonds = self.atom_group.inferBonds()
-        bond_graph = nx.Graph()
-        bond_graph.add_edges_from([bond.getIndices() for bond in bonds])
-        bond_graph = nx.bfs_tree(bond_graph, self.root_atom.getIndex())
-        return bond_graph
-
-    def build_residue_graph(self) -> nx.DiGraph:
-        res_indices = self.atom_group.getResindices()
-        inter_res_bonds = [
-            (res_indices[atom_i], res_indices[atom_j])
-            for atom_i, atom_j in self.bond_graph.edges
-            if res_indices[atom_i]
-            != res_indices[atom_j]  # atoms that are part of different residues
-        ]
-        residue_graph = nx.Graph()
-        # cannot make directed graph immediately because cannot guarantee
-        # that the edges (a,b) are in the correct orientation coming away from root
-        residue_graph.add_edges_from(inter_res_bonds)
-        # convert to a directed graph
-        residue_graph = nx.bfs_tree(
-            residue_graph, source=self.root_residue.getResindex()
-        )
-        return residue_graph
 
     def guess_angles(self):
         """Searches for all angles in a molecule based on the connectivity"""
