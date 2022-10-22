@@ -1,7 +1,5 @@
 import copy
 
-from .utils import *
-
 
 class CHARMMTopology:
     """Class for parsing and storing CHARMM topology files.
@@ -46,7 +44,8 @@ class CHARMMTopology:
                         key: atom1-atom2
                         value: patchname
         """
-        lines = readLinesFromFile(fileIn)
+        with open(fileIn, "r") as f:
+            lines = f.readlines()
         topo_type = ""
         residue = {}
         if "MASS" not in self.topology:

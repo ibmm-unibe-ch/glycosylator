@@ -1,7 +1,5 @@
 import copy
 
-from .utils import *
-
 
 class CHARMMParameters:
     """Class for parsing and storing CHARMM parameters files.
@@ -40,7 +38,8 @@ class CHARMMParameters:
                         CMAP:
                         ATOM: atom1                         -> mass
         """
-        lines = readLinesFromFile(fileIn)
+        with open(fileIn, "r") as f:
+            lines = f.readlines()
         prm = {}
         prm_type = ""
         tags = [
