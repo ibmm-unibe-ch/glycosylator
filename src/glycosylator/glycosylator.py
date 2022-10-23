@@ -79,6 +79,7 @@ class Glycosylator:
         try:
             next_residue_index = next(residue_graph.successors(root_residue_index))
         # if no successors, return False
+        # happens when the glycan is just the protein linking residue e.g. ASN
         except StopIteration:
             return False
         linking_atoms = residue_graph[root_residue_index][next_residue_index]["atoms"]
@@ -92,6 +93,24 @@ class Glycosylator:
             if atom_names == patch_atoms:
                 return True
         return False
+
+    def glycan_linkage(self, glycan: Molecule, remove_unknown=True):
+        residue_graph = glycan.residue_graph
+        for res1, res2, data in residue_graph.edges(data=True):
+            atom_names = {atom.getName() for atom in data["atoms"]}
+            patch = self.find_patch(atom_names)
+            data["patch"] = patch
+            if remove_unknown:
+                residue_graph.remove_edge(res1, res2)
+                # glycan.del_atoms
+
+    def find_patch(self, atom_names: set[str]) -> str | None:
+        # TODO: add anomer support
+        key = "-".join(sorted(atom_names))
+        if key in self.builder.Topology.atomnames_to_patch:
+            return self.builder.Topology.atomnames_to_patch[key][0]
+        else:
+            return None
 
     def _infer_glycan_bonds(self):
         glycans_sel = "(not protein and not water)"
