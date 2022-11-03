@@ -1,10 +1,11 @@
 import itertools
 
 import networkx as nx
+import numpy as np
 import prody
 
-from .file_parsers import CHARMMParameters, CHARMMTopology
-from .utils import *
+from glycosylator.file_parsers import CHARMMParameters, CHARMMTopology
+from glycosylator.utils import topological_sort
 
 
 class MoleculeBuilder:

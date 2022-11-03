@@ -8,10 +8,11 @@ import prody
 from prody import AtomGroup, Residue, Selection
 from typing_extensions import Self
 
-from .file_parsers import glycan_topology
-from .glycan_representations import ResidueGraph
-from .molecule import Molecule
-from .molecule_builder import MoleculeBuilder
+from glycosylator.file_parsers import glycan_topology
+from glycosylator.file_parsers.glycan_topology import GlycanTopology
+from glycosylator.glycan_representations import ResidueGraph
+from glycosylator.molecule import Molecule
+from glycosylator.molecule_builder import MoleculeBuilder
 
 
 class Glycosylator:

@@ -5,7 +5,7 @@ import numpy as np
 import prody
 from prody import Atom, AtomGroup
 
-from .glycan_representations import AtomGraph, ResidueGraph
+from glycosylator.glycan_representations import AtomGraph, ResidueGraph
 
 
 class TooManyChains(Exception):

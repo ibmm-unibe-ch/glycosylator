@@ -9,7 +9,7 @@ import numpy as np
 import prody
 from scipy.spatial import distance
 
-from .utils import *
+from glycosylator.utils import *
 
 
 class Sampler:
