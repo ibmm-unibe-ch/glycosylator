@@ -111,8 +111,8 @@ class ResidueGraph(nx.DiGraph):
         linkage_paths = {self.graph["root_residue_index"]: " "}
         for path_target, path in paths.items():
             edges = zip(path[:-1], path[1:])
-            value = [self[node1][node2]["patch"] for node1, node2 in edges]
-            linkage_paths[path_target] = " ".join(value)
+            patches = [self[(node1, node2)]["patch"] for node1, node2 in edges]
+            linkage_paths[path_target] = patches
         return linkage_paths
 
 

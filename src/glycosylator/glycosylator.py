@@ -158,7 +158,7 @@ class Glycosylator:
         protein_residue: Residue = None,
         protein_link_patch: str = None,
         glycan: Molecule = None,
-        template_glycan=None,
+        template_glycan: str | GlycanTopology = None,
     ) -> Molecule:
         """Build a glycan
 
@@ -177,12 +177,14 @@ class Glycosylator:
         # Step 1: get the data for template_glycan
         # Case 1: template provided by name
         if type(template_glycan) == str:
-            template_glycan_graph: ResidueGraph = (
-                ...
-            )  # template_glycans[template_glycan]
+            template_topology: GlycanTopology = self.glycan_topologies[template_glycan]
         # Case 2: template provided as linkage topology
-        elif type(template_glycan) == ResidueGraph:
-            template_glycan_graph: ResidueGraph = template_glycan
+        elif type(template_glycan) == GlycanTopology:
+            template_topology: GlycanTopology = template_glycan
+
+        template_patches_to_i = {
+            tuple(path.patches): i for i, path in enumerate(template_topology.paths)
+        }
 
         # Step 2: prepare root
         # Case 1: root is an amino acid
@@ -196,213 +198,93 @@ class Glycosylator:
 
         # Step 3: modify glycan
         # Case 1: glycan was provided
+        # TODO: compare root of template and glycan -> should be same
         if glycan is not None:
             atom_group = glycan.atom_group
-            glycan_graph = glycan.residue_graph
+            glycan_graph: ResidueGraph = glycan.residue_graph
+            glycan_topology = ...
+            glycan_patches_to_i = ...
         # Case 2: no glycan provided -> ab initio building
         elif glycan is None:
             atom_group = prody.AtomGroup()
-            glycan_graph = ...  # empty residue_graph
+            glycan_graph = ResidueGraph()
 
-        template_edges = nx.edge_bfs(
-            template_glycan_graph,
-            source=template_glycan_graph.graph["root_residue_index"],
-        )
-        glycan_edges = nx.edge_bfs(
-            glycan_graph, source=glycan_graph.graph["root_residue_index"]
-        )
+        # template_edges = nx.edge_bfs(
+        #     template_glycan_graph,
+        #     source=template_glycan_graph.graph["root_residue_index"],
+        # )
+        # glycan_edges = nx.edge_bfs(
+        #     glycan_graph, source=glycan_graph.graph["root_residue_index"]
+        # )
         # TODO: guaranteed bug - if bfs traverses a short branch first in one graph, and a long branch first in the other graph,
         # then template residues go out of sync with glycan residues
         # solution: use .linkage_paths property, and iterate over template paths, then check if it exists in glycan paths
-        for (template1_i, template2_i), (res1_i, res2_i) in zip_longest(
-            template_edges, glycan_edges, fillvalue=(None, None)
-        ):
-            patch = template_glycan_graph[template1_i][template2_i]["patch"]
 
-            # Case 1: second residue exists and may need fixing
-            if res2_i is not None:
-                residue2 = glycan_graph[res2_i]["residue"]
+        for path in sorted(template_topology.paths, key=len):
+            # TODO: handle root residue case where there are no patches
+            *prev_patches, patch = path.patches
+            prev_template_i, template_i = template_patches_to_i.get(
+                tuple(prev_patches)
+            ), template_patches_to_i.get(tuple(path.patches))
+            prev_res_i, res_i = (
+                glycan_patches_to_i.get(tuple(prev_patches)),
+                glycan_patches_to_i.get(tuple(path.patches)),
+            )
+
+            # Case 1: residue exists and may need fixing
+            if res_i is not None:
+                residue = glycan_graph[res_i]["residue"]
                 resnum, chain, segname = (
-                    residue2.getResnum(),
-                    residue2.getChid(),
-                    residue2.getSegname(),
+                    residue.getResnum(),
+                    residue.getChid(),
+                    residue.getSegname(),
                 )
                 # build new complete residue
                 newres, missing_atoms, bonds = self.builder.find_missing_atoms(
-                    residue2, resnum, chain, segname
+                    residue, resnum, chain, segname
                 )
                 # set the coordinates for missing atoms using template ICs
-                ics = template_glycan_graph.nodes[template2_i]["ICs"]
+                ics = self.builder.Topology[path.residue_name]["IC"]
                 self.builder.build_missing_atom_coord(newres, missing_atoms, ics)
                 # apply_patch ?
 
             # Case 2: second residue needs to be created ab initio
             else:
                 # previous residue info
-                residue1 = glycan_graph[res1_i]["residue"]
-                resnum, chain, segname = (
-                    residue1.getResnum(),
+                residue1 = glycan_graph[prev_res_i]["residue"]
+                chain, segname = (
                     residue1.getChid(),
                     residue1.getSegname(),
                 )
                 # new res name
-                resname = template_glycan_graph[res2_i]["resname"]
+                resname = path.residue_name
+                # new res num
+                resnum = max(atom_group.getResnums()) + 1
+                res_i = max(atom_group.getResindices()) + 1
                 # make new residue ab initio
                 newres, new_dele_atoms, bonds = self.builder.build_from_patch(
                     residue1, resnum, resname, chain, segname, patch
                 )
+                # need to update graph...
 
             # delete atoms
             # tinker with bonds?
 
         return glycan
 
-    #####################################
-    # TODO: MOVE THESE TO SEPARATE FILE #
-    #####################################
-    def read_connectivity_topology(self, connect_file_path):
-        """Parse file defining the topology of connectivity trees.
-        This function will initialize connect_topology and glycan_keys
-
-        Each connectivity is defined by
-            RESI: name of the polyglycan
-            UNIT: resname, [list of patches to residue]
-
-        Parameter:
-            fileName: path to connectivity file
-        """
-        with open(connect_file_path, "r") as f:
-            lines = [line.strip() for line in f.readlines()]
-        residue = {}
-        self.connect_topology = {}
-        nbr_units = 0
-        for line in lines:  # Loop through each line
-            line = line.split("!")[0].split()  # remove comments and endl
-            if line:
-                if line[0] == "RESI":
-                    if residue:
-                        residue["#UNIT"] = nbr_units
-                        self.connect_topology[resname] = copy.copy(residue)
-                    residue["UNIT"] = []
-                    resname = line[1]
-                    nbr_units = 0
-                elif line[0] == "UNIT":
-                    self.read_unit(line, residue)
-                    nbr_units += 1
-        residue["#UNIT"] = nbr_units
-        self.connect_topology[resname] = copy.copy(residue)
-        self.build_keys()
-
-    def import_connectivity_topology(self, filename):
-        """Import connectivity topology from sql database
-        This function will initialize connect_topology
-        Parameters:
-            filename: path to database
-        """
+    def load_glycan_topologies(self, file_path):
         try:
-            conn = sqlite3.connect(filename)
-        except:
-            print(f"Error while connecting to the database {filename}")
-            return -1
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM glycans")
-        glycans = cursor.fetchall()
+            glycan_topologies = glycan_topology.read_glycan_topology(file_path)
+            self.glycan_topologies = glycan_topologies
+            return
+        except UnicodeDecodeError:
+            pass
 
-        self.connect_topology = {}
-        for glycan in glycans:
-            name, tree = glycan
-            residue = {}
-            residue["UNIT"] = []
-            nbr_unit = 0
-            for unit in tree.split("|"):
-                unit = unit.split(" ")
-                nbr_unit += 1
-                if len(unit) > 2:
-                    residue["UNIT"].append([unit[0], unit[1], unit[2:]])
-                else:
-                    residue["UNIT"].append([unit[0], " ", []])
-
-            residue["#UNIT"] = nbr_unit
-            self.connect_topology[name] = residue
-        self.build_keys()
-
-    def export_connectivity_topology(self, filename):
-        """Export connectivity topology to sql database
-        This function will
-        """
         try:
-            conn = sqlite3.connect(filename)
-        except:
-            print(f"Error while connecting to the database {filename}")
-            return -1
-        cursor = conn.cursor()
-        tn = "glycans"
-        gn = "glycan_name"
-        gt = "glycan_tree"
-        cursor.execute(f"DROP TABLE IF EXISTS {tn}")
-        cursor.execute(f"CREATE TABLE {tn} ({gn} text, {gt} text)")
+            glycan_topologies = glycan_topology.import_connectivity_topology(file_path)
+            self.glycan_topologies = glycan_topologies
+            return
+        except sqlite3.DatabaseError:
+            pass
 
-        for key in self.connect_topology.keys():
-            units = self.connect_topology[key]["UNIT"]
-            glycan = []
-            for unit in units:
-                v = []
-                v.extend(unit[0:2])
-                v.extend(unit[2])
-                glycan.append(" ".join(v))
-            glycan = "|".join(glycan)
-
-            cursor.execute(f"INSERT INTO {tn} VALUES ('{key}', '{glycan}')")
-
-        conn.commit()
-        conn.close()
-
-    def add_glycan_to_connectivity_topology(self, name, linkage_paths, overwrite=True):
-        """Add new glycan to connect_topology dictionary
-        Parameters:
-            name: name of new glycan
-            connect_tree: dictionary with connectivity tree
-            overwrite: should an existing glycan be overwritten
-        """
-        if name in self.connect_topology and not overwrite:
-            print(
-                "Glycan with same name "
-                + name
-                + "already exists. Please change name or allow overwritting"
-            )
-            return -1
-        self.connect_topology[name] = linkage_paths
-
-    def build_keys(self):
-        self.glycan_keys = {}
-        for res in self.connect_topology:
-            key = [
-                f"{r[0]} {' '.join(r[2])}" for r in self.connect_topology[res]["UNIT"]
-            ]
-            self.glycan_keys[res] = key
-
-    def read_unit(self, unit, residue):
-        if len(unit) > 2:
-            residue["UNIT"].append([unit[1], unit[2], unit[3:]])
-        else:
-            residue["UNIT"].append([unit[1], " ", []])
-
-    def get_linkage_paths(self, glycan_name):
-        """Builds connectivity tree of a glycan described in the connectivity topology
-        Parameters:
-            glycan_name: name of the glycan
-        Returns:
-            glycan_topo: dictionary with connectivy and resname of glycan
-        """
-        glycan_topo = {}
-        units = self.connect_topology[glycan_name]["UNIT"]
-        for unit in units:
-            rn, a, p = unit
-            # need to add blank at the begining of each key except the root key, which is blank ('')
-            if p:
-                # key = ' ' + ' '.join(p)
-                key = " ".join(p)
-            else:
-                key = ""
-            glycan_topo[key] = rn
-        return glycan_topo
+        raise ValueError("File format of file not recognised.")
