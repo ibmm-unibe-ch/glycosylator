@@ -1,7 +1,6 @@
 import networkx as nx
 import prody
 from glycosylator.glycan_representations.atom_graph import AtomGraph
-from prody import Atom, AtomGroup, Residue
 
 
 class ResidueGraph(nx.DiGraph):
@@ -10,6 +9,7 @@ class ResidueGraph(nx.DiGraph):
         super().__init__(
             incoming_graph_data=directed_residue_graph,
             atom_group=atom_graph.graph["atom_group"],
+            atom_selection=atom_graph.graph["atom_selection"],
             atom_graph=atom_graph,
             **attr
         )
@@ -25,10 +25,10 @@ class ResidueGraph(nx.DiGraph):
         )
 
     def _set_all_node_attributes(self):
-        atom_group: AtomGroup = self.graph["atom_group"]
+        atom_group: prody.AtomGroup = self.graph["atom_group"]
         atom_graph: AtomGraph = self.graph["atom_graph"]
-        residues: list[Residue] = [
-            residue for residue in atom_group.getAtomGroup().iterResidues()
+        residues: list[prody.Residue] = [
+            residue for residue in atom_group.iterResidues()
         ]
         for residue_index, data in self.nodes(data=True):
             residue = residues[residue_index]
@@ -39,9 +39,15 @@ class ResidueGraph(nx.DiGraph):
 
     @classmethod
     def from_AtomGroup(
-        cls, atom_group: AtomGroup, root_atom: Atom = None, root_atom_index: int = None
+        cls, atom_group: prody.AtomGroup | prody.Selection, root_atom: prody.Atom
     ):
-        return cls(AtomGraph(atom_group, root_atom, root_atom_index))
+        atom_graph = AtomGraph(atom_group, root_atom)
+        return cls(atom_graph)
+
+    @classmethod
+    def fromPDB(cls, file_path: str, root_atom_serial: int):
+        atom_graph = AtomGraph.fromPDB(file_path, root_atom_serial)
+        return cls(atom_graph)
 
     @staticmethod
     def _create_directed_residue_graph(atom_graph: AtomGraph) -> nx.DiGraph:
@@ -66,10 +72,20 @@ class ResidueGraph(nx.DiGraph):
         residue_graph.add_edges_from(inter_res_bonds)
         return residue_graph
 
+    @property
+    def linkage_paths(self):
+        paths = nx.shortest_path(self, source=self.graph["root_residue_index"])
+        # TODO: exclude the root_residue path as it's the protein backbone residue
+        linkage_paths = {self.graph["root_residue_index"]: " "}
+        for path_target, path in paths.items():
+            edges = zip(path[:-1], path[1:])
+            value = [self[node1][node2]["patch"] for node1, node2 in edges]
+            linkage_paths[path_target] = " ".join(value)
+        return linkage_paths
+
 
 if __name__ == "__main__":
     ag = prody.parsePDB("support/examples/man9.pdb")
-    ag.inferBonds()
-    x = ResidueGraph.from_AtomGroup(ag.select("all"), ag[0])
-    print(x.edges(0, data=True))
+    x = ResidueGraph.from_AtomGroup(ag, ag[0])
+    x = ResidueGraph.fromPDB("support/examples/man9.pdb", 1)
     print("done")
