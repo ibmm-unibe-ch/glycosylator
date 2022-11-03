@@ -1,44 +1,81 @@
 import copy
 import sqlite3
+from dataclasses import dataclass
+from typing import NamedTuple
 
-# TODO: WIP
+
+class ResiduePath(NamedTuple):
+    """The sequence of patches that go from a glycan's root to the residue"""
+
+    residue_name: str
+    linking_atom: str
+    patches: list[str]
+
+    @classmethod
+    def from_str(cls, path_string: str):
+        path_string = path_string.removeprefix("UNIT ")
+        residue_name, *data = path_string.split(" ")
+        if data:
+            linking_atom, *patches = data
+        else:
+            linking_atom, patches = "", [""]
+        return cls(residue_name, linking_atom, patches)
+
+    def __str__(self) -> str:
+        patches_str = " ".join(self.patches)
+        return f"{self.residue_name} {self.linking_atom} {patches_str}"
 
 
-def read_glycan_topology(file_path):
+@dataclass
+class GlycanTopology:
+    """Class containing all the paths to residues in a glycan"""
+
+    name: str
+    paths: list[ResiduePath]
+    num_residues: int
+
+    def __str__(self) -> str:
+        name_string = "RESI " + self.name
+        path_strings = ["UNIT " + str(path) for path in self.paths]
+        return "\n".join([name_string, *path_strings])
+
+
+def read_glycan_topology(file_path: str) -> dict[str, GlycanTopology]:
     """read glycan.top file"""
     with open(file_path, "r") as f:
-        lines = [line.strip() for line in f.readlines()]
-        lines = [line.split("!")[0] for line in lines]
+        # remove comments
+        lines = [line.split("!")[0] for line in f.readlines()]
+        # remove whitespace
+        lines = [line.strip() for line in lines]
+        # remove blank lines
         lines = [line for line in lines if line != ""]
-    residue = {}
-    connect_topology = {}
-    nbr_units = 0
-    for line in lines:
-        field, *value = line.split()
-        if field == "RESI":
-            if residue:
-                residue["#UNIT"] = nbr_units
-                connect_topology[resname] = copy.copy(residue)
-            residue["UNIT"] = []
-            resname = line[1]
-            nbr_units = 0
-        elif field == "UNIT":
-            res_name, *path = value
+        # rejoin and split by each new glycan entry
+        # discard everything before first glycan entry (should be just empty string)
+        _, *glycans = "\n".join(lines).split("RESI ")
 
-            read_unit(line.split(), residue)
-            nbr_units += 1
-
-            # if len(unit) > 2:
-
-    #     residue["UNIT"].append([unit[1], unit[2], unit[3:]])
-    # else:
-    #     residue["UNIT"].append([unit[1], " ", []])
-
-    residue["#UNIT"] = nbr_units
-    connect_topology[resname] = copy.copy(residue)
+    topologies = {}
+    for glycan in glycans:
+        glycan_name, *lines = glycan.splitlines()
+        paths = [ResiduePath.from_str(line) for line in lines]
+        topology = GlycanTopology(glycan_name, paths, len(paths))
+        topologies[topology.name] = topology
+    return topologies
 
 
-def import_connectivity_topology(filename):
+def write_glycan_topologies(
+    file_path: str, topologies: dict[str, GlycanTopology] | GlycanTopology
+):
+    # handle case if a single GlycanTopology is provided instead of a dict of GlycanTopologies
+    if type(topologies) == GlycanTopology:
+        topologies = {topologies.name: topologies}
+
+    output = "\n\n\n".join([str(topology) for topology in topologies.values()])
+
+    with open(file_path, "w") as f:
+        f.write(output)
+
+
+def import_connectivity_topology(filename: str) -> dict[str, GlycanTopology]:
     """Import connectivity topology from sql database
     This function will initialize connect_topology
     Parameters:
@@ -53,23 +90,13 @@ def import_connectivity_topology(filename):
     cursor.execute("SELECT * FROM glycans")
     glycans = cursor.fetchall()
 
-    connect_topology = {}
+    topologies = {}
     for glycan in glycans:
-        name, tree = glycan
-        residue = {}
-        residue["UNIT"] = []
-        nbr_unit = 0
-        for unit in tree.split("|"):
-            unit = unit.split(" ")
-            nbr_unit += 1
-            if len(unit) > 2:
-                residue["UNIT"].append([unit[0], unit[1], unit[2:]])
-            else:
-                residue["UNIT"].append([unit[0], " ", []])
-
-        residue["#UNIT"] = nbr_unit
-        connect_topology[name] = residue
-    return connect_topology
+        glycan_name, tree = glycan
+        paths = [ResiduePath.from_str(line) for line in tree.split("|")]
+        topology = GlycanTopology(glycan_name, paths, len(paths))
+        topologies[topology.name] = topology
+    return topologies
 
 
 def export_connectivity_topology(filename, connect_topology):
@@ -104,25 +131,7 @@ def export_connectivity_topology(filename, connect_topology):
     conn.close()
 
 
-def add_glycan_to_connectivity_topology(self, name, linkage_paths, overwrite=True):
-    """Add new glycan to connect_topology dictionary
-    Parameters:
-        name: name of new glycan
-        connect_tree: dictionary with connectivity tree
-        overwrite: should an existing glycan be overwritten
-    """
-    if name in self.connect_topology and not overwrite:
-        print(
-            "Glycan with same name "
-            + name
-            + "already exists. Please change name or allow overwritting"
-        )
-        return -1
-    self.connect_topology[name] = linkage_paths
-
-
-def read_unit(unit, residue):
-    if len(unit) > 2:
-        residue["UNIT"].append([unit[1], unit[2], unit[3:]])
-    else:
-        residue["UNIT"].append([unit[1], " ", []])
+if __name__ == "__main__":
+    t = read_glycan_topology(
+        "/Users/borisgusev/Bioinformatics/glycosylator/support/topology/man9.top"
+    )
