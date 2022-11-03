@@ -99,7 +99,7 @@ def import_connectivity_topology(filename: str) -> dict[str, GlycanTopology]:
     return topologies
 
 
-def export_connectivity_topology(filename, connect_topology):
+def export_connectivity_topology(filename, connect_topology: dict[str, GlycanTopology]):
     """Export connectivity topology to sql database
     This function will
     """
@@ -115,16 +115,9 @@ def export_connectivity_topology(filename, connect_topology):
     cursor.execute(f"DROP TABLE IF EXISTS {tn}")
     cursor.execute(f"CREATE TABLE {tn} ({gn} text, {gt} text)")
 
-    for key in connect_topology.keys():
-        units = connect_topology[key]["UNIT"]
-        glycan = []
-        for unit in units:
-            v = []
-            v.extend(unit[0:2])
-            v.extend(unit[2])
-            glycan.append(" ".join(v))
+    for key, value in connect_topology.items():
+        glycan = [str(path) for path in value.paths]
         glycan = "|".join(glycan)
-
         cursor.execute(f"INSERT INTO {tn} VALUES ('{key}', '{glycan}')")
 
     conn.commit()
