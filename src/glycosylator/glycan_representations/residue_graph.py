@@ -1,36 +1,21 @@
 import networkx as nx
 import prody
+from glycosylator.file_parsers.glycan_topology import GlycanTopology
 from glycosylator.glycan_representations.atom_graph import AtomGraph
 
 
 class ResidueGraph(nx.DiGraph):
-    def __init__(self, atom_graph: AtomGraph, **attr):
-        directed_residue_graph = ResidueGraph._create_directed_residue_graph(atom_graph)
-        super().__init__(
-            incoming_graph_data=directed_residue_graph,
-            atom_group=atom_graph.graph["atom_group"],
-            atom_selection=atom_graph.graph["atom_selection"],
-            atom_graph=atom_graph,
-            **attr
-        )
+    def __init__(self, incoming_graph_data=None, **attr):
+        super().__init__(incoming_graph_data, **attr)
 
-        self._set_all_node_attributes()
-
-        root_residue_index = atom_graph.graph["root_atom"].getResindex()
-        self.graph.update(
-            {
-                "root_residue_index": root_residue_index,
-                "root_residue": self.nodes(data="residue")[root_residue_index],
-            }
-        )
-
-    def _set_all_node_attributes(self):
-        atom_group: prody.AtomGroup = self.graph["atom_group"]
-        atom_graph: AtomGraph = self.graph["atom_graph"]
+    @staticmethod
+    def _set_all_node_attributes(res_digraph: nx.DiGraph):
+        atom_group: prody.AtomGroup = res_digraph.graph["atom_group"]
+        atom_graph: AtomGraph = res_digraph.graph["atom_graph"]
         residues: list[prody.Residue] = [
             residue for residue in atom_group.iterResidues()
         ]
-        for residue_index, data in self.nodes(data=True):
+        for residue_index, data in res_digraph.nodes(data=True):
             residue = residues[residue_index]
             data.update(
                 {label: residue.getData(label) for label in residue.getDataLabels()}
@@ -42,16 +27,60 @@ class ResidueGraph(nx.DiGraph):
         cls, atom_group: prody.AtomGroup | prody.Selection, root_atom: prody.Atom
     ):
         atom_graph = AtomGraph(atom_group, root_atom)
-        return cls(atom_graph)
+        return cls.from_AtomGraph(atom_graph)
 
     @classmethod
-    def fromPDB(cls, file_path: str, root_atom_serial: int):
-        atom_graph = AtomGraph.fromPDB(file_path, root_atom_serial)
-        return cls(atom_graph)
+    def from_AtomGraph(cls, atom_graph: AtomGraph):
+        directed_residue_graph = ResidueGraph._create_directed_residue_graph(atom_graph)
+        root_residue_index = atom_graph.graph["root_atom"].getResindex()
+        root_residue = directed_residue_graph.nodes(data="residue")[root_residue_index]
+        return cls(
+            incoming_graph_data=directed_residue_graph,
+            root_residue_index=root_residue_index,
+            root_residue=root_residue,
+        )
+
+    @classmethod
+    def from_PDB(cls, file_path: str, root_atom_serial: int):
+        atom_graph = AtomGraph.from_PDB(file_path, root_atom_serial)
+        return cls.from_AtomGraph(atom_graph)
+
+    @classmethod
+    def from_GlycanTopology(cls, glycan_topology: GlycanTopology):
+        name = glycan_topology.name
+        paths = sorted(glycan_topology.paths, key=len)
+        patches_to_index = {tuple(path.patches): i for i, path in enumerate(paths)}
+        nodes = []
+        edges = []
+        for i, path in enumerate(paths):
+            node_attrs = {
+                "res_name": path.residue_name,
+                "linking_atom": path.linking_atom,
+            }
+            node = (i, node_attrs)
+            nodes.append(node)
+
+            patches = path.patches
+            if len(patches) == 0:
+                # there are no edges for root residue
+                continue
+            *prev_patches, last_patch = patches
+            previous_i = patches_to_index[tuple(prev_patches)]
+
+            edge_attrs = {"patch": last_patch}
+            edge = (previous_i, i, edge_attrs)
+            edges.append(edge)
+
+        g = nx.DiGraph(
+            incoming_graph_data=None,
+            glycan_name=name,
+        )
+        g.add_nodes_from(nodes)
+        g.add_edges_from(edges)
+        return cls(g)
 
     @staticmethod
     def _create_directed_residue_graph(atom_graph: AtomGraph) -> nx.DiGraph:
-        # res_indices = atom_graph.graph["atom_group"].getResindices()
         atoms = {atom.getIndex(): atom for atom in atom_graph.graph["atom_group"]}
         res_indices = {
             atom.getIndex(): atom.getResindex()
@@ -67,7 +96,12 @@ class ResidueGraph(nx.DiGraph):
             if res_indices[atom_i]
             != res_indices[atom_j]  # atoms that are part of different residues
         ]
-        residue_graph = nx.DiGraph()
+        residue_graph = nx.DiGraph(
+            incoming_graph_data=None,
+            atom_group=atom_graph.graph["atom_group"],
+            atom_selection=atom_graph.graph["atom_selection"],
+            atom_graph=atom_graph,
+        )
         residue_graph.add_nodes_from(res_indices.values())
         residue_graph.add_edges_from(inter_res_bonds)
         return residue_graph
@@ -87,5 +121,5 @@ class ResidueGraph(nx.DiGraph):
 if __name__ == "__main__":
     ag = prody.parsePDB("support/examples/man9.pdb")
     x = ResidueGraph.from_AtomGroup(ag, ag[0])
-    x = ResidueGraph.fromPDB("support/examples/man9.pdb", 1)
+    x = ResidueGraph.from_PDB("support/examples/man9.pdb", 1)
     print("done")

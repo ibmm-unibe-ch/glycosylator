@@ -25,6 +25,9 @@ class ResiduePath(NamedTuple):
         patches_str = " ".join(self.patches)
         return f"{self.residue_name} {self.linking_atom} {patches_str}"
 
+    def __len__(self) -> int:
+        return len(self.patches)
+
 
 @dataclass
 class GlycanTopology:

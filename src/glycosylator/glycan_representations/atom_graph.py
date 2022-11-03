@@ -40,7 +40,7 @@ class AtomGraph(nx.DiGraph):
         self._set_all_node_attributes()
 
     @classmethod
-    def fromPDB(cls, file_path: str, root_atom_serial):
+    def from_PDB(cls, file_path: str, root_atom_serial):
         atom_group = prody.parsePDB(file_path)
         serials = list(atom_group.getSerials())
         root_atom_index = serials.index(root_atom_serial)
@@ -72,5 +72,5 @@ class AtomGraph(nx.DiGraph):
 if __name__ == "__main__":
     ag = prody.parsePDB("support/examples/man9.pdb")
     x = AtomGraph(ag, ag[0])
-    x = AtomGraph.fromPDB("support/examples/man9.pdb", 1)
+    x = AtomGraph.from_PDB("support/examples/man9.pdb", 1)
     print("done")
