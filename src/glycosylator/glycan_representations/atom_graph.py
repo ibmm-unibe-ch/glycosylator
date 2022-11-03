@@ -53,7 +53,7 @@ class AtomGraph(nx.DiGraph):
         for atom_index, data in self.nodes(data=True):
             atom = atom_group[atom_index]
             data.update({label: atom.getData(label) for label in atom.getDataLabels()})
-            data.update({"atom": atom})
+            data.update({"atom": atom, "frozen": False})
 
     @staticmethod
     def _create_directed_bond_graph(
@@ -67,6 +67,14 @@ class AtomGraph(nx.DiGraph):
         bond_graph.add_edges_from(bonds)
         bond_graph = nx.bfs_tree(bond_graph, root_atom_index)
         return bond_graph
+
+    def freeze_bonds(self, bonds="all"):
+        if bonds == "all":
+            for node1, node2, data in self.edges(data=True):
+                data["frozen"] = True
+        else:
+            for node1, node2 in bonds:
+                self[(node1, node2)]["frozen"] = True
 
 
 if __name__ == "__main__":

@@ -26,8 +26,8 @@ class Molecule:
             self.root_atom.getChid(), self.root_atom.getResnum()
         ]
 
-        self.bond_graph: AtomGraph = AtomGraph(self.atom_group, self.root_atom)
-        self.residue_graph: ResidueGraph = ResidueGraph(self.bond_graph)
+        self.atom_graph: AtomGraph = AtomGraph(self.atom_group, self.root_atom)
+        self.residue_graph: ResidueGraph = ResidueGraph(self.atom_graph)
 
         self.guess_angles()
         self.guess_dihedrals()
@@ -46,14 +46,14 @@ class Molecule:
     def guess_angles(self):
         """Searches for all angles in a molecule based on the connectivity"""
         self.angles = []
-        for node in self.bond_graph.nodes():
-            self.angles.extend(_find_paths(self.bond_graph, node, 2))
+        for node in self.atom_graph.nodes():
+            self.angles.extend(_find_paths(self.atom_graph, node, 2))
 
     def guess_dihedrals(self):
         """Searches for all dihedrals in a molecule based on the connectivity"""
         self.dihedrals = []
-        for node in self.bond_graph.nodes():
-            self.dihedrals.extend(_find_paths(self.bond_graph, node, 3))
+        for node in self.atom_graph.nodes():
+            self.dihedrals.extend(_find_paths(self.atom_graph, node, 3))
 
     def guess_torsionals(self, hydrogens=True):
         """Builds a list with all the torsional angles that can rotate
@@ -62,7 +62,7 @@ class Molecule:
         Initializes:
             torsionals: a list of serial number of atom defining a torsional angle (quadruplet)
         """
-        cycles = nx.cycle_basis(self.bond_graph.to_undirected(as_view=True))
+        cycles = nx.cycle_basis(self.atom_graph.to_undirected(as_view=True))
         # TODO: can cycle_id just be a flat set of all atoms in any cycles?
         cycle_id = {atom: i for i, cycle in enumerate(cycles) for atom in cycle}
 
@@ -79,7 +79,7 @@ class Molecule:
             # use the direction of bond_graph to orient dihedral
             # to then check for uniqueness
             # i.e. ABCD and DCBA are same and should not be repeated
-            if self.bond_graph.has_edge(dihedral[2], dihedral[1]):
+            if self.atom_graph.has_edge(dihedral[2], dihedral[1]):
                 dihedral.reverse()
             if dihedral not in torsionals:
                 torsionals.append(dihedral)
@@ -142,7 +142,7 @@ class Molecule:
         atoms = []
         a1 = torsional[-2]
 
-        atoms = nx.descendants(self.bond_graph, a1)
+        atoms = nx.descendants(self.atom_graph, a1)
         sel = self.atom_group.select(f"index {' '.join(map(str, atoms))}")
         t = torsional[1:-1]
         v1, v2 = self.atom_group.select(f"index {' '.join(map(str, t))}").getCoords()[
