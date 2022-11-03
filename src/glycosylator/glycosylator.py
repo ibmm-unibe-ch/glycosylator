@@ -72,6 +72,7 @@ class Glycosylator:
             # the selection contains only one amino acid, so this returns just one atom
             root_atom = next(selection.select("protein and name CA").iterAtoms())
             glycan = Molecule(selection, root_atom=root_atom)
+            glycan.atom_graph.freeze_bonds("all")
             glycans.append(glycan)
 
         return glycans
