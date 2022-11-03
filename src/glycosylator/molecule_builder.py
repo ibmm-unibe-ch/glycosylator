@@ -70,8 +70,10 @@ class MoleculeBuilder:
         top_bonds = self.Topology.get_bonds(resname)
 
         #####
-        id_r = f"{segname},{chain},{int(resnum)},,"
-        bonds = [(id_r + a1, id_r + a2) for a1, a2 in itertools.pairwise(top_bonds)]
+        bonds = [
+            (atom_names.index(a1), atom_names.index(a2))
+            for a1, a2 in itertools.pairwise(top_bonds)
+        ]
 
         return residue, atom_names, bonds
 
@@ -316,10 +318,8 @@ class MoleculeBuilder:
         dummy_residue, dummy_atoms, bonds = self.init_new_residue(
             0, "DUMMY", "D", "DUM"
         )
-        counter = 0
-        for a in dummy_atoms:
-            dummy_residue.select(f"name {a}").setCoords([dummy_coords[counter]])
-            counter += 1
+        for i, a in enumerate(dummy_atoms):
+            dummy_residue.select(f"name {a}").setCoords([dummy_coords[i]])
         denovo_residue, dele_atoms, bonds = self.build_from_patch(
             dummy_residue, resid, resname, chain, segname, dummy_patch
         )
