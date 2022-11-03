@@ -71,10 +71,7 @@ class ResidueGraph(nx.DiGraph):
             edge = (previous_i, i, edge_attrs)
             edges.append(edge)
 
-        g = nx.DiGraph(
-            incoming_graph_data=None,
-            glycan_name=name,
-        )
+        g = nx.DiGraph(incoming_graph_data=None, glycan_name=name, root_residue_index=0)
         g.add_nodes_from(nodes)
         g.add_edges_from(edges)
         return cls(g)
@@ -106,6 +103,7 @@ class ResidueGraph(nx.DiGraph):
         residue_graph.add_edges_from(inter_res_bonds)
         return residue_graph
 
+    # TODO: rework maybe?
     @property
     def linkage_paths(self):
         paths = nx.shortest_path(self, source=self.graph["root_residue_index"])
