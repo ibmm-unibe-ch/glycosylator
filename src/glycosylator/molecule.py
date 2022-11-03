@@ -33,10 +33,12 @@ class Molecule:
         self.guess_dihedrals()
         self.guess_torsionals()
 
-    # @classmethod
-    # def from_PDB(cls, pdb: str, root_atom: int = 1, **kwargs):
-    #     atom_group = prody.parsePDB(pdb, **kwargs)
-    #     return Molecule(atom_group, root_atom)
+    @classmethod
+    def from_PDB(cls, pdb: str, root_atom_serial: int, **kwargs):
+        atom_group = prody.parsePDB(pdb, **kwargs)
+        serials = list(atom_group.getSerials())
+        root_atom_index = serials.index(root_atom_serial)
+        return Molecule(atom_group, atom_group[root_atom_index])
 
     def write_PDB(self, filename: str, selection: str = "all"):
         prody.writePDB(filename, self.atom_group.select(selection))
