@@ -183,7 +183,7 @@ class Sampler:
                 if line[0] == "PRES":
                     patch = line[1]
                 if line[0] == "DIHE":
-                    dihe = [line[1:5], list(itertools.pairwise(map(float, line[5:])))]
+                    dihe = [line[1:5], list(zip(*[map(float, line[5:])] * 2))]
                     self.patches[patch].append(dihe)
 
     def get_uniform(self, interp_fn, angle):
@@ -979,7 +979,7 @@ class SamplerPSO:
                 if line[0] == "PRES":
                     patch = line[1]
                 if line[0] == "DIHE":
-                    dihe = [line[1:5], list(itertools.pairwise(map(float, line[5:])))]
+                    dihe = [line[1:5], list(zip(*[map(float, line[5:])] * 2))]
                     self.patches[patch].append(dihe)
 
     def get_uniform(self, interp_fn, angle):

@@ -1,46 +1,7 @@
 import copy
 import sqlite3
-from dataclasses import dataclass
-from typing import NamedTuple
 
-
-class ResiduePath(NamedTuple):
-    """The sequence of patches that go from a glycan's root to the residue"""
-
-    residue_name: str
-    linking_atom: str
-    patches: list[str]
-
-    @classmethod
-    def from_str(cls, path_string: str):
-        path_string = path_string.removeprefix("UNIT ")
-        residue_name, *data = path_string.split(" ")
-        if data:
-            linking_atom, *patches = data
-        else:
-            linking_atom, patches = "", [""]
-        return cls(residue_name, linking_atom, patches)
-
-    def __str__(self) -> str:
-        patches_str = " ".join(self.patches)
-        return f"{self.residue_name} {self.linking_atom} {patches_str}"
-
-    def __len__(self) -> int:
-        return len(self.patches)
-
-
-@dataclass
-class GlycanTopology:
-    """Class containing all the paths to residues in a glycan"""
-
-    name: str
-    paths: list[ResiduePath]
-    num_residues: int
-
-    def __str__(self) -> str:
-        name_string = "RESI " + self.name
-        path_strings = ["UNIT " + str(path) for path in self.paths]
-        return "\n".join([name_string, *path_strings])
+from glycosylator.glycan_representations import GlycanTopology
 
 
 def read_glycan_topology(file_path: str) -> dict[str, GlycanTopology]:
@@ -58,9 +19,8 @@ def read_glycan_topology(file_path: str) -> dict[str, GlycanTopology]:
 
     topologies = {}
     for glycan in glycans:
-        glycan_name, *lines = glycan.splitlines()
-        paths = [ResiduePath.from_str(line) for line in lines]
-        topology = GlycanTopology(glycan_name, paths, len(paths))
+        glycan_name, *patch_strings = glycan.splitlines()
+        topology = GlycanTopology.from_patch_strings(glycan_name, patch_strings)
         topologies[topology.name] = topology
     return topologies
 
@@ -96,8 +56,8 @@ def import_connectivity_topology(filename: str) -> dict[str, GlycanTopology]:
     topologies = {}
     for glycan in glycans:
         glycan_name, tree = glycan
-        paths = [ResiduePath.from_str(line) for line in tree.split("|")]
-        topology = GlycanTopology(glycan_name, paths, len(paths))
+        patch_strings = tree.split("|")
+        topology = GlycanTopology.from_patch_strings(glycan_name, patch_strings)
         topologies[topology.name] = topology
     return topologies
 

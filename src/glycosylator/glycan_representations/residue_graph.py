@@ -1,7 +1,11 @@
 import networkx as nx
 import prody
-from glycosylator.file_parsers.glycan_topology import GlycanTopology
-from glycosylator.glycan_representations.atom_graph import AtomGraph
+
+from glycosylator.glycan_representations import AtomGraph
+from glycosylator.glycan_representations.glycan_topology import (
+    GlycanTopology,
+    ResiduePath,
+)
 
 
 class ResidueGraph(nx.DiGraph):
@@ -32,8 +36,9 @@ class ResidueGraph(nx.DiGraph):
     @classmethod
     def from_AtomGraph(cls, atom_graph: AtomGraph):
         directed_residue_graph = ResidueGraph._create_directed_residue_graph(atom_graph)
+        cls._set_all_node_attributes(directed_residue_graph)
         root_residue_index = atom_graph.graph["root_atom"].getResindex()
-        root_residue = directed_residue_graph.nodes(data="residue")[root_residue_index]
+        root_residue = directed_residue_graph.nodes[root_residue_index]["residue"]
         return cls(
             incoming_graph_data=directed_residue_graph,
             root_residue_index=root_residue_index,
@@ -103,17 +108,32 @@ class ResidueGraph(nx.DiGraph):
         residue_graph.add_edges_from(inter_res_bonds)
         return residue_graph
 
-    # TODO: rework maybe?
-    @property
-    def linkage_paths(self):
-        paths = nx.shortest_path(self, source=self.graph["root_residue_index"])
+    def to_glycan_topology(self, exclude_protein_root: bool = True):
         # TODO: exclude the root_residue path as it's the protein backbone residue
-        linkage_paths = {self.graph["root_residue_index"]: " "}
+        root_res_name = self.graph["root_residue"].getResname()
+        # default value UnnamedGlycan is name not present
+        glycan_name = self.graph.get("name", "UnnamedGlycan")
+
+        l = []
+        paths = nx.shortest_path(self, source=self.graph["root_residue_index"])
         for path_target, path in paths.items():
+            res_name = self.nodes[path_target]["residue"].getResname()
             edges = zip(path[:-1], path[1:])
-            patches = [self[(node1, node2)]["patch"] for node1, node2 in edges]
-            linkage_paths[path_target] = patches
-        return linkage_paths
+            patches = [self.edges[node1, node2]["patch"] for node1, node2 in edges]
+            if len(path) < 2:
+                linking_atom = ""
+            else:
+                linking_atom = self.edges[path[-2], path[-1]]["atoms"][1].getName()
+            l.append((res_name, linking_atom, patches))
+
+        # if root is an amino acid e.g. ASN, remove it from dict, and shorten paths by 1
+        if exclude_protein_root and self.graph["root_residue"].getSegname() == "PROT":
+            l.pop(0)
+            for _, _, patches in l:
+                # 0th patch is patch linking protein to glycan
+                patches.pop[0]
+
+        return GlycanTopology.from_tuples(glycan_name, l)
 
 
 if __name__ == "__main__":

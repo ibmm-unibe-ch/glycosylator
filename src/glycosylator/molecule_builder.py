@@ -73,7 +73,7 @@ class MoleculeBuilder:
         #####
         bonds = [
             (atom_names.index(a1), atom_names.index(a2))
-            for a1, a2 in itertools.pairwise(top_bonds)
+            for a1, a2 in zip(*[iter(top_bonds)] * 2)
         ]
 
         return residue, atom_names, bonds
@@ -230,7 +230,7 @@ class MoleculeBuilder:
             chid2 = residue2.getChids()[0]
             resi2 = str(residue2.getResnums()[0])
             ic2 = str(residue2.getIcodes()[0])
-        for a1, a2 in itertools.pairwise(self.Topology.patches[patch]["BOND"]):
+        for a1, a2 in zip(*[iter(self.Topology.patches[patch]["BOND"])] * 2):
             b = []
             for a in [a1, a2]:
                 if a[0] == "1":
@@ -355,7 +355,7 @@ class MoleculeBuilder:
                             "name " + atom_ic.replace("*", "")[1:]
                         )
                         xa_list.append(sel.getCoords()[0])
-                atom.setCoords(self.build_cartesian(*xa_list, ic[8], ic[7], ic[6]))
+                atom.setCoords(self.build_cartesian(*xa_list[:3], ic[8], ic[7], ic[6]))
 
     def build_missing_atom_coord(self, residue, missing_atoms, ICs):
         """Builds all missing atoms based on the provided internal coordinates
@@ -410,7 +410,7 @@ class MoleculeBuilder:
     def get_bonds(self, residue):
         rn = residue.getRenames()[0]
         bonds = []
-        for a1, a2 in itertools.pairwise(self.Topology[rn]["BOND"]):
+        for a1, a2 in zip(*[iter(self.Topology[rn]["BOND"])] * 2):
             i1 = residue.select(f"name {a1}").getSerials[0]
             i2 = residue.select(f"name {a2}").getSerials[0]
             bonds += (i1, i2)

@@ -79,19 +79,14 @@ class Glycosylator:
         return glycans
 
     def identify_glycan(self, glycan: Molecule):
-        residue_graph = glycan.residue_graph
-        linkage_paths = glycan.residue_graph.linkage_paths
+        glycan_paths = set(glycan.glycan_topology.paths)
 
-        target = {
-            f"{residue_graph.nodes[residue_index]['resname']} {path}"
-            for residue_index, path in linkage_paths.items()
-        }
-
-        for glycan_name, glycan_linkage_paths in self.glycan_keys.items():
-            if target == set(glycan_linkage_paths):
-                glycan.name = glycan_name
+        for glycan_name, template_topology in self.glycan_topologies.items():
+            template_paths = set(template_topology.paths)
+            if glycan_paths == template_paths:
                 return glycan_name
-        return ""
+
+        return "UnknownGlycan"
 
     def check_protein_glycan_linkage(self, glycan: Molecule, patches: list[str]):
         residue_graph = glycan.residue_graph
@@ -133,6 +128,9 @@ class Glycosylator:
         else:
             return None
 
+    def set_bonds(self, glycan: Molecule) -> None:
+        ...
+
     def _infer_glycan_bonds(self):
         glycans_sel = "(not protein and not water)"
         linking_res_sel = f"(resnum {' '.join([str(residue.getResnum()) for residue in self.linking_residues])})"
@@ -159,6 +157,7 @@ class Glycosylator:
         protein_link_patch: str = None,
         glycan: Molecule = None,
         template_glycan: str | GlycanTopology = None,
+        inplace: bool = False,
     ) -> Molecule:
         """Build a glycan
 
@@ -166,7 +165,7 @@ class Glycosylator:
             protein_residue (Residue, optional): protein residue to be glycosylated. If None, just the glycan is returned.
             protein_link_patch (str, optional): patch to connect protein_residue to glycan. Necessary if ab initio glycosylating a protein residue.
             glycan (Molecule, optional): glycan Molecule instance to be modified. If none, a glycan is built ab initio.
-            template_glycan (_type_): target glycan to be created. Can be by name or by linkage topology.
+            template_glycan (str | GlycanTopology): target glycan to be created. Can be by name or by linkage topology.
 
         Side effects:
             if protein_residue is provided, modifications will be done in place. Provide a deep copy of protein_residue if this is undesired
@@ -181,51 +180,109 @@ class Glycosylator:
         # Case 2: template provided as linkage topology
         elif type(template_glycan) == GlycanTopology:
             template_topology: GlycanTopology = template_glycan
+        else:
+            raise TypeError(
+                "Argument template_glycan should either be a str name for glycan or a GlycanTopology"
+            )
 
         template_patches_to_i = {
             tuple(path.patches): i for i, path in enumerate(template_topology.paths)
         }
 
-        # Step 2: prepare root
-        # Case 1: root is an amino acid
-        if protein_residue is not None:
-            root = protein_residue
-            ...
-        # Case 2: no root provided -> DUMMY root residue
-        elif protein_residue is None:
-            root = self.builder.build_from_DUMMY(...)
-            ...
+        # handle presense/absence of amino acid root
+        # four cases:
+        # case both protein_residue and glycan provided
+        if protein_residue is not None and glycan is not None:
+            # is protein_residue already a part of glycan?
+            if glycan.residue_graph.graph["root_residue"] == protein_residue:
+                glycan = glycan.atom_group.select(
+                    f"not resname {protein_residue.getResname()}"
+                ).toAtomGroup()
+                root_atom = next(glycan.select("name C1").iterAtoms())
+                glycan = Molecule(glycan, root_atom)
+            # the case of glycosylating an amino acid with a provided glycan against a template is complicated
+            # because two separate things need to be done:
+            #   glycan needs to be patched onto the residue, preserving known ICs
+            #   glycan needs to be fixed against template
+            else:
+                raise NotImplementedError(
+                    "Glycosylating a residue with a template whilst preserving known ICs is not yet supported. Either glycosylate ab initio using just the template, or glycosylate the glycan without patching onto root"
+                )
+                # glycosylate residue ab intio, using the 'broken' glycan as template
+                # glycan = self.glycosylate(protein_residue, protein_link_patch, glycan=None, template_glycan=glycan.)
+                # this glycan is now ready to be checked against true template
 
-        # Step 3: modify glycan
-        # Case 1: glycan was provided
-        # TODO: compare root of template and glycan -> should be same
-        if glycan is not None:
-            atom_group = glycan.atom_group
-            glycan_graph: ResidueGraph = glycan.residue_graph
-            glycan_topology = ...
-            glycan_patches_to_i = ...
-        # Case 2: no glycan provided -> ab initio building
-        elif glycan is None:
-            atom_group = prody.AtomGroup()
-            glycan_graph = ResidueGraph()
+        # case only protein_residue provided
+        elif protein_residue is not None:
+            # generate ab intio first residue
+            resid = max(protein_residue.getAtomGroup().getResnums()) + 1
+            resname = template_topology.paths[0].residue_name
+            chain = protein_residue.getChid()
+            segname = protein_residue.getSegname()
+            glycan, dele_atoms, _ = self.builder.build_from_patch(
+                protein_residue, resid, resname, chain, segname, protein_link_patch
+            )
+            new_glycan = self.builder.delete_atoms(glycan, dele_atoms)
+            new_protein_residue = self.builder.delete_atoms(
+                protein_residue.copy(), dele_atoms
+            )
 
-        # template_edges = nx.edge_bfs(
-        #     template_glycan_graph,
-        #     source=template_glycan_graph.graph["root_residue_index"],
-        # )
-        # glycan_edges = nx.edge_bfs(
-        #     glycan_graph, source=glycan_graph.graph["root_residue_index"]
-        # )
-        # TODO: guaranteed bug - if bfs traverses a short branch first in one graph, and a long branch first in the other graph,
-        # then template residues go out of sync with glycan residues
-        # solution: use .linkage_paths property, and iterate over template paths, then check if it exists in glycan paths
+            root_atom = next(new_glycan.select("name C1").iterAtoms())
+            glycan = Molecule(new_glycan, root_atom)
 
-        for path in sorted(template_topology.paths, key=len):
-            # TODO: handle root residue case where there are no patches
+        # case only glycan provided
+        elif glycan is not None:
+            root_residue = glycan.root_residue
+            resnum, chain, segname = (
+                root_residue.getResnum(),
+                root_residue.getChid(),
+                root_residue.getSegname(),
+            )
+            # build new complete residue
+            newres, missing_atoms, new_bonds = self.builder.find_missing_atoms(
+                root_residue, resnum, chain, segname
+            )
+            # set the coordinates for missing atoms using template ICs
+            ics = self.builder.Topology.topology[root_residue.getResname()]["IC"]
+            self.builder.build_missing_atom_coord(newres, missing_atoms, ics)
+            new_glycan = newres
+
+        # case neither protein_residue nor glycan provided
+        elif protein_residue is None and glycan is None:
+            # generate ab initio first residue
+            resname = template_topology.paths[0].residue_name
+            # TODO: DUMMY_MAN might not be loaded into builder.Topology...
+            glycan, dele_atoms, _ = self.builder.build_from_DUMMY(
+                resid=1,
+                resname=resname,
+                chain="X",
+                segname="G1",
+                dummy_patch="DUMMY_MAN",
+            )
+            new_glycan = self.builder.delete_atoms(glycan, dele_atoms)
+
+            root_atom = next(new_glycan.select("name C1").iterAtoms())
+            glycan = Molecule(new_glycan, root_atom)
+
+        glycan_patches_to_i = {
+            tuple(path.patches): i
+            for i, path in enumerate(glycan.residue_graph.to_glycan_topology())
+        }
+        glycan_graph = glycan.residue_graph
+        atom_group = glycan.atom_group
+
+        del_atoms = []
+        # keep track of bonds -> mustn't use AtomGroup.inferBonds()
+        # because accidental clashes will lead to spurious bonds
+        bonds = []
+        for i, path in enumerate(template_topology):
+            if len(path) == 0:
+                continue
             *prev_patches, patch = path.patches
-            prev_template_i, template_i = template_patches_to_i.get(
-                tuple(prev_patches)
-            ), template_patches_to_i.get(tuple(path.patches))
+            prev_template_i, template_i = (
+                template_patches_to_i.get(tuple(prev_patches)),
+                template_patches_to_i.get(tuple(path.patches)),
+            )
             prev_res_i, res_i = (
                 glycan_patches_to_i.get(tuple(prev_patches)),
                 glycan_patches_to_i.get(tuple(path.patches)),
@@ -233,44 +290,79 @@ class Glycosylator:
 
             # Case 1: residue exists and may need fixing
             if res_i is not None:
-                residue = glycan_graph[res_i]["residue"]
+                residue = glycan_graph.nodes[res_i]["residue"]
                 resnum, chain, segname = (
                     residue.getResnum(),
                     residue.getChid(),
                     residue.getSegname(),
                 )
                 # build new complete residue
-                newres, missing_atoms, bonds = self.builder.find_missing_atoms(
+                newres, missing_atoms, new_bonds = self.builder.find_missing_atoms(
                     residue, resnum, chain, segname
                 )
+                bonds.extend(new_bonds)
                 # set the coordinates for missing atoms using template ICs
-                ics = self.builder.Topology[path.residue_name]["IC"]
+                ics = self.builder.Topology.topology[path.residue_name]["IC"]
                 self.builder.build_missing_atom_coord(newres, missing_atoms, ics)
-                # apply_patch ?
+
+                new_glycan += newres
+
+                # newres.setBonds(new_bonds)
 
             # Case 2: second residue needs to be created ab initio
             else:
                 # previous residue info
-                residue1 = glycan_graph[prev_res_i]["residue"]
+                prev_residue = glycan_graph.nodes[prev_res_i]["residue"]
                 chain, segname = (
-                    residue1.getChid(),
-                    residue1.getSegname(),
+                    prev_residue.getChid(),
+                    prev_residue.getSegname(),
                 )
                 # new res name
                 resname = path.residue_name
                 # new res num
-                resnum = max(atom_group.getResnums()) + 1
-                res_i = max(atom_group.getResindices()) + 1
+                resnum = max(new_glycan.getResnums()) + 1
+                res_i = max(new_glycan.getResindices()) + 1
                 # make new residue ab initio
-                newres, new_dele_atoms, bonds = self.builder.build_from_patch(
-                    residue1, resnum, resname, chain, segname, patch
+                newres, new_dele_atoms, new_bonds = self.builder.build_from_patch(
+                    prev_residue, resnum, resname, chain, segname, patch
                 )
-                # need to update graph...
 
-            # delete atoms
-            # tinker with bonds?
+                new_glycan += newres
 
-        return glycan
+                bonds.extend(new_bonds)
+                # newres.setBonds(new_bonds)
+                del_atoms.extend(new_dele_atoms)
+                # atom_group += newres
+
+                # convert newres to type Residue from AtomGroup
+                newres = newres[segname, chain, resnum]
+
+                # update datastructures for next iterations
+                glycan_graph.add_edge(prev_res_i, res_i)
+                glycan_graph.add_node(res_i, residue=newres)
+                glycan_patches_to_i[path.patches] = res_i
+
+        final_glycan = self.builder.delete_atoms(new_glycan, del_atoms)
+
+        if protein_residue is not None:
+            final_glycan += protein_residue
+
+        if inplace:
+            pass
+
+        # tinker with bonds?
+
+        # DONT DO THIS, just placeholder
+        # if the ICs cause the residues to clash with themselves, or the protein
+        # then spurious bonds will be inferred
+        # do it properly by bookkeeping bonds!
+        # final_glycan.inferBonds()
+        return final_glycan
+
+        return (
+            Molecule(final_glycan, next(final_glycan.select("name C1").iterAtoms())),
+            bonds,
+        )
 
     def load_glycan_topologies(self, file_path):
         try:
