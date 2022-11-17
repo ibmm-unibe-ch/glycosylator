@@ -28,7 +28,8 @@ def topological_sort(unsorted_graph):
     # sort graph
     while unsorted_graph:
         acyclic = False
-        for node, edges in unsorted_graph.items():
+
+        for node, edges in unsorted_graph.copy().items():
             for edge in edges:
                 if edge in unsorted_graph:
                     break

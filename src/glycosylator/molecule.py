@@ -27,7 +27,7 @@ class Molecule:
         ]
 
         self.atom_graph: AtomGraph = AtomGraph(self.atom_group, self.root_atom)
-        self.residue_graph: ResidueGraph = ResidueGraph(self.atom_graph)
+        self.residue_graph: ResidueGraph = ResidueGraph.from_AtomGraph(self.atom_graph)
 
         self.guess_angles()
         self.guess_dihedrals()
@@ -40,8 +40,12 @@ class Molecule:
         root_atom_index = serials.index(root_atom_serial)
         return Molecule(atom_group, atom_group[root_atom_index])
 
+    @property
+    def glycan_topology(self):
+        return self.residue_graph.to_glycan_topology()
+
     def write_PDB(self, filename: str, selection: str = "all"):
-        prody.writePDB(filename, self.atom_group.select(selection))
+        prody.writePDB(filename, self.atom_group.select(selection).toAtomGroup())
 
     def guess_angles(self):
         """Searches for all angles in a molecule based on the connectivity"""
