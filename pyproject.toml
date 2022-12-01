@@ -23,3 +23,7 @@ dev = [
     "black",
     "isort",   
 ]
+visual = [
+    "nglview",
+    "ipywidgets<8.0"
+]
