@@ -211,7 +211,9 @@ class MoleculeBuilder:
         bonds.extend(b)
         return denovo_residue, dele_atoms, bonds
 
-    def patch_bonds(self, patch, residue1, residue2=None):
+    def patch_bonds(
+        self, patch, residue1: prody.Residue, residue2: prody.Residue = None
+    ):
         """
         Parameters:
             patch: name of patch (str)
@@ -408,7 +410,7 @@ class MoleculeBuilder:
         return a3 + newc
 
     def get_bonds(self, residue):
-        rn = residue.getRenames()[0]
+        rn = residue.getResnames()[0]
         bonds = []
         for a1, a2 in zip(*[iter(self.Topology[rn]["BOND"])] * 2):
             i1 = residue.select(f"name {a1}").getSerials[0]

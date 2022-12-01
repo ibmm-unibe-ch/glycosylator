@@ -1,12 +1,10 @@
 import copy
 import re
 import sqlite3
-from itertools import zip_longest
 
 import networkx as nx
 import prody
 from prody import AtomGroup, Residue, Selection
-from typing_extensions import Self
 
 from glycosylator.file_parsers import glycan_topology
 from glycosylator.file_parsers.glycan_topology import GlycanTopology
@@ -24,6 +22,7 @@ class Glycosylator:
         self.charmm_topology_path = charmm_topology_path
         self.charmm_parameter_path = charm_parameter_path
         self.builder = MoleculeBuilder(charmm_topology_path, charm_parameter_path)
+        self.glycan_topologies = dict()
 
     def load_glycoprotein_from_PDB(self, protein_file_path: str):
         glycoprotein_atom_group = prody.parsePDB(protein_file_path)
@@ -252,12 +251,19 @@ class Glycosylator:
             # generate ab initio first residue
             resname = template_topology.paths[0].residue_name
             # TODO: DUMMY_MAN might not be loaded into builder.Topology...
-            glycan, dele_atoms, _ = self.builder.build_from_DUMMY(
+            glycan, dele_atoms, new_bonds = self.builder.build_from_DUMMY(
                 resid=1,
                 resname=resname,
                 chain="X",
                 segname="G1",
                 dummy_patch="DUMMY_MAN",
+            )
+            glycan.setBonds(
+                [
+                    bond
+                    for bond in new_bonds
+                    if type(bond[0]) == int and type(bond[1]) == int
+                ]
             )
             new_glycan = self.builder.delete_atoms(glycan, dele_atoms)
 
@@ -289,6 +295,8 @@ class Glycosylator:
             )
 
             # Case 1: residue exists and may need fixing
+            # BUG: find_missing atoms adds the hydrogens that are normally removed by a patch
+            # FIX: apply a patch to remove the atoms
             if res_i is not None:
                 residue = glycan_graph.nodes[res_i]["residue"]
                 resnum, chain, segname = (
@@ -300,14 +308,30 @@ class Glycosylator:
                 newres, missing_atoms, new_bonds = self.builder.find_missing_atoms(
                     residue, resnum, chain, segname
                 )
-                bonds.extend(new_bonds)
+                newres.setBonds(new_bonds)
+                # bonds.extend(new_bonds)
                 # set the coordinates for missing atoms using template ICs
                 ics = self.builder.Topology.topology[path.residue_name]["IC"]
                 self.builder.build_missing_atom_coord(newres, missing_atoms, ics)
 
-                new_glycan += newres
+                new_dele_atoms, new_bonds = self.builder.apply_patch(
+                    patch, glycan_graph.nodes[prev_res_i]["residue"], newres
+                )
+                del_atoms.extend(new_dele_atoms)
 
-                # newres.setBonds(new_bonds)
+                new_glycan += newres
+                new_bonds = [
+                    (
+                        _atom_id_to_index(atom_id1, new_glycan),
+                        _atom_id_to_index(atom_id2, new_glycan),
+                    )
+                    for atom_id1, atom_id2 in new_bonds
+                ]
+                # this list comprehension necessary as return value of .getBonds is not accepted by .setBonds
+                glycan_bonds = [bond.getIndices() for bond in new_glycan.getBonds()]
+                glycan_bonds.extend(new_bonds)
+                # all bonds need to be set at once, so need to append to .getBonds to avoid overwriting them all
+                new_glycan.setBonds(glycan_bonds)
 
             # Case 2: second residue needs to be created ab initio
             else:
@@ -326,10 +350,52 @@ class Glycosylator:
                 newres, new_dele_atoms, new_bonds = self.builder.build_from_patch(
                     prev_residue, resnum, resname, chain, segname, patch
                 )
-
+                # intra_residue_bonds consist of indices indexing into newres
+                intra_residue_bonds = [
+                    bond
+                    for bond in new_bonds
+                    if type(bond[0]) == int and type(bond[1]) == int
+                ]
+                # inter residue bonds of the form ['G1,X,6,,O2', 'G1,X,9,,C1']
+                inter_residue_bond = [
+                    bond
+                    for bond in new_bonds
+                    if type(bond[0]) != int or type(bond[1]) != int
+                ][0]
+                newres.setBonds(intra_residue_bonds)
                 new_glycan += newres
 
-                bonds.extend(new_bonds)
+                # sels = []
+                # for atom_id in inter_residue_bond:
+                #     atom_sel = " and ".join(
+                #         [
+                #             f"{keyword} {value}"
+                #             for keyword, value in zip(
+                #                 ["segment", "chain", "resid", "icode", "name"],
+                #                 atom_id.split(","),
+                #             )
+                #             if value != ""
+                #         ]
+                #     )
+                #     atom_sel = f"({atom_sel})"
+                #     sels.append(atom_sel)
+
+                # inter_residue_bond = [
+                #     atom.getIndex()
+                #     for atom in new_glycan.select(" or ".join(sels)).iterAtoms()
+                # ]
+                inter_residue_bond = [
+                    _atom_id_to_index(atom_id, new_glycan)
+                    for atom_id in inter_residue_bond
+                ]
+
+                # this list comprehension necessary as return value of .getBonds is not accepted by .setBonds
+                glycan_bonds = [bond.getIndices() for bond in new_glycan.getBonds()]
+                glycan_bonds.append(inter_residue_bond)
+                # all bonds need to be set at once, so need to append to .getBonds to avoid overwriting them all
+                new_glycan.setBonds(glycan_bonds)
+
+                # bonds.extend(new_bonds)
                 # newres.setBonds(new_bonds)
                 del_atoms.extend(new_dele_atoms)
                 # atom_group += newres
@@ -342,7 +408,12 @@ class Glycosylator:
                 glycan_graph.add_node(res_i, residue=newres)
                 glycan_patches_to_i[path.patches] = res_i
 
-        final_glycan = self.builder.delete_atoms(new_glycan, del_atoms)
+        if len(del_atoms) != 0:
+            final_glycan = self.builder.delete_atoms(new_glycan, del_atoms)
+        else:
+            final_glycan = new_glycan
+
+        # need to apply bonds from patches
 
         if protein_residue is not None:
             final_glycan += protein_residue
@@ -350,33 +421,43 @@ class Glycosylator:
         if inplace:
             pass
 
-        # tinker with bonds?
+        return Molecule(final_glycan, next(final_glycan.select("name C1").iterAtoms()))
 
-        # DONT DO THIS, just placeholder
-        # if the ICs cause the residues to clash with themselves, or the protein
-        # then spurious bonds will be inferred
-        # do it properly by bookkeeping bonds!
-        # final_glycan.inferBonds()
-        return final_glycan
-
-        return (
-            Molecule(final_glycan, next(final_glycan.select("name C1").iterAtoms())),
-            bonds,
-        )
-
-    def load_glycan_topologies(self, file_path):
+    def load_glycan_topologies(self, file_path: str, append: bool = True):
         try:
-            glycan_topologies = glycan_topology.read_glycan_topology(file_path)
-            self.glycan_topologies = glycan_topologies
+            new_glycan_topologies = glycan_topology.read_glycan_topology(file_path)
+            if append:
+                self.glycan_topologies |= new_glycan_topologies
+            else:
+                self.glycan_topologies = new_glycan_topologies
             return
         except UnicodeDecodeError:
             pass
 
         try:
-            glycan_topologies = glycan_topology.import_connectivity_topology(file_path)
-            self.glycan_topologies = glycan_topologies
+            new_glycan_topologies = glycan_topology.import_connectivity_topology(
+                file_path
+            )
+            if append:
+                self.glycan_topologies |= new_glycan_topologies
+            else:
+                self.glycan_topologies = new_glycan_topologies
             return
         except sqlite3.DatabaseError:
             pass
 
         raise ValueError("File format of file not recognised.")
+
+
+def _atom_id_to_index(atom_id, atom_group):
+    selection_keywords = ["segment", "chain", "resid", "icode", "name"]
+    sel = (
+        f"{keyword} {value}"
+        for keyword, value in zip(selection_keywords, atom_id.split(","))
+        if value != ""
+    )
+    sel = " and ".join(sel)
+    sel = f"({sel})"
+
+    atom_index = atom_group.select(sel).iterAtoms().__next__().getIndex()
+    return atom_index
