@@ -152,10 +152,10 @@ class Glycosylator:
 
     def glycosylate(
         self,
-        protein_residue: Residue = None,
-        protein_link_patch: str = None,
         glycan: Molecule = None,
         template_glycan: str | GlycanTopology = None,
+        protein_residue: Residue = None,
+        protein_link_patch: str = None,
         inplace: bool = False,
     ) -> Molecule:
         """Build a glycan
