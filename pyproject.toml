@@ -22,6 +22,8 @@ dependencies = [
 dev = [
     "black",
     "isort",   
+    "sphinx",
+    "sphinx_rtd_theme",
 ]
 visual = [
     "nglview",
