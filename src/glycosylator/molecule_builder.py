@@ -70,11 +70,8 @@ class MoleculeBuilder:
         residue.setAltlocs(altlocs)
         top_bonds = self.Topology.get_bonds(resname)
 
-        #####
-        bonds = [
-            (atom_names.index(a1), atom_names.index(a2))
-            for a1, a2 in zip(*[iter(top_bonds)] * 2)
-        ]
+        id_r = f"{segname},{chain},{resnum},,"
+        bonds = [(id_r + a1, id_r + a2) for a1, a2 in zip(*[iter(top_bonds)] * 2)]
 
         return residue, atom_names, bonds
 
@@ -417,3 +414,101 @@ class MoleculeBuilder:
             i2 = residue.select(f"name {a2}").getSerials[0]
             bonds += (i1, i2)
         return bonds
+
+
+class HighLevelBuilder:
+    def __init__(self, topofile, paramfile) -> None:
+        self.builder = MoleculeBuilder(topofile, paramfile)
+
+    def residue_ab_initio(
+        self, resname, resid=1, chain="X", segname="G1", dummy_patch="DUMMY_MAN"
+    ) -> prody.Residue:
+        residue, dele_atoms, bonds = self.builder.build_from_DUMMY(
+            resid=resid,
+            resname=resname,
+            chain=chain,
+            segname=segname,
+            dummy_patch="DUMMY_MAN",
+        )
+        residue.setBonds(_id_bonds_to_index_bonds(bonds))
+        residue = self.builder.delete_atoms(residue, dele_atoms)
+        residue = residue[segname, chain, resid]
+        return residue
+
+    def add_residue_from_patch(
+        self, previous_residue: prody.Residue, new_resname, patch
+    ) -> prody.AtomGroup:
+        atom_group = previous_residue.getAtomGroup()
+        # data for new res
+        chain, segname = (
+            previous_residue.getChid(),
+            previous_residue.getSegname(),
+        )
+        resnum = max(atom_group.getResnums()) + 1
+        # make new residue ab initio
+        new_residue, new_dele_atoms, new_bonds = self.builder.build_from_patch(
+            previous_residue, resnum, new_resname, chain, segname, patch
+        )
+        atom_group = atom_group + new_residue
+        atom_group = add_new_bonds(atom_group, new_bonds)
+        atom_group = self.builder.delete_atoms(atom_group, new_dele_atoms)
+        new_residue = atom_group[segname, chain, resnum]
+        return atom_group, new_residue
+
+    def residue_repair(self, residue) -> prody.Residue:
+        resnum, chain, segname = (
+            residue.getResnum(),
+            residue.getChid(),
+            residue.getSegname(),
+        )
+        # build new complete residue
+        new_residue, missing_atoms, bonds = self.builder.find_missing_atoms(
+            residue, resnum, chain, segname
+        )
+        new_residue.setBonds(_id_bonds_to_index_bonds(bonds))
+        # set the coordinates for missing atoms using template ICs
+        ics = self.builder.Topology.topology[residue.getResname()]["IC"]
+        self.builder.build_missing_atom_coord(new_residue, missing_atoms, ics)
+        new_residue = new_residue[segname, chain, resnum]
+        return new_residue
+
+    def apply_patch(self, patch, residue1: prody.Residue, residue2: prody.Residue):
+        if residue1.getAtomGroup() != residue2.getAtomGroup():
+            raise ValueError(
+                "Cannot apply the patch as residues exist in two different AtomGroups. Please provide residues within the same AtomGroup"
+            )
+
+        new_dele_atoms, new_bonds = self.builder.apply_patch(patch, residue1, residue2)
+        atom_group = residue1.getAtomGroup()
+        atom_group = add_new_bonds(atom_group, new_bonds)
+        atom_group = self.builder.delete_atoms(atom_group, new_dele_atoms)
+        return atom_group
+
+
+def _atom_id_to_index(atom_id, atom_group):
+    selection_keywords = ["segment", "chain", "resid", "icode", "name"]
+    sel = (
+        f"{keyword} {value}"
+        for keyword, value in zip(selection_keywords, atom_id.split(","))
+        if value != ""
+    )
+    sel = " and ".join(sel)
+    sel = f"({sel})"
+
+    atom_index = atom_group.select(sel).iterAtoms().__next__().getIndex()
+    return atom_index
+
+
+def _id_bonds_to_index_bonds(bonds, atom_group):
+    return [
+        (_atom_id_to_index(a1, atom_group), _atom_id_to_index(a2, atom_group))
+        for a1, a2 in bonds
+    ]
+
+
+def add_new_bonds(atom_group, new_bonds):
+    new_bonds = _id_bonds_to_index_bonds(new_bonds, atom_group)
+    all_bonds = [bond.getIndices() for bond in atom_group.getBonds()]
+    all_bonds.extend(new_bonds)
+    atom_group.setBonds(all_bonds)
+    return atom_group
