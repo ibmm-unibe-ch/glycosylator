@@ -9,6 +9,14 @@ from glycosylator.glycan_representations.glycan_topology import (
 
 
 class ResidueGraph(nx.DiGraph):
+    """A directed graph representation a molecule's residues and their connections
+
+    Each node is a residue; each edge is bond between residues.
+    The root of the graph is the residue that would link to a protein or is itself a protein's amino acid.
+
+    This is a subclass of networkx.DiGraph
+    """
+
     def __init__(self, incoming_graph_data=None, **attr):
         super().__init__(incoming_graph_data, **attr)
 
@@ -30,11 +38,27 @@ class ResidueGraph(nx.DiGraph):
     def from_AtomGroup(
         cls, atom_group: prody.AtomGroup | prody.Selection, root_atom: prody.Atom
     ):
+        """Creates a ResidueGraph directly from a prody.AtomGroup or prody.Selection containing a single molecule
+
+        :param atom_group: a prody AtomGroup or Selection containing a single contiguous molecule
+        :type atom_group: prody.AtomGroup | prody.Selection
+        :param root_atom: the atom within atom_group defining the residue that will be the root of the directed graph
+        :type root_atom: prody.Atom
+        :return: ResidueGraph instance of the molecule in atom_group
+        :rtype: ResidueGraph
+        """
         atom_graph = AtomGraph(atom_group, root_atom)
         return cls.from_AtomGraph(atom_graph)
 
     @classmethod
     def from_AtomGraph(cls, atom_graph: AtomGraph):
+        """Create a ResidueGraph directly from an AtomGraph
+
+        :param atom_graph: AtomGraph respresentation of a molecule
+        :type atom_graph: AtomGraph
+        :return: ResidueGraph instance of the molecule in atom_graph
+        :rtype: ResidueGraph
+        """
         directed_residue_graph = ResidueGraph._create_directed_residue_graph(atom_graph)
         cls._set_all_node_attributes(directed_residue_graph)
         root_residue_index = atom_graph.graph["root_atom"].getResindex()
@@ -47,11 +71,29 @@ class ResidueGraph(nx.DiGraph):
 
     @classmethod
     def from_PDB(cls, file_path: str, root_atom_serial: int):
+        """Create a ResidueGraph instance directly from a PDB file
+
+        :param file_path: PDB file path containing a single molecule
+        :type file_path: str
+        :param root_atom_serial: an atom's serial number defining the residue that will become the root of the directed graph
+        :type root_atom_serial: int
+        :return: ResidueGraph instance of the molecule
+        :rtype: ResidueGraph
+        """
         atom_graph = AtomGraph.from_PDB(file_path, root_atom_serial)
         return cls.from_AtomGraph(atom_graph)
 
     @classmethod
     def from_GlycanTopology(cls, glycan_topology: GlycanTopology):
+        """Create a ResidueGraph instance from a GlycanTopology
+
+        Use the information within GlycanTopology to create a ResidueGraph. The resultant graph will not contain any associated atomic coordinates.
+
+        :param glycan_topology: GlycanTopology instance
+        :type glycan_topology: GlycanTopology
+        :return: ResidueGraph instance of the glycan described by the topology
+        :rtype: ResidueGraph
+        """
         name = glycan_topology.name
         paths = sorted(glycan_topology.paths, key=len)
         patches_to_index = {tuple(path.patches): i for i, path in enumerate(paths)}
@@ -109,6 +151,15 @@ class ResidueGraph(nx.DiGraph):
         return residue_graph
 
     def to_glycan_topology(self, exclude_protein_root: bool = True):
+        """Create a GlycanTopology instance
+
+        Option to exclude the amino acid root if present.
+
+        :param exclude_protein_root: Boolean to exclude or include the amino acid root, defaults to True
+        :type exclude_protein_root: bool, optional
+        :return: GlycanTopology instance
+        :rtype: GlycanTopology
+        """
         # TODO: exclude the root_residue path as it's the protein backbone residue
         root_res_name = self.graph["root_residue"].getResname()
         # default value UnnamedGlycan is name not present

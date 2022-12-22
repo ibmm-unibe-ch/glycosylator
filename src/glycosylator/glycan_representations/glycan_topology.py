@@ -3,7 +3,15 @@ from typing import NamedTuple
 
 
 class ResiduePath(NamedTuple):
-    """The sequence of patches that go from a glycan's root to the residue"""
+    """A NamedTuple
+
+    :param NamedTuple: _description_
+    :type NamedTuple: _type_
+    :return: _description_
+    :rtype: _type_
+    """
+
+    """A NamedTuple containing information for a residue and the patches to get to the residue"""
 
     residue_name: str
     linking_atom: str
@@ -30,7 +38,11 @@ class ResiduePath(NamedTuple):
 
 @dataclass
 class GlycanTopology:
-    """Class containing all the paths to residues in a glycan"""
+    """A DataClass describing the topology of a glycan
+
+    :return: _description_
+    :rtype: _type_
+    """
 
     name: str
     paths: list[ResiduePath]

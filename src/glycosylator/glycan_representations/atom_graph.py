@@ -5,11 +5,25 @@ import prody
 
 
 class AtomGraph(nx.DiGraph):
+    """A directed graph representation of atoms and bonds in a contiguous molecule.
+
+    Each node is an atom; each edge is a bond between atoms.
+    The root of the directed graph is the atom in the molecule (glycan) that would link to a protein.
+
+    This is a subclass of networkx.DiGraph
+
+    :param atom_group: a prody AtomGroup or Selection containing a single contiguous molecule
+    :type atom_group: prody.AtomGroup | prody.Selection
+    :param root_atom: an atom within atom_group that will be the root of the directed graph
+    :type root_atom: prody.Atom
+    :param attrs: graph attributes as allowed by networkx.DiGraph
+    """
+
     def __init__(
         self,
         atom_group: prody.AtomGroup | prody.Selection,
         root_atom: prody.Atom,
-        **attr
+        **attrs
     ):
         if type(atom_group) == prody.AtomGroup:
             atom_selection = atom_group.select("all")
@@ -34,13 +48,22 @@ class AtomGraph(nx.DiGraph):
             atom_selection=atom_selection,
             root_atom=root_atom,
             root_atom_index=root_atom_index,
-            **attr
+            **attrs
         )
 
         self._set_all_node_attributes()
 
     @classmethod
-    def from_PDB(cls, file_path: str, root_atom_serial):
+    def from_PDB(cls, file_path: str, root_atom_serial: int):
+        """Create an AtomGraph from a PDB of a single molecule
+
+        :param file_path: a PDB file path
+        :type file_path: str
+        :param root_atom_serial: an atom's serial number that will become the root of the directed graph
+        :type root_atom_serial: int
+        :return: AtomGraph of the molecule
+        :rtype: AtomGraph
+        """
         atom_group = prody.parsePDB(file_path)
         serials = list(atom_group.getSerials())
         root_atom_index = serials.index(root_atom_serial)
@@ -68,7 +91,15 @@ class AtomGraph(nx.DiGraph):
         bond_graph = nx.bfs_tree(bond_graph, root_atom_index)
         return bond_graph
 
-    def freeze_bonds(self, bonds="all"):
+    def freeze_bonds(self, bonds: str | list[tuple[int, int]] = "all"):
+        """Set the edge attribute 'frozen' to True for bonds
+
+        If bonds is 'all', all edges get 'frozen' set to True
+        Otherwise, bonds is a list of the graph's edges to be frozen
+
+        :param bonds: list of edges or 'all', defaults to "all"
+        :type bonds: str | list[tuple[int, int]], optional
+        """
         if bonds == "all":
             for node1, node2, data in self.edges(data=True):
                 data["frozen"] = True
