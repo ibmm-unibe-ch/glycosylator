@@ -323,7 +323,12 @@ class MoleculeBuilder:
         denovo_residue, dele_atoms, bonds = self.build_from_patch(
             dummy_residue, resid, resname, chain, segname, dummy_patch
         )
-        del dummy_residue
+        bonds = [
+            (atom1, atom2)
+            for atom1, atom2 in bonds
+            if (atom1 not in dele_atoms) and (atom2 not in dele_atoms)
+        ]
+        # del dummy_residue
         # bonds.extend(bonds_p)
         return denovo_residue, dele_atoms, bonds
 
@@ -419,6 +424,8 @@ class MoleculeBuilder:
 class HighLevelBuilder:
     def __init__(self, topofile, paramfile) -> None:
         self.builder = MoleculeBuilder(topofile, paramfile)
+        self.Topology = self.builder.Topology
+        self.Parameters = self.builder.Parameters
 
     def residue_ab_initio(
         self, resname, resid=1, chain="X", segname="G1", dummy_patch="DUMMY_MAN"
@@ -428,9 +435,9 @@ class HighLevelBuilder:
             resname=resname,
             chain=chain,
             segname=segname,
-            dummy_patch="DUMMY_MAN",
+            dummy_patch=dummy_patch,
         )
-        residue.setBonds(_id_bonds_to_index_bonds(bonds))
+        residue.setBonds(_id_bonds_to_index_bonds(bonds, residue))
         residue = self.builder.delete_atoms(residue, dele_atoms)
         residue = residue[segname, chain, resid]
         return residue
@@ -465,7 +472,7 @@ class HighLevelBuilder:
         new_residue, missing_atoms, bonds = self.builder.find_missing_atoms(
             residue, resnum, chain, segname
         )
-        new_residue.setBonds(_id_bonds_to_index_bonds(bonds))
+        new_residue.setBonds(_id_bonds_to_index_bonds(bonds, new_residue))
         # set the coordinates for missing atoms using template ICs
         ics = self.builder.Topology.topology[residue.getResname()]["IC"]
         self.builder.build_missing_atom_coord(new_residue, missing_atoms, ics)

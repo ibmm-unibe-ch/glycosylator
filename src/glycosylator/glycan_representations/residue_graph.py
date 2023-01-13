@@ -2,10 +2,7 @@ import networkx as nx
 import prody
 
 from glycosylator.glycan_representations import AtomGraph
-from glycosylator.glycan_representations.glycan_topology import (
-    GlycanTopology,
-    ResiduePath,
-)
+from glycosylator.glycan_representations.glycan_topology import GlycanTopology
 
 
 class ResidueGraph(nx.DiGraph):
@@ -149,6 +146,24 @@ class ResidueGraph(nx.DiGraph):
         residue_graph.add_nodes_from(res_indices.values())
         residue_graph.add_edges_from(inter_res_bonds)
         return residue_graph
+
+    def identify_patches(self, glycosylator):
+        for res1, res2, data in self.edges(data=True):
+            atom_names = {atom.getName() for atom in data["atoms"]}
+            patch = glycosylator.find_patch(atom_names)
+            data["patch"] = patch
+
+    def path_to_index(self, path: list[str]):
+        res_i = self.graph["root_residue_index"]
+        for reference_patch in path:
+            for neighbour_i, data in self.succ[res_i].items():
+                if data["patch"] == reference_patch:
+                    res_i = neighbour_i
+                    break
+            # runs only if loop doesn't break
+            else:
+                raise ValueError("Patch not found")
+        return res_i
 
     def to_glycan_topology(self, exclude_protein_root: bool = True):
         """Create a GlycanTopology instance
