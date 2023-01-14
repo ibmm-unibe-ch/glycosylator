@@ -194,11 +194,6 @@ class ResidueGraph(nx.DiGraph):
         ):
             source = self.neighbors(source).__next__()
 
-        if exclude_protein_root:
-            source = self.neighbors(self.graph["root_residue_index"]).__next__()
-        else:
-            source = self.graph["root_residue_index"]
-
         l = []
         paths = nx.shortest_path(self, source=source)
         for path_target, path in paths.items():
