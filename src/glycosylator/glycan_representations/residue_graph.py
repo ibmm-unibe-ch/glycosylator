@@ -26,8 +26,13 @@ class ResidueGraph(nx.DiGraph):
         ]
         for residue_index, data in res_digraph.nodes(data=True):
             residue = residues[residue_index]
+            # numbonds is very buggy in prody - index frequently out of range by 1
             data.update(
-                {label: residue.getData(label) for label in residue.getDataLabels()}
+                {
+                    label: residue.getData(label)
+                    for label in residue.getDataLabels()
+                    if label != "numbonds"
+                }
             )
             data.update({"residue": residue}),
 
@@ -155,6 +160,12 @@ class ResidueGraph(nx.DiGraph):
 
     def path_to_index(self, path: list[str]):
         res_i = self.graph["root_residue_index"]
+        if self.graph["root_residue"].select("not protein") is None:
+            res_i = self.neighbors(self.graph["root_residue_index"]).__next__()
+        else:
+            res_i = self.graph["root_residue_index"]
+        if path is None:
+            res_i
         for reference_patch in path:
             for neighbour_i, data in self.succ[res_i].items():
                 if data["patch"] == reference_patch:
@@ -175,13 +186,21 @@ class ResidueGraph(nx.DiGraph):
         :return: GlycanTopology instance
         :rtype: GlycanTopology
         """
-        # TODO: exclude the root_residue path as it's the protein backbone residue
-        root_res_name = self.graph["root_residue"].getResname()
-        # default value UnnamedGlycan is name not present
         glycan_name = self.graph.get("name", "UnnamedGlycan")
+        source = self.graph["root_residue_index"]
+        if (
+            exclude_protein_root
+            and self.nodes[source]["residue"].select("protein") is not None
+        ):
+            source = self.neighbors(source).__next__()
+
+        if exclude_protein_root:
+            source = self.neighbors(self.graph["root_residue_index"]).__next__()
+        else:
+            source = self.graph["root_residue_index"]
 
         l = []
-        paths = nx.shortest_path(self, source=self.graph["root_residue_index"])
+        paths = nx.shortest_path(self, source=source)
         for path_target, path in paths.items():
             res_name = self.nodes[path_target]["residue"].getResname()
             edges = zip(path[:-1], path[1:])
@@ -192,12 +211,15 @@ class ResidueGraph(nx.DiGraph):
                 linking_atom = self.edges[path[-2], path[-1]]["atoms"][1].getName()
             l.append((res_name, linking_atom, patches))
 
-        # if root is an amino acid e.g. ASN, remove it from dict, and shorten paths by 1
-        if exclude_protein_root and self.graph["root_residue"].getSegname() == "PROT":
-            l.pop(0)
-            for _, _, patches in l:
-                # 0th patch is patch linking protein to glycan
-                patches.pop[0]
+        # # if root is an amino acid e.g. ASN, remove it from dict, and shorten paths by 1
+        # if (
+        #     exclude_protein_root
+        #     and self.graph["root_residue"].select("not protein") is None
+        # ):
+        #     l.pop(0)
+        #     for _, _, patches in l:
+        #         # 0th patch is patch linking protein to glycan
+        #         patches.pop(0)
 
         return GlycanTopology.from_tuples(glycan_name, l)
 

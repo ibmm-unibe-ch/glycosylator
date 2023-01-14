@@ -31,10 +31,13 @@ class Glycosylator:
         self, glycoprotein_atom_group: prody.AtomGroup
     ):
         self.glycoprotein = glycoprotein_atom_group
+        self._initialize_glycoprotein_data()
+
+    def _initialize_glycoprotein_data(self):
         self.residues = [residue for residue in self.glycoprotein.iterResidues()]
-        # self.linking_residues = self.find_linking_residues()
-        # if self.glycoprotein.getBonds() is None:
-        #     self._infer_glycan_bonds()
+        self.linking_residues = self.find_linking_residues()
+        self._initilize_glycoprotein_selection()
+        self._infer_glycan_bonds()
 
     def write_glycoprotein_to_PDB(self, file_path: str):
         prody.writePDB(file_path, self.glycoprotein)
@@ -54,11 +57,21 @@ class Glycosylator:
         # this graph will contain many disjoint subgraphs,
         # each containing a continuous glycan+linking_residue
         glycan_graphs = nx.Graph()
-        glycan_graphs.add_nodes_from(
-            ((atom.getIndex()) for atom in self._glycans_and_links_sel.iterAtoms())
-        )
+
+        # kdtree = prody.KDTree(self._glycans_and_links_sel.getCoords())
+        # kdtree.search(1.7)
+
+        # glycan_graphs.add_edges_from(kdtree.getIndices())
+
+        # glycan_graphs.add_nodes_from(
+        #     ((atom.getIndex()) for atom in self._glycans_and_links_sel.iterAtoms())
+        # )
+        # glycan_graphs.add_edges_from(
+        #     (bond.getIndices() for bond in self._glycans_and_links_sel.iterBonds())
+        # )
+        # bonds are set only for glycoprotein and linking residue
         glycan_graphs.add_edges_from(
-            (bond.getIndices() for bond in self._glycans_and_links_sel.iterBonds())
+            [bond.getIndices() for bond in self.glycoprotein.getBonds()]
         )
         # separate the contiguous components into separate graphs
         glycan_graphs = [
@@ -73,8 +86,13 @@ class Glycosylator:
             )
             selection = self.glycoprotein.select(sel_string)
 
+            # if only 1 residue, it's just an amino acid
+            if selection.select("not protein") is None:
+                continue
+
             # the selection contains only one amino acid, so this returns just one atom
-            root_atom = next(selection.select("protein and name CA").iterAtoms())
+            root_atom = selection.select("protein and name C").iterAtoms().__next__()
+
             glycan = Molecule(selection, root_atom=root_atom)
             if freeze_bonds:
                 glycan.atom_graph.freeze_bonds("all")
@@ -140,25 +158,28 @@ class Glycosylator:
         else:
             return None
 
-    def _infer_glycan_bonds(self):
+    def _initilize_glycoprotein_selection(self):
         glycans_sel = "(not protein and not water)"
         linking_res_sel = f"(resnum {' '.join([str(residue.getResnum()) for residue in self.linking_residues])})"
         self._glycans_and_links_sel = self.glycoprotein.select(
             f"{glycans_sel} or {linking_res_sel}"
         )
-        # self.glycoprotein.setBonds(
-        #     [
-        #         bond.getIndices()
-        #         for bond in self._glycans_and_links_sel.toAtomGroup().inferBonds()
-        #     ]
-        # )
-        # kdtree = prody.KDTree(self._glycans_and_links_sel.getCoords())
-        # kdtree.search(1.7)
-        # self.glycoprotein.setBonds(kdtree.getIndices())
 
-        # can't get bond search for selection to work, so have to brute force whole glycoprotein
-        # which is slow
-        self.glycoprotein.inferBonds()
+    def _infer_glycan_bonds(self):
+        non_protein = self._glycans_and_links_sel.toAtomGroup()
+        # the indices in bonds index into non_protein, not into glycoprotein, so can't setBonds directly
+        bonds = [bond.getAtoms() for bond in non_protein.inferBonds()]
+        bonds = [(atom1.getSerial(), atom2.getSerial()) for atom1, atom2 in bonds]
+        # AtomGroup.getBySerial has an internal bug on initialising Atom instances, so have to use list.index
+        serials = list(self.glycoprotein.getSerials())
+        bonds = [
+            (
+                serials.index(serial1),
+                serials.index(serial2),
+            )
+            for serial1, serial2 in bonds
+        ]
+        self.glycoprotein.setBonds(bonds)
 
     def glycosylate(
         self,
@@ -166,7 +187,7 @@ class Glycosylator:
         template_glycan: str | GlycanTopology = None,
         protein_residue: prody.Residue = None,
         protein_link_patch: str = None,
-        inplace: bool = False,
+        modify_glycoprotein: bool = False,
     ) -> Molecule:
         """Build a glycan
 
@@ -197,8 +218,8 @@ class Glycosylator:
         if glycan is not None:
             old_glycan = glycan
             old_glycan_patches_to_i = {
-                path.patches: i
-                for i, path in enumerate(old_glycan.residue_graph.to_glycan_topology())
+                path.patches: old_glycan.residue_graph.path_to_index(path.patches)
+                for path in old_glycan.residue_graph.to_glycan_topology()
             }
         else:
             old_glycan_patches_to_i = dict()
@@ -207,15 +228,11 @@ class Glycosylator:
             glycan, template_topology, protein_residue, protein_link_patch
         )
         new_glycan_graph = ResidueGraph.from_AtomGroup(new_glycan, new_root_atom)
-        new_glycan_patches_to_i = {
-            path.patches: i
-            for i, path in enumerate(new_glycan_graph.to_glycan_topology())
-        }
+        # new_glycan_patches_to_i = {
+        #     path.patches: i
+        #     for i, path in enumerate(new_glycan_graph.to_glycan_topology())
+        # }
 
-        # TODO WIP:
-        # finish in-place feature
-        # probably will have and need to fix bugs related to Residue hierarchy views into new_glycan, since new_glycan keeps changing
-        # the view is effectively immutable, even if AtomGroup has a mutable "+=" interface
         for path in template_topology:
             # skip empty path as first residue has been initialised already
             if len(path) == 0:
@@ -223,16 +240,36 @@ class Glycosylator:
 
             *prev_patches, patch = path.patches
             # *prev_patches is a list, but need a tuple
-            prev_res_i = new_glycan_patches_to_i[tuple(prev_patches)]
+            # prev_res_i = new_glycan_patches_to_i[tuple(prev_patches)]
+            prev_res_i = new_glycan_graph.path_to_index(prev_patches)
             # previous_residue = [res for res in new_glycan.iterResidues()][prev_res_i]
             old_res_i = old_glycan_patches_to_i.get(path.patches)
 
             # Case 1: old_residue exists and needs repair of any missing atoms
             if old_res_i is not None:
                 old_residue = old_glycan.residue_graph.nodes[old_res_i]["residue"]
+                previous_residue = new_glycan_graph.nodes[prev_res_i]["residue"]
+
                 new_residue = self.builder.residue_repair(old_residue)
                 new_glycan += new_residue.getAtomGroup()
 
+                # redefine residues to point into new_glycan AtomGroup instance
+                previous_residue = new_glycan[
+                    previous_residue.getSegname(),
+                    previous_residue.getChid(),
+                    previous_residue.getResnum(),
+                ]
+                new_residue = new_glycan[
+                    new_residue.getSegname(),
+                    new_residue.getChid(),
+                    new_residue.getResnum(),
+                ]
+
+                new_glycan = self.builder.apply_patch(
+                    patch, previous_residue, new_residue
+                )
+
+                # redefine root and graph to reflect new AtomGroup instance
                 new_root_atom = (
                     new_glycan.select(new_root_atom.getSelstr()).iterAtoms().__next__()
                 )
@@ -240,15 +277,6 @@ class Glycosylator:
                     new_glycan, new_root_atom
                 )
                 new_glycan_graph.identify_patches(self)
-                prev_res_i = new_glycan_graph.path_to_index(prev_patches)
-                new_res_i = new_glycan_graph.path_to_index(path.patches)
-
-                previous_residue = new_glycan_graph.nodes[prev_res_i]["residue"]
-                new_residue = new_glycan_graph.nodes[new_res_i]["residue"]
-
-                new_glycan = self.builder.apply_patch(
-                    patch, previous_residue, new_residue
-                )
 
             # Case 2: residue needs to be patched onto an existing residue
             else:
@@ -263,25 +291,50 @@ class Glycosylator:
                 new_glycan_graph = ResidueGraph.from_AtomGroup(
                     new_glycan, new_root_atom
                 )
-                new_glycan_patches_to_i = {
-                    path.patches: i
-                    for i, path in enumerate(new_glycan_graph.to_glycan_topology())
-                }
-
-                # res_i = new_residue.getResindex()
-                # # new_glycan_graph.add_node(res_i, residue=new_residue)
-                # new_glycan_graph.add_edge(prev_res_i, res_i)
-                # new_glycan_patches_to_i[path.patches] = res_i
+                new_glycan_graph.identify_patches(self)
 
         # if protein_residue is not None:
         #     # the coordinates and linkage already valid from initialisation at beginning
         #     final_glycan += new_protein_residue
 
-        if inplace:
-            ...
-
-        final_glycan = Molecule(new_glycan, new_root_atom)
+        if protein_residue is not None:
+            protein_residue = protein_residue.toAtomGroup()
+            protein_residue.inferBonds()
+            new_glycan += protein_residue.toAtomGroup()
+            # point the residues into new instance of AtomGroup
+            first_glycan_residue = new_glycan_graph.graph["root_residue"]
+            first_glycan_residue = new_glycan[
+                first_glycan_residue.getSegname(),
+                first_glycan_residue.getChid(),
+                first_glycan_residue.getResnum(),
+            ]
+            protein_residue = protein_residue.iterResidues().__next__()
+            protein_residue = new_glycan[
+                protein_residue.getSegname(),
+                protein_residue.getChid(),
+                protein_residue.getResnum(),
+            ]
+            new_glycan = self.builder.apply_patch(
+                protein_link_patch, protein_residue, first_glycan_residue
+            )
+            new_root_atom = new_glycan.select("name C").iterAtoms().__next__()
+            final_glycan = Molecule(new_glycan, new_root_atom)
+        else:
+            final_glycan = Molecule(new_glycan, new_root_atom)
         self.assign_patches(final_glycan)
+
+        if modify_glycoprotein:
+            glycoprotein = self.glycoprotein
+            glycoprotein = glycoprotein.select(
+                f"not {protein_residue.getSelstr()}"
+            ).getAtomGroup()
+            if glycan is not None:
+                for residue in glycan.iterResidues():
+                    glycoprotein = glycoprotein.select(f"not {residue.getSelstr()}")
+                glycoprotein = glycoprotein.getAtomGroup()
+            glycoprotein += final_glycan.atom_group
+            self.glycoprotein = glycoprotein
+
         return final_glycan
 
     def _initialise_new_glycan(
@@ -297,14 +350,15 @@ class Glycosylator:
         if protein_residue is not None and glycan is not None:
             # is protein_residue already a part of glycan? e.g. from running self.find_existing_glycans(...)
             if glycan.root_residue == protein_residue:
-                new_glycan = protein_residue.toAtomGroup()
-                new_root_atom = new_glycan.select(
-                    f"name {glycan.root_atom.getName()}"
+                # new_root_atom = new_glycan.select(
+                #     f"name {glycan.root_atom.getName()}"
+                # ).__next__()
+                res_i = glycan.residue_graph.neighbors(
+                    glycan.residue_graph.graph["root_residue_index"]
                 ).__next__()
-                res = glycan.residue_graph.neighbours(
-                    protein_residue.getResindex()
-                ).__next__()
-                new_glycan += self.builder.residue_repair(res).getAtomGroup()
+                res = glycan.residue_graph.nodes[res_i]["residue"]
+                new_glycan = self.builder.residue_repair(res).getAtomGroup()
+                new_root_atom = new_glycan.select("name C1").iterAtoms().__next__()
             # the case of glycosylating an amino acid with a provided glycan against a template is complicated
             # because two separate things need to be done:
             #   glycan needs to be fixed against template <- no problem
@@ -321,20 +375,20 @@ class Glycosylator:
         # case only protein_residue provided
         elif protein_residue is not None:
             # make a new AtomGroup with only the protein_residue
-            new_glycan = protein_residue.toAtomGroup()
+            protein_residue = protein_residue.toAtomGroup()
+            protein_residue.inferBonds()
             # have protein_residue point towards the new AtomGroup
-            new_protein_residue = new_glycan.iterResidues().__next__()
+            new_protein_residue = protein_residue.iterResidues().__next__()
             resname = template_topology.paths[0].residue_name
             # new_glycan now contains an amino acid and a single glycan
-            new_glycan, _ = self.builder.add_residue_from_patch(
+            _, new_residue = self.builder.add_residue_from_patch(
                 new_protein_residue, resname, protein_link_patch
             )
-            new_root_atom = (
-                new_glycan.select(new_protein_residue.getSelstr())
-                .select("name C1")
-                .iterAtoms()
-                .__next__()
-            )
+            new_glycan = new_residue.toAtomGroup()
+            new_residue = new_glycan[
+                new_residue.getSegname(), new_residue.getChid(), new_residue.getResnum()
+            ]
+            new_root_atom = new_residue.select("name C1").iterAtoms().__next__()
 
         # case only glycan provided
         elif glycan is not None:
