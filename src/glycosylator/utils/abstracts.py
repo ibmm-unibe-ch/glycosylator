@@ -159,11 +159,11 @@ class AbstractAtom:
 
     id = attr.ib(type=str)
     type = attr.ib(default=None, type=str)
-    charge = attr.ib(default=None, type=float)
-    mass = attr.ib(default=None, type=float)
-    element = attr.ib(default=None, type=str)
-    _parent = attr.ib(default=None)
-    is_wildcard = attr.ib(default=False, type=bool)
+    charge = attr.ib(default=None, type=float, repr=False)
+    mass = attr.ib(default=None, type=float, repr=False)
+    element = attr.ib(default=None, type=str, repr=False)
+    _parent = attr.ib(default=None, repr=False)
+    is_wildcard = attr.ib(default=False, type=bool, repr=False)
 
     def to_biopython(self, parent=None):
         """
@@ -275,13 +275,13 @@ class AbstractInternalCoordinates:
     atom2 = attr.ib(type=Union[AbstractAtom, str])
     atom3 = attr.ib(type=Union[AbstractAtom, str])
     atom4 = attr.ib(type=Union[AbstractAtom, str])
-    bond_length_12 = attr.ib(type=float)
-    bond_length_34 = attr.ib(type=float)
-    bond_angle_123 = attr.ib(type=float)
-    bond_angle_234 = attr.ib(type=float)
-    dihedral = attr.ib(type=float)
-    bond_length_13 = attr.ib(default=None, type=float)
-    improper = attr.ib(default=False, type=bool)
+    bond_length_12 = attr.ib(type=float, repr=False)
+    bond_length_34 = attr.ib(type=float, repr=False)
+    bond_angle_123 = attr.ib(type=float, repr=False)
+    bond_angle_234 = attr.ib(type=float, repr=False)
+    dihedral = attr.ib(type=float, repr=False)
+    bond_length_13 = attr.ib(default=None, type=float, repr=False)
+    improper = attr.ib(default=False, type=bool, repr=False)
 
     @property
     def angles(self):
@@ -362,10 +362,10 @@ class AbstractAngle:
     atom1 = attr.ib(type=str)
     atom2 = attr.ib(type=str)
     atom3 = attr.ib(type=str)
-    angle = attr.ib(type=float)
-    K = attr.ib(type=float, default=None)
-    urey_bradley_k = attr.ib(type=float, default=None)
-    urey_bradley_length = attr.ib(type=float, default=None)
+    angle = attr.ib(type=float, repr=False)
+    K = attr.ib(type=float, default=None, repr=False)
+    urey_bradley_k = attr.ib(type=float, default=None, repr=False)
+    urey_bradley_length = attr.ib(type=float, default=None, repr=False)
 
     @property
     def atoms(self):
@@ -385,8 +385,8 @@ class AbstractDihedral:
     atom3 = attr.ib(type=str)
     atom4 = attr.ib(type=str)
     angle = attr.ib(type=float)
-    K = attr.ib(type=float, default=None)
-    multiplicity = attr.ib(type=int, default=1)
+    K = attr.ib(type=float, default=None, repr=False)
+    multiplicity = attr.ib(type=int, default=1, repr=False)
 
     @property
     def atoms(self):
@@ -405,8 +405,8 @@ class AbstractImproper:
     atom2 = attr.ib(type=str)
     atom3 = attr.ib(type=str)
     atom4 = attr.ib(type=str)
-    angle = attr.ib(type=float)
-    K = attr.ib(type=float, default=None)
+    angle = attr.ib(type=float, repr=False)
+    K = attr.ib(type=float, default=None, repr=False)
 
     @property
     def atoms(self):
@@ -427,8 +427,3 @@ class AbstractNonBonded(NamedTuple):
         Estimate the atom size.
         """
         return self.min_radius * 2 ** (1 / 6)
-
-
-if __name__ == '__main__':
-
-    x = AtomTypeMass("x", 1.23)
