@@ -5,8 +5,8 @@ import sqlite3
 import networkx as nx
 import prody
 
-from glycosylator.file_parsers import glycan_topology
-from glycosylator.file_parsers.glycan_topology import GlycanTopology
+from glycosylator.force_fields import glycan_topology
+from glycosylator.force_fields.glycan_topology import GlycanTopology
 from glycosylator.glycan_representations import ResidueGraph
 from glycosylator.molecule import Molecule
 from glycosylator.molecule_builder import HighLevelBuilder
@@ -27,9 +27,7 @@ class Glycosylator:
         glycoprotein_atom_group = prody.parsePDB(protein_file_path)
         self.load_glycoprotein_from_AtomGroup(glycoprotein_atom_group)
 
-    def load_glycoprotein_from_AtomGroup(
-        self, glycoprotein_atom_group: prody.AtomGroup
-    ):
+    def load_glycoprotein_from_AtomGroup(self, glycoprotein_atom_group: prody.AtomGroup):
         self.glycoprotein = glycoprotein_atom_group
         self._initialize_glycoprotein_data()
 
@@ -42,9 +40,7 @@ class Glycosylator:
     def write_glycoprotein_to_PDB(self, file_path: str):
         prody.writePDB(file_path, self.glycoprotein)
 
-    def find_linking_residues(
-        self, sequon_pattern: str = "(N[^P][S|T])"
-    ) -> list[prody.Residue]:
+    def find_linking_residues(self, sequon_pattern: str = "(N[^P][S|T])") -> list[prody.Residue]:
         sequon_pattern = re.compile(sequon_pattern)
         linking_residues = []
         for chain in self.glycoprotein.iterChains():
@@ -70,20 +66,13 @@ class Glycosylator:
         #     (bond.getIndices() for bond in self._glycans_and_links_sel.iterBonds())
         # )
         # bonds are set only for glycoprotein and linking residue
-        glycan_graphs.add_edges_from(
-            [bond.getIndices() for bond in self.glycoprotein.getBonds()]
-        )
+        glycan_graphs.add_edges_from([bond.getIndices() for bond in self.glycoprotein.getBonds()])
         # separate the contiguous components into separate graphs
-        glycan_graphs = [
-            glycan_graphs.subgraph(c).copy()
-            for c in nx.connected_components(glycan_graphs)
-        ]
+        glycan_graphs = [glycan_graphs.subgraph(c).copy() for c in nx.connected_components(glycan_graphs)]
         glycans = []
         for graph in glycan_graphs:
             atoms = [self.glycoprotein[index] for index in graph]
-            sel_string = (
-                f"(serial {' '.join([str(atom.getSerial()) for atom in atoms])})"
-            )
+            sel_string = f"(serial {' '.join([str(atom.getSerial()) for atom in atoms])})"
             selection = self.glycoprotein.select(sel_string)
 
             # if only 1 residue, it's just an amino acid
@@ -161,9 +150,7 @@ class Glycosylator:
     def _initilize_glycoprotein_selection(self):
         glycans_sel = "(not protein and not water)"
         linking_res_sel = f"(resnum {' '.join([str(residue.getResnum()) for residue in self.linking_residues])})"
-        self._glycans_and_links_sel = self.glycoprotein.select(
-            f"{glycans_sel} or {linking_res_sel}"
-        )
+        self._glycans_and_links_sel = self.glycoprotein.select(f"{glycans_sel} or {linking_res_sel}")
 
     def _infer_glycan_bonds(self):
         non_protein = self._glycans_and_links_sel.toAtomGroup()
@@ -211,22 +198,15 @@ class Glycosylator:
         elif type(template_glycan) == GlycanTopology:
             template_topology: GlycanTopology = template_glycan
         else:
-            raise TypeError(
-                "Argument template_glycan should either be a valid key for self.glycan_topologies or a GlycanTopology instance"
-            )
+            raise TypeError("Argument template_glycan should either be a valid key for self.glycan_topologies or a GlycanTopology instance")
 
         if glycan is not None:
             old_glycan = glycan
-            old_glycan_patches_to_i = {
-                path.patches: old_glycan.residue_graph.path_to_index(path.patches)
-                for path in old_glycan.residue_graph.to_glycan_topology()
-            }
+            old_glycan_patches_to_i = {path.patches: old_glycan.residue_graph.path_to_index(path.patches) for path in old_glycan.residue_graph.to_glycan_topology()}
         else:
             old_glycan_patches_to_i = dict()
 
-        new_glycan, new_root_atom = self._initialise_new_glycan(
-            glycan, template_topology, protein_residue, protein_link_patch
-        )
+        new_glycan, new_root_atom = self._initialise_new_glycan(glycan, template_topology, protein_residue, protein_link_patch)
         new_glycan_graph = ResidueGraph.from_AtomGroup(new_glycan, new_root_atom)
         # new_glycan_patches_to_i = {
         #     path.patches: i
@@ -265,32 +245,20 @@ class Glycosylator:
                     new_residue.getResnum(),
                 ]
 
-                new_glycan = self.builder.apply_patch(
-                    patch, previous_residue, new_residue
-                )
+                new_glycan = self.builder.apply_patch(patch, previous_residue, new_residue)
 
                 # redefine root and graph to reflect new AtomGroup instance
-                new_root_atom = (
-                    new_glycan.select(new_root_atom.getSelstr()).iterAtoms().__next__()
-                )
-                new_glycan_graph = ResidueGraph.from_AtomGroup(
-                    new_glycan, new_root_atom
-                )
+                new_root_atom = new_glycan.select(new_root_atom.getSelstr()).iterAtoms().__next__()
+                new_glycan_graph = ResidueGraph.from_AtomGroup(new_glycan, new_root_atom)
                 new_glycan_graph.identify_patches(self)
 
             # Case 2: residue needs to be patched onto an existing residue
             else:
                 previous_residue = new_glycan_graph.nodes[prev_res_i]["residue"]
-                new_glycan, new_residue = self.builder.add_residue_from_patch(
-                    previous_residue, path.residue_name, patch
-                )
+                new_glycan, new_residue = self.builder.add_residue_from_patch(previous_residue, path.residue_name, patch)
                 # update datastructures for next iterations
-                new_root_atom = (
-                    new_glycan.select(new_root_atom.getSelstr()).iterAtoms().__next__()
-                )
-                new_glycan_graph = ResidueGraph.from_AtomGroup(
-                    new_glycan, new_root_atom
-                )
+                new_root_atom = new_glycan.select(new_root_atom.getSelstr()).iterAtoms().__next__()
+                new_glycan_graph = ResidueGraph.from_AtomGroup(new_glycan, new_root_atom)
                 new_glycan_graph.identify_patches(self)
 
         # if protein_residue is not None:
@@ -314,9 +282,7 @@ class Glycosylator:
                 protein_residue.getChid(),
                 protein_residue.getResnum(),
             ]
-            new_glycan = self.builder.apply_patch(
-                protein_link_patch, protein_residue, first_glycan_residue
-            )
+            new_glycan = self.builder.apply_patch(protein_link_patch, protein_residue, first_glycan_residue)
             new_root_atom = new_glycan.select("name C").iterAtoms().__next__()
             final_glycan = Molecule(new_glycan, new_root_atom)
         else:
@@ -325,9 +291,7 @@ class Glycosylator:
 
         if modify_glycoprotein:
             glycoprotein = self.glycoprotein
-            glycoprotein = glycoprotein.select(
-                f"not {protein_residue.getSelstr()}"
-            ).getAtomGroup()
+            glycoprotein = glycoprotein.select(f"not {protein_residue.getSelstr()}").getAtomGroup()
             if glycan is not None:
                 for residue in glycan.iterResidues():
                     glycoprotein = glycoprotein.select(f"not {residue.getSelstr()}")
@@ -353,9 +317,7 @@ class Glycosylator:
                 # new_root_atom = new_glycan.select(
                 #     f"name {glycan.root_atom.getName()}"
                 # ).__next__()
-                res_i = glycan.residue_graph.neighbors(
-                    glycan.residue_graph.graph["root_residue_index"]
-                ).__next__()
+                res_i = glycan.residue_graph.neighbors(glycan.residue_graph.graph["root_residue_index"]).__next__()
                 res = glycan.residue_graph.nodes[res_i]["residue"]
                 new_glycan = self.builder.residue_repair(res).getAtomGroup()
                 new_root_atom = new_glycan.select("name C1").iterAtoms().__next__()
@@ -381,13 +343,9 @@ class Glycosylator:
             new_protein_residue = protein_residue.iterResidues().__next__()
             resname = template_topology.paths[0].residue_name
             # new_glycan now contains an amino acid and a single glycan
-            _, new_residue = self.builder.add_residue_from_patch(
-                new_protein_residue, resname, protein_link_patch
-            )
+            _, new_residue = self.builder.add_residue_from_patch(new_protein_residue, resname, protein_link_patch)
             new_glycan = new_residue.toAtomGroup()
-            new_residue = new_glycan[
-                new_residue.getSegname(), new_residue.getChid(), new_residue.getResnum()
-            ]
+            new_residue = new_glycan[new_residue.getSegname(), new_residue.getChid(), new_residue.getResnum()]
             new_root_atom = new_residue.select("name C1").iterAtoms().__next__()
 
         # case only glycan provided
@@ -395,9 +353,7 @@ class Glycosylator:
             root_residue = glycan.root_residue
             root_atom_name = glycan.root_atom.getName()
             new_glycan = self.builder.residue_repair(root_residue).getAtomGroup()
-            new_root_atom = (
-                new_glycan.select(f"name {root_atom_name}").iterAtoms().__next__()
-            )
+            new_root_atom = new_glycan.select(f"name {root_atom_name}").iterAtoms().__next__()
 
         # case neither protein_residue nor glycan provided
         elif protein_residue is None and glycan is None:
@@ -427,9 +383,7 @@ class Glycosylator:
             pass
 
         try:
-            new_glycan_topologies = glycan_topology.import_connectivity_topology(
-                file_path
-            )
+            new_glycan_topologies = glycan_topology.import_connectivity_topology(file_path)
             if append:
                 self.glycan_topologies |= new_glycan_topologies
             else:
@@ -443,11 +397,7 @@ class Glycosylator:
 
 def _atom_id_to_index(atom_id, atom_group):
     selection_keywords = ["segment", "chain", "resid", "icode", "name"]
-    sel = (
-        f"{keyword} {value}"
-        for keyword, value in zip(selection_keywords, atom_id.split(","))
-        if value != ""
-    )
+    sel = (f"{keyword} {value}" for keyword, value in zip(selection_keywords, atom_id.split(",")) if value != "")
     sel = " and ".join(sel)
     sel = f"({sel})"
 
