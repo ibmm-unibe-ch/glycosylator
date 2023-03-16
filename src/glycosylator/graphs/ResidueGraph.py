@@ -33,7 +33,9 @@ class ResidueGraph(BaseGraph):
         # then we get the participating parents (e.g. residues) and make the edges from them.
         bonds = utils.infer_residue_connections(atom_graph.structure)
         bonds = [(p1.get_parent(), p2.get_parent()) for p1, p2 in bonds]
-        return cls(id, bonds)
+        new = cls(id, bonds)
+        new.__AtomGraph = atom_graph
+        return new
 
     @classmethod
     def from_pdb(
@@ -77,7 +79,23 @@ class ResidueGraph(BaseGraph):
             restrict_residues,
         )
 
-        return cls.from_AtomGraph(_atom_graph)
+        new = cls.from_AtomGraph(_atom_graph)
+        new.__AtomGraph = _atom_graph
+        return new
+
+    def to_AtomGraph(self):
+        """
+        Convert the ResidueGraph to an AtomGraph.
+
+        Returns
+        -------
+        AtomGraph
+            The AtomGraph representation of the molecule
+        """
+        if hasattr(self, "__AtomGraph"):
+            return self.__AtomGraph
+        else:
+            raise AttributeError("This ResidueGraph does not have an associated AtomGraph.")
 
 
 if __name__ == '__main__':
