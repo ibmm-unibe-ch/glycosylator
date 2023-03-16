@@ -8,7 +8,6 @@ import pickle
 import re
 import warnings
 import glycosylator.utils.abstracts as abstracts
-from glycosylator.utils.defaults import DEFAULT_CHARMM_PARAMETERS_FILE, DEFAULT_CHARMM_TOPOLOGY_FILE
 
 # ===================================================================
 # Base Parser
@@ -1031,14 +1030,6 @@ class CHARMMParameters(CHARMMParser):
             raise KeyError("The dictionary must contain 'bonds' and 'angles' keys")
 
 
-# =================================================================
-# Default instances
-# =================================================================
-
-__DEFAULT_CHARMM_TOPOLOGY__ = CHARMMTopology.load(DEFAULT_CHARMM_TOPOLOGY_FILE)
-__DEFAULT_CHARMM_PARAMETERS__ = CHARMMParameters.load(DEFAULT_CHARMM_PARAMETERS_FILE)
-
-
 if __name__ == '__main__':
 
     _carbs = "/Users/noahhk/GIT/glycosylator/support/toppar_charmm/carbohydrates.rtf"
@@ -1049,6 +1040,6 @@ if __name__ == '__main__':
     _prm = CHARMMParameters.from_file(_carbs)
     print(_prm)
 
-    _save_to = "/Users/noahhk/GIT/glycosylator/glycosylator/resources/"
-    _top.save(_save_to + os.path.basename(DEFAULT_CHARMM_TOPOLOGY_FILE))
-    _prm.save(_save_to + os.path.basename(DEFAULT_CHARMM_PARAMETERS_FILE))
+    # _save_to = "/Users/noahhk/GIT/glycosylator/glycosylator/resources/"
+    # _top.save(_save_to + os.path.basename(DEFAULT_CHARMM_TOPOLOGY_FILE))
+    # _prm.save(_save_to + os.path.basename(DEFAULT_CHARMM_PARAMETERS_FILE))
