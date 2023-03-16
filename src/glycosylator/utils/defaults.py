@@ -14,18 +14,6 @@ DEFAULT_BOND_LENGTH = 1.6
 The default length of a bond in Angstrom
 """
 
-DEFAULT_BONDS_FILE = os.path.join(constants.RESOURCES, "default.bonds.pkl")
-"""
-The path to the default bonds file
-"""
-
-DEFAULT_BONDS = pickle.load(open(DEFAULT_BONDS_FILE, "rb"))
-"""
-The default connectivity graphs of standard molecules such as amino acids or sugars,
-stored as a dictionary with the molecule identifier (three letter code for amino acids and sugars)
-as key and the connectivity graph (list of tuples) as values.
-"""
-
 DEFAULT_CHARMM_TOPOLOGY_FILE = os.path.join(constants.RESOURCES, "CHARMM.top.pkl")
 """
 The path to the default CHARMM topology file
