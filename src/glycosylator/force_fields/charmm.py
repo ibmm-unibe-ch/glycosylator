@@ -206,6 +206,24 @@ class CHARMMTopology(CHARMMParser):
     def patches(self):
         return list(self._dict["patches"].values())
 
+    def has_residue(self, id):
+        """
+        Check if a residue is in the topology
+
+        Parameters
+        ----------
+        id : str
+            The ID of the residue
+
+        Returns
+        -------
+        bool
+            True if the residue is in the topology
+        """
+        if isinstance(id, (list, tuple)):
+            return all(self.has_residue(i) for i in id)
+        return id in self._dict["residues"]
+
     def get_residue(self, id):
         """
         Get a residue by its ID
@@ -322,6 +340,7 @@ class CHARMMTopology(CHARMMParser):
             idx += 1
 
         self._adopt_atom_masses()
+        self._make_ICs_improper()
         self._file = filename
 
     def _parse_mass(self, line: str):
@@ -432,6 +451,21 @@ class CHARMMTopology(CHARMMParser):
                 if atom.mass is None:
                     atom.mass = self._dict["masses"][atom.type]
 
+    def _make_ICs_improper(self):
+        """
+        Ensure that improper internal coordinates are also labelled as such
+        based on whether their third atom is connected to the first atom
+        """
+        for residue in self.residues:
+            for ic in residue.internal_coordinates:
+                if not ic.improper and residue.get_bond(ic.atom1, ic.atom3):
+                    ic.improper = True
+                    # Actually a bad idea to do this, 
+                    # because the file still stores 1-2 lengths instead of 1-3 lengths!
+                    # if not ic.bond_length_13:
+                    #     ic.bond_length_13 = ic.bond_length_12
+                    #     ic.bond_length_12 = None
+
     def _vet_load(self, _data):
         """
         Checks that the data loaded from a file is valid
@@ -463,6 +497,7 @@ class CHARMMTopology(CHARMMParser):
         atom4 = line[4]
 
         if isinstance(obj, abstracts.AbstractResidue):
+
             atom1 = obj.get_atom(atom1)
             atom2 = obj.get_atom(atom2)
             atom3 = obj.get_atom(atom3)
@@ -699,7 +734,7 @@ class CHARMMParameters(CHARMMParser):
         """
         self._dict["dihedrals"][dihedral.atoms] = dihedral
 
-    def get_bond(self, atoms):
+    def get_bond(self, *atoms):
         """
         Get a bond by its atom ids
 
@@ -1030,6 +1065,9 @@ class CHARMMParameters(CHARMMParser):
             raise KeyError("The dictionary must contain 'bonds' and 'angles' keys")
 
 
+__all__ = [CHARMMTopology, CHARMMParameters]
+
+
 if __name__ == '__main__':
 
     _carbs = "/Users/noahhk/GIT/glycosylator/support/toppar_charmm/carbohydrates.rtf"
@@ -1040,6 +1078,8 @@ if __name__ == '__main__':
     _prm = CHARMMParameters.from_file(_carbs)
     print(_prm)
 
-    # _save_to = "/Users/noahhk/GIT/glycosylator/glycosylator/resources/"
-    # _top.save(_save_to + os.path.basename(DEFAULT_CHARMM_TOPOLOGY_FILE))
-    # _prm.save(_save_to + os.path.basename(DEFAULT_CHARMM_PARAMETERS_FILE))
+    from glycosylator.utils.defaults import DEFAULT_CHARMM_TOPOLOGY_FILE, DEFAULT_CHARMM_PARAMETERS_FILE
+
+    _save_to = "/Users/noahhk/GIT/glycosylator/glycosylator/resources/"
+    _top.save(_save_to + os.path.basename(DEFAULT_CHARMM_TOPOLOGY_FILE))
+    _prm.save(_save_to + os.path.basename(DEFAULT_CHARMM_PARAMETERS_FILE))
