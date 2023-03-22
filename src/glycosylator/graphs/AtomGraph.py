@@ -2,6 +2,7 @@ import networkx as nx
 import Bio.PDB as bio
 
 import glycosylator.utils as utils
+import glycosylator.utils.structural as struct
 from glycosylator.graphs.BaseGraph import BaseGraph
 
 
@@ -46,16 +47,16 @@ class AtomGraph(BaseGraph):
         id = id if id else utils.filename_to_id(filename)
 
         # load PDB
-        structure = utils.defaults.__bioPDBParser__.get_structure(id, filename)
+        structure = struct.defaults.__bioPDBParser__.get_structure(id, filename)
         structure = structure[0].child_list[0]
 
         bonds = []
         if apply_standard_bonds and infer_bonds:
             raise ValueError("Cannot apply standard bonds and infer bonds at the same time.")
         elif apply_standard_bonds:
-            bonds.extend(utils.apply_standard_bonds(structure))
+            bonds.extend(struct.apply_standard_bonds(structure))
         elif infer_bonds:
-            bonds.extend(utils.infer_bonds(structure, max_bond_length, restrict_residues))
+            bonds.extend(struct.infer_bonds(structure, max_bond_length, restrict_residues))
 
         return cls(id, bonds)
 

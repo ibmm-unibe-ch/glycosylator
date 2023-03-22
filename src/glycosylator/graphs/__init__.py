@@ -7,3 +7,5 @@ instead of all individually contained atoms.
 
 from glycosylator.graphs.AtomGraph import AtomGraph
 from glycosylator.graphs.ResidueGraph import ResidueGraph
+
+__all__ = ["AtomGraph", "ResidueGraph"]
