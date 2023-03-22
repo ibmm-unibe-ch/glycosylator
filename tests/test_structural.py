@@ -175,6 +175,7 @@ def test_missing_multiple_random_atoms():
         _diff = np.sum(np.abs(new_coords - true_coords[i]))
         assert _diff < MARGIN, f"[{i}] Difference in coordinates is {_diff=}"
 
+
 def test_missing_multiple_random_atoms_galactose():
 
     GALACTOSE = bio.PDBParser().get_structure("GAL", base.GALACTOSE)
@@ -197,3 +198,210 @@ def test_missing_multiple_random_atoms_galactose():
 
         _diff = np.sum(np.abs(new_coords - true_coords[i]))
         assert _diff < MARGIN, f"[{i}] Difference in coordinates is {_diff=}"
+
+
+def test_apply_standard_bonds():
+
+    bonds = gl.utils.structural.apply_standard_bonds(MANNOSE)
+
+    _recieved = len(bonds)
+    _expected = 24
+    _what = "bonds"
+    assert _recieved == _expected, f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+
+    bonds = [set((i.id, j.id)) for i, j in bonds]
+
+    _bond = set(("C5", "O5"))
+    _recieved = _bond in bonds
+    _expected = True
+    _what = f"for {_bond} in bonds"
+    assert _recieved == _expected, f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+
+    _bond = set(("C5", "C6"))
+    _recieved = _bond in bonds
+    _expected = True
+    _what = f"for {_bond} in bonds"
+    assert _recieved == _expected, f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+
+    _bond = set(("C5", "C4"))
+    _recieved = _bond in bonds
+    _expected = True
+    _what = f"for {_bond} in bonds"
+    assert _recieved == _expected, f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+
+    _bond = set(("C6", "O6"))
+    _recieved = _bond in bonds
+    _expected = True
+    _what = f"for {_bond} in bonds"
+    assert _recieved == _expected, f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+
+    _bond = set(("C4", "C3"))
+    _recieved = _bond in bonds
+    _expected = True
+    _what = f"for {_bond} in bonds"
+    assert _recieved == _expected, f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+
+    _bond = set(("C1", "C2"))
+    _recieved = _bond in bonds
+    _expected = True
+    _what = f"for {_bond} in bonds"
+    assert _recieved == _expected, f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+
+    _bond = set(("C3", "C4"))
+    _recieved = _bond in bonds
+    _expected = True
+    _what = f"for {_bond} in bonds"
+    assert _recieved == _expected, f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+
+    _bond = set(("C3", "O3"))
+    _recieved = _bond in bonds
+    _expected = True
+    _what = f"for {_bond} in bonds"
+    assert _recieved == _expected, f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+
+    _bond = set(("C3", "C2"))
+    _recieved = _bond in bonds
+    _expected = True
+    _what = f"for {_bond} in bonds"
+    assert _recieved == _expected, f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+
+
+def test_apply_standard_bonds_one_atom():
+
+    atom = {i.id: i for i in MANNOSE.get_atoms()}
+    atom = atom.get("C1")
+
+    bonds = gl.utils.structural.apply_standard_bonds(atom)
+    bonds = [set((i.id, j.id)) for i, j in bonds]
+
+    _recieved = len(bonds)
+    _expected = 4
+    _what = "bonds"
+    assert _recieved == _expected, f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+
+    _bond = set(("C1", "C2"))
+    _recieved = _bond in bonds
+    _expected = True
+    _what = f"for {_bond} in bonds"
+    assert _recieved == _expected, f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+
+    _bond = set(("C1", "O1"))
+    _recieved = _bond in bonds
+    _expected = True
+    _what = f"for {_bond} in bonds"
+    assert _recieved == _expected, f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+
+    _bond = set(("C1", "O5"))
+    _recieved = _bond in bonds
+    _expected = True
+    _what = f"for {_bond} in bonds"
+    assert _recieved == _expected, f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+
+
+def test_infer_bonds():
+
+    bonds = gl.utils.structural.infer_bonds(MANNOSE)
+
+    _recieved = len(bonds)
+    _expected = 24
+    _what = "bonds"
+    assert _recieved == _expected, f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+
+    bonds = [set((i.id, j.id)) for i, j in bonds]
+
+    _bond = set(("C5", "O5"))
+    _recieved = _bond in bonds
+    _expected = True
+    _what = f"for {_bond} in bonds"
+    assert _recieved == _expected, f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+
+    _bond = set(("C5", "C6"))
+    _recieved = _bond in bonds
+    _expected = True
+    _what = f"for {_bond} in bonds"
+    assert _recieved == _expected, f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+
+    _bond = set(("C5", "C4"))
+    _recieved = _bond in bonds
+    _expected = True
+    _what = f"for {_bond} in bonds"
+    assert _recieved == _expected, f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+
+    _bond = set(("C6", "O6"))
+    _recieved = _bond in bonds
+    _expected = True
+    _what = f"for {_bond} in bonds"
+    assert _recieved == _expected, f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+
+    _bond = set(("C4", "C3"))
+    _recieved = _bond in bonds
+    _expected = True
+    _what = f"for {_bond} in bonds"
+    assert _recieved == _expected, f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+
+    _bond = set(("C1", "C2"))
+    _recieved = _bond in bonds
+    _expected = True
+    _what = f"for {_bond} in bonds"
+    assert _recieved == _expected, f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+
+    _bond = set(("C3", "C4"))
+    _recieved = _bond in bonds
+    _expected = True
+    _what = f"for {_bond} in bonds"
+    assert _recieved == _expected, f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+
+    _bond = set(("C3", "O3"))
+    _recieved = _bond in bonds
+    _expected = True
+    _what = f"for {_bond} in bonds"
+    assert _recieved == _expected, f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+
+    _bond = set(("C3", "C2"))
+    _recieved = _bond in bonds
+    _expected = True
+    _what = f"for {_bond} in bonds"
+    assert _recieved == _expected, f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+
+
+def test_infer_residue_connections():
+
+    _man9 = bio.PDBParser().get_structure("MANNOSE9", base.MANNOSE9)
+    bonds = gl.utils.structural.infer_residue_connections(_man9)
+
+    connections = [set((i.get_parent()._id[1], j.get_parent()._id[1])) for i, j in bonds]
+    bonds = [set((i.id, j.id)) for i, j in bonds]
+
+    _received = len(bonds)
+    _expected = 10
+    assert _received == _expected, f"Expected {_expected} bonds, got {_received}"
+
+    _bond = set(("O4", "C1"))
+    _recieved = _bond in bonds
+    _expected = True
+    _what = f"for {_bond} in bonds"
+    assert _recieved == _expected, f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+
+    _bond = set(("O3", "C1"))
+    _recieved = _bond in bonds
+    _expected = True
+    _what = f"for {_bond} in bonds"
+    assert _recieved == _expected, f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+
+    _bond = set((2, 3))
+    _recieved = _bond in connections
+    _expected = True
+    _what = f"for {_bond} in connections"
+    assert _recieved == _expected, f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+
+    _bond = set((5, 6))
+    _recieved = _bond in connections
+    _expected = True
+    _what = f"for {_bond} in connections"
+    assert _recieved == _expected, f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+
+    _bond = set((5, 8))
+    _recieved = _bond in connections
+    _expected = True
+    _what = f"for {_bond} in connections"
+    assert _recieved == _expected, f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
