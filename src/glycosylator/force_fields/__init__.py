@@ -1,1 +1,1 @@
-from glycosylator.force_fields.charmm import CHARMMParameters, CHARMMTopology, __DEFAULT_CHARMM_TOPOLOGY__, __DEFAULT_CHARMM_PARAMETERS__
+from glycosylator.force_fields.charmm import CHARMMParameters, CHARMMTopology
