@@ -104,7 +104,7 @@ def infer_residue_connections(structure, bond_length: float = None):
 
         _seen_residues.add(residue1)
 
-    bonds = [Bond(i) for i in bonds]
+    # bonds = [Bond(i) for i in bonds]
 
     return bonds
 
@@ -135,50 +135,76 @@ def infer_bonds(structure, bond_length: float = None, restrict_residues: bool = 
         bond_length = defaults.DEFAULT_BOND_LENGTH
 
     if restrict_residues:
+        bonds = []
         for residue in structure.get_residues():
             atoms = list(residue.get_atoms())
             _neighbors = bio.NeighborSearch(atoms)
-            bonds = _neighbors.search_all(radius=bond_length)
+            bonds.extend(
+                _neighbors.search_all(radius=bond_length),
+            )
+
     else:
         atoms = list(structure.get_atoms())
         _neighbors = bio.NeighborSearch(atoms)
         bonds = _neighbors.search_all(radius=bond_length)
 
-    # convert to Bond-tuples
-    bonds = [Bond(i) for i in bonds]
+    # # convert to Bond-tuples
+    # bonds = [Bond(i) for i in bonds]
 
     return bonds
 
 
 def apply_standard_bonds(structure, _topology=None):
     """
-    Apply bonds according to loaded standard topologies.
+    Apply bonds according to loaded standard topologies. This will compute a list of tuples with bonded
+    atoms from the same residue. It will not infer residue-residue connections! It is possible to provide a single
+    atom as input structure, in which case all bonds that involve said atom are returned.
 
     Parameters
     ----------
-    structure : Bio.PDB.Structure.Structure
-        The structure to apply the bonds to. This can be any of the following objects which host Residues:
+    structure
+        The structure to apply the bonds to. This can be any of the following objects which hosts Atoms:
         - `Bio.PDB.Structure`
         - `Bio.PDB.Model`
         - `Bio.PDB.Chain`
         - `Bio.PDB.Residue`
+        - `Bio.PDB.Atom`
 
     _topology : Topology
         The topology to use for applying the bonds.
+
+    Returns
+    -------
+    bonds : list
+        A list of tuples of Atoms that are bonded.
     """
+    if structure.level == "R":
+        residue = structure
 
-    if _topology is None:
-        _topology = defaults.get_default_topology()
-
-    for residue in structure.get_residues():
+        if _topology is None:
+            _topology = defaults.get_default_topology()
 
         if not _topology.has_residue(residue.resname):
             warnings.warn(f"[ignoring] No abstract residue found in Topology for {residue.resname}!")
-            continue
+            return
 
-        raise NotImplementedError
+        atoms = residue.child_dict
+        abstract_residue = _topology.get_residue(residue.resname)
+        bonds = [(atoms.get(bond.atom1.id), atoms.get(bond.atom2.id)) for bond in abstract_residue.bonds]
+        bonds = [bond for bond in bonds if bond[0] and bond[1]] # make sure to have no None entries...
+        return bonds
 
-        pass
+    elif structure.level == "A":
+        residue = structure.get_parent()
+        bonds = apply_standard_bonds(residue, _topology)
+        bonds = [bond for bond in bonds if bond[0].id == structure.id or bond[1].id == structure.id]
+        return bonds
+
+    else:
+        bonds = []
+        for residue in structure.get_residues():
+            bonds.extend(apply_standard_bonds(residue, _topology))
+        return bonds
 
 
 def fill_missing_atoms(structure, _topology=None):
@@ -490,9 +516,9 @@ if __name__ == '__main__':
 
         assert _man.child_dict.get(to_delete) is not None, "Atom was not added again!"
 
-        io = bio.PDBIO()
-        io.set_structure(_man)
-        io.save("test.pdb")
+        # io = bio.PDBIO()
+        # io.set_structure(_man)
+        # io.save("test.pdb")
 
         new_coords = _man.child_dict.get(to_delete).coord
 
