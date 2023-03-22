@@ -7,7 +7,7 @@ import pickle
 
 import re
 import warnings
-import glycosylator.utils.abstracts as abstracts
+import glycosylator.utils.abstract as abstracts
 
 # ===================================================================
 # Base Parser
@@ -460,7 +460,7 @@ class CHARMMTopology(CHARMMParser):
             for ic in residue.internal_coordinates:
                 if not ic.improper and residue.get_bond(ic.atom1, ic.atom3):
                     ic.improper = True
-                    # Actually a bad idea to do this, 
+                    # Actually a bad idea to do this,
                     # because the file still stores 1-2 lengths instead of 1-3 lengths!
                     # if not ic.bond_length_13:
                     #     ic.bond_length_13 = ic.bond_length_12

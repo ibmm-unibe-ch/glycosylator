@@ -3,7 +3,7 @@ import numpy as np
 import mdtraj as md
 import Bio.PDB as bio
 
-import glycosylator.utils as utils
+import glycosylator.utils.structural as struct
 from glycosylator.graphs.BaseGraph import BaseGraph
 import glycosylator.graphs.AtomGraph as AtomGraph
 
@@ -37,7 +37,7 @@ class ResidueGraph(BaseGraph):
         id = atom_graph.id
         # we first get all the atom-resolution bonds between different residues,
         # then we get the participating parents (e.g. residues) and make the edges from them.
-        bonds = utils.infer_residue_connections(atom_graph.structure)
+        bonds = struct.infer_residue_connections(atom_graph.structure)
         _bonds = [(p1.get_parent(), p2.get_parent()) for p1, p2 in bonds]
         new = cls(id, _bonds)
         new._AtomGraph = atom_graph
