@@ -30,7 +30,7 @@ class AtomGraph(BaseGraph):
         id : str
             The ID of the molecule. By default the filename is used.
         apply_standard_bonds : bool
-            Whether to apply standard bonds from known molecule connectivities.
+            Whether to apply standard bonds from known molecule connectivity.
         infer_bonds : bool
             Whether to infer bonds from the distance between atoms.
         max_bond_length : float
@@ -61,8 +61,8 @@ class AtomGraph(BaseGraph):
 
 
 if __name__ == '__main__':
-    _man = "support/examples/MAN.pdb"
-    man = AtomGraph.from_pdb(_man, apply_standard_bonds=False, infer_bonds=True)
+    _man = "support/examples/man9.pdb"
+    man = AtomGraph.from_pdb(_man, apply_standard_bonds=True, infer_bonds=False)
 
     import sys
 
