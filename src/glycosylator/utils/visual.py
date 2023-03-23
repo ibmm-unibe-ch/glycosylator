@@ -17,6 +17,10 @@ class MoleculeViewer3D:
         "N": "blue",
         "S": "yellow",
         "P": "purple",
+        "F": "green",
+        "Cl": "green",
+        "Br": "green",
+        "I": "green",
     }
 
     def __init__(self, molecule, bonds=None):
@@ -32,7 +36,7 @@ class MoleculeViewer3D:
 
     def highlight(self, ids):
         """
-        Highlight a set of atoms from their ids to draw them at full opacity.
+        Highlight a set of atoms or residues from their ids to draw them at full opacity.
 
         Parameters
         ----------
@@ -182,12 +186,12 @@ class MoleculeViewer3D:
 
     @staticmethod
     def _get_atoms(obj):
-        if hasattr(obj, 'atoms'):
+        if hasattr(obj, "nodes"):
+            return obj.nodes
+        elif hasattr(obj, 'atoms'):
             return obj.atoms
         elif hasattr(obj, "get_atoms"):
             return obj.get_atoms()
-        elif hasattr(obj, "nodes"):
-            return obj.nodes
         elif isinstance(obj, (tuple, list, np.ndarray)):
             return obj
         else:
@@ -195,12 +199,12 @@ class MoleculeViewer3D:
 
     @staticmethod
     def _get_bonds(obj):
-        if hasattr(obj, 'bonds'):
+        if hasattr(obj, "edges"):
+            return obj.edges
+        elif hasattr(obj, 'bonds'):
             return obj.bonds
         elif hasattr(obj, "get_bonds"):
             return obj.get_bonds()
-        elif hasattr(obj, "edges"):
-            return obj.edges
         elif isinstance(obj, (tuple, list, np.ndarray)):
             return obj
         else:
