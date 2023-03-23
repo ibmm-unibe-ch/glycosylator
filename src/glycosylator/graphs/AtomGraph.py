@@ -12,15 +12,7 @@ class AtomGraph(BaseGraph):
     """
 
     @classmethod
-    def from_pdb(
-        cls,
-        filename: str,
-        id=None,
-        apply_standard_bonds: bool = True,
-        infer_bonds: bool = False,
-        max_bond_length: float = None,
-        restrict_residues: bool = True,
-    ):
+    def from_pdb(cls, filename: str, id=None, apply_standard_bonds: bool = True, infer_residue_connections: bool = True, infer_bonds: bool = False, max_bond_length: float = None, restrict_residues: bool = True, _topology=None):
         """
         Create an AtomGraph from a PDB of a single molecule
 
@@ -32,12 +24,20 @@ class AtomGraph(BaseGraph):
             The ID of the molecule. By default the filename is used.
         apply_standard_bonds : bool
             Whether to apply standard bonds from known molecule connectivity.
+        infer_residue_connections: bool
+            Whether to infer residue connecting bonds based on atom distances.
         infer_bonds : bool
-            Whether to infer bonds from the distance between atoms.
+            Whether to infer bonds from the distance between atoms. If this is set
+            to True, standard bonds cannot be also applied, and are therefore ignored.
         max_bond_length : float
             The maximum distance between atoms to infer a bond.
+            If none is given, a default bond length is assumed.
         restrict_residues : bool
             Whether to restrict to atoms of the same residue when inferring bonds.
+            If set to False, this will also infer residue connecting bonds.
+        _topology
+            A specific reference topology to use when re-constructing any missing parts.
+            By default the default CHARMM topology is used.
 
         Returns
         -------
@@ -48,22 +48,65 @@ class AtomGraph(BaseGraph):
 
         # load PDB
         structure = struct.defaults.__bioPDBParser__.get_structure(id, filename)
-        structure = structure[0].child_list[0]
+        return cls.from_biopython(structure, apply_standard_bonds, infer_residue_connections, infer_bonds, max_bond_length, restrict_residues, _topology)
 
+    @classmethod
+    def from_biopython(cls, structure, apply_standard_bonds: bool = True, infer_residue_connections: bool = True, infer_bonds: bool = False, max_bond_length: float = None, restrict_residues: bool = True, _topology=None):
+        """
+        Create an AtomGraph from a biopython structure
+
+        Parameters
+        ----------
+        structure
+            The biopython structure. This can be any biopython object that houses atoms.
+        infer_residue_connections: bool
+            Whether to infer residue connecting bonds based on atom distances.
+        infer_bonds : bool
+            Whether to infer bonds from the distance between atoms. If this is set
+            to True, standard bonds cannot be also applied!
+        max_bond_length : float
+            The maximum distance between atoms to infer a bond.
+            If none is given, a default bond length is assumed.
+        restrict_residues : bool
+            Whether to restrict to atoms of the same residue when inferring bonds.
+            If set to False, this will also infer residue connecting bonds.
+        _topology
+            A specific reference topology to use when re-constructing any missing parts.
+            By default the default CHARMM topology is used.
+        Returns
+        -------
+        AtomGraph
+            The AtomGraph representation of the molecule
+        """
+        while structure.level != "S":
+            structure = structure.get_parent()
+
+        bonds = cls._make_bonds(structure, apply_standard_bonds, infer_residue_connections, infer_bonds, max_bond_length, restrict_residues)
+        return cls(structure.id, bonds)
+
+    @staticmethod
+    def _make_bonds(structure, apply_standard_bonds: bool, infer_residue_connections: bool, infer_bonds: bool, max_bond_length: float, restrict_residues: bool) -> list:
+        """
+        Make bond tuples from a structure
+        """
         bonds = []
-        if apply_standard_bonds and infer_bonds:
-            raise ValueError("Cannot apply standard bonds and infer bonds at the same time.")
-        elif apply_standard_bonds:
-            bonds.extend(struct.apply_standard_bonds(structure))
-        elif infer_bonds:
+        if infer_bonds:
+            apply_standard_bonds = False
+            infer_residue_connections = infer_residue_connections and not restrict_residues
             bonds.extend(struct.infer_bonds(structure, max_bond_length, restrict_residues))
 
-        return cls(id, bonds)
+        if apply_standard_bonds:
+            bonds.extend(struct.apply_standard_bonds(structure))
+
+        if infer_residue_connections:
+            bonds.extend(struct.infer_residue_connections(structure, max_bond_length))
+
+        return bonds
 
 
 if __name__ == '__main__':
     _man = "support/examples/man9.pdb"
-    man = AtomGraph.from_pdb(_man, apply_standard_bonds=True, infer_bonds=False)
+    man = AtomGraph.from_pdb(_man)
 
     import sys
 
