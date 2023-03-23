@@ -2,8 +2,10 @@
 Auxiliary functions related to structure handling
 """
 
+from collections import defaultdict
 import os
 import pickle
+from typing import Union
 import warnings
 
 import numpy as np
@@ -19,40 +21,181 @@ import glycosylator.utils.constants as constants
 # =================================================================
 
 
-class Bond(tuple):
+class AtomNeighborhood:
     """
-    A bond between two atoms
+    This class handles the bond connectivity neighborhood of atoms in a structure
+    and can be used to obtain bonded atom triplets.
+
+    Parameters
+    ----------
+    graph
+        An AtomGraph
     """
 
-    def __new__(cls, atom1, atom2):
-        return super(Bond, cls).__new__(cls, (atom1, atom2))
-
-    def __init__(self, atom1, atom2):
-        super().__init__()
-        self._frozen = False
+    def __init__(self, graph):
+        self._src = graph
+        self._make_atom_dict()
 
     @property
-    def is_frozen(self):
-        return self._frozen
+    def atoms(self):
+        """
+        Returns the atoms in the structure
+        """
+        return self._src.atoms
 
-    @is_frozen.setter
-    def is_frozen(self, value):
-        self._frozen = value
+    @property
+    def bonds(self):
+        """
+        Returns the bonds in the structure
+        """
+        return self._src.bonds
 
-    def freeze(self):
-        self._frozen = True
+    def get_neighbors(self, atom, n: int = 1, mode: str = "upto"):
+        """
+        Get the neighbors of an atom
 
-    def unfreeze(self):
-        self._frozen = False
+        Parameters
+        ----------
+        atom : int or str or Bio.PDB.Atom
+            The serial number or the id of the atom, or the atom itself.
+        n : int
+            The (maximal) number of bonds that should
+            separate the target from the neighbors.
+        mode : str
+            The mode of the neighbor search. Can be either
+            "upto" or "at". If "upto", this will get all
+            neighbors that are n bonds away from the target or closer.
+            If "at", this will get all neighbors that are exactly n bonds
+            away from the target.
 
-    def __hash__(self):
-        return hash(tuple(sorted(self)))
+        Returns
+        -------
+        neighbors : set
+            The neighbors of the atom
+        """
+        if not isinstance(atom, bio.Atom.Atom):
+            atom = self.get_atom(atom)
 
-    def __eq__(self, other):
-        return set(self) == set(other)
+        if isinstance(atom, list):
+            return [self.get_neighbors(a, n, mode) for a in atom]
 
-    def __repr__(self):
-        return f"Bond({self[0]}, {self[1]}, frozen={self.is_frozen})"
+        self._seen = set()
+        if mode == "upto":
+            return self._get_neighbors_upto(atom, n) - {atom}
+        elif mode == "at":
+            return self._get_neighbors_at(atom, n) - {atom}
+        else:
+            raise ValueError(f"Invalid mode: {mode}")
+
+    def get_atom(self, atom: Union[int, str]):
+        """
+        Get an atom from its id or serial number
+        """
+        if isinstance(atom, int):
+            atom = self._idx_atoms.get(atom)
+        elif isinstance(atom, str):
+            atom = self._ids_atoms.get(atom)
+            if atom and len(atom) > 1:
+                warnings.warn(f"Multiple atoms with id {atom} found. Returning the full list!")
+            else:
+                atom = atom[0]
+        else:
+            raise TypeError(f"Invalid atom type: {type(atom)}")
+        return atom
+
+    def _make_atom_dict(self):
+        """
+        Make a dictionary of atoms mapped to their serial number and ids
+        """
+        self._idx_atoms = {}
+        self._ids_atoms = defaultdict(list)
+
+        for bond in self.bonds:
+            atom1, atom2 = bond
+
+            self._idx_atoms.setdefault(atom1.serial_number, atom1)
+            self._idx_atoms.setdefault(atom2.serial_number, atom2)
+
+            if atom1 not in self._ids_atoms[atom1.id]:
+                self._ids_atoms[atom1.id].append(atom1)
+            if atom2 not in self._ids_atoms[atom2.id]:
+                self._ids_atoms[atom2.id].append(atom2)
+
+    def _get_neighbors_upto(self, atom, n: int):
+        """
+        Get all neighbors of an atom that are n bonds away from the target or closer
+        """
+        if n == 0:
+            return {atom}
+        else:
+            neighbors = set()
+            for neighbor in self._src.adj[atom]:
+                if neighbor in self._seen:
+                    continue
+                if n >= 1:
+                    neighbors.update(self._get_neighbors_upto(neighbor, n - 1))
+                neighbors.add(neighbor)
+                self._seen.add(neighbor)
+            return neighbors
+
+    def _get_neighbors_at(self, atom, n: int):
+        """
+        Get all neighbors of an atom that are exactly n bonds away from the target
+        """
+        # if n == 0:
+        #     return {atom}
+        # else:
+        #     # that one is pretty expensive, but well, it works...
+        #     _closer = self._get_neighbors_upto(atom, n - 1)
+        #     _farther = self._get_neighbors_upto(atom, n)
+        #     return _farther.difference(_closer)
+        if n == 0:
+            return {atom}
+        else:
+            neighbors = set()
+            for neighbor in self._src.adj[atom]:
+                if neighbor in self._seen:
+                    continue
+                if n >= 1:
+                    neighbors.update(self._get_neighbors_upto(neighbor, n - 1))
+                self._seen.add(neighbor)
+            return neighbors
+
+
+# class Bond(tuple):
+#     """
+#     A bond between two atoms
+#     """
+
+#     def __new__(cls, atom1, atom2):
+#         return super(Bond, cls).__new__(cls, (atom1, atom2))
+
+#     def __init__(self, atom1, atom2):
+#         super().__init__()
+#         self._frozen = False
+
+#     @property
+#     def is_frozen(self):
+#         return self._frozen
+
+#     @is_frozen.setter
+#     def is_frozen(self, value):
+#         self._frozen = value
+
+#     def freeze(self):
+#         self._frozen = True
+
+#     def unfreeze(self):
+#         self._frozen = False
+
+#     def __hash__(self):
+#         return hash(tuple(sorted(self)))
+
+#     def __eq__(self, other):
+#         return set(self) == set(other)
+
+#     def __repr__(self):
+#         return f"Bond({self[0]}, {self[1]}, frozen={self.is_frozen})"
 
 
 # =================================================================
@@ -191,7 +334,7 @@ def apply_standard_bonds(structure, _topology=None):
         atoms = residue.child_dict
         abstract_residue = _topology.get_residue(residue.resname)
         bonds = [(atoms.get(bond.atom1.id), atoms.get(bond.atom2.id)) for bond in abstract_residue.bonds]
-        bonds = [bond for bond in bonds if bond[0] and bond[1]] # make sure to have no None entries...
+        bonds = [bond for bond in bonds if bond[0] and bond[1]]  # make sure to have no None entries...
         return bonds
 
     elif structure.level == "A":
@@ -405,6 +548,70 @@ def compute_atom4_from_others(coords1, coords2, coords3, ic):
         )
 
 
+def center_of_gravity(masses, coords):
+    """
+    Compute the center of gravity of a molecule.
+
+    Parameters
+    ----------
+    masses : array-like
+        The masses of the atoms as an nx1 vector
+    coords : array-like
+        The coordinates of the atoms as an nx3 array
+
+    Returns
+    -------
+    cog : array-like
+        The center of gravity
+    """
+    return np.average(coords, axis=0, weights=masses)
+
+
+def compute_angle(atom1, atom2, atom3):
+    """
+    Compute the angle between three atoms.
+
+    Parameters
+    ----------
+    atom1 : Bio.PDB.Atom
+        The first atom
+    atom2 : Bio.PDB.Atom
+        The second atom
+    atom3 : Bio.PDB.Atom
+        The third atom
+
+    Returns
+    -------
+    angle : float
+        The angle between the three atoms in degrees
+    """
+    a = atom1.coord - atom2.coord
+    b = atom3.coord - atom2.coord
+    return np.degrees(np.arccos(np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))))
+
+
+def compute_atom_connectivity(bonds: list):
+    """
+    Compute the direct neighborhood of each atom in a molecule.
+    This will compute all
+
+    Parameters
+    ----------
+    bonds : list
+        A list of bonds
+
+    Returns
+    -------
+    neighborhood : dict
+        A dictionary of the neighborhood of each atom
+    """
+    neighborhood = defaultdict(set)
+    for bond in bonds:
+        neighborhood[bond.atom1].add(bond.atom2)
+        neighborhood[bond.atom2].add(bond.atom1)
+    return neighborhood
+
+
 @numba.njit
 def _rotation_matrix(axis, angle):
     """
@@ -488,39 +695,11 @@ def _IC_to_xyz(a, b, c, anchor, r, theta, dihedral):
 
 if __name__ == '__main__':
 
-    from copy import deepcopy
-
-    to_deletes = {'H2', 'H3', 'H4', 'H5', 'H61', 'H62'}
-
     MANNOSE = bio.PDBParser().get_structure("MAN", "./support/examples/MAN.pdb")
 
-    for to_delete in to_deletes:
+    from glycosylator.graphs import AtomGraph
 
-        _man = MANNOSE.copy()
-        _man = next(_man.get_residues())
-        top = deepcopy(defaults.get_default_topology())
-        abstract = top.get_residue(_man.resname)
-        for idx, i in enumerate(abstract.internal_coordinates):
-            if i.is_proper:
-                del abstract.internal_coordinates[idx]
+    nei = AtomNeighborhood(AtomGraph.from_biopython(MANNOSE))
 
-        true_coords = _man.child_dict.get(to_delete)
-        assert true_coords is not None, f"No atom {to_delete} found!"
-
-        true_coords = true_coords.coord
-
-        _man.detach_child(to_delete)
-        assert _man.child_dict.get(to_delete) is None, "Atom was not deleted!"
-
-        fill_missing_atoms(_man, top)
-
-        assert _man.child_dict.get(to_delete) is not None, "Atom was not added again!"
-
-        # io = bio.PDBIO()
-        # io.set_structure(_man)
-        # io.save("test.pdb")
-
-        new_coords = _man.child_dict.get(to_delete).coord
-
-        _diff = np.sum(np.abs(new_coords - true_coords))
-        assert _diff < 1, f"[{to_delete}] Difference in coordinates is {new_coords - true_coords} ({_diff=})"
+    n2 = nei.get_neighbors("C1", 2)
+    print(n2)

@@ -49,7 +49,7 @@ def test_atom_graph_pdb_multi_residue_is_non_empty():
     _received = len(list(mol.bonds))
     assert _received > 0, f"Expected to find bonds, got {_received}"
 
-    _received = len(list(mol.nodes))
+    _received = len(list(mol.atoms))
     _expected = 246
     assert _received == _expected, f"Expected {_expected} atoms, got {_received}"
 
