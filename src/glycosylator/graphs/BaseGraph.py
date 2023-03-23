@@ -40,7 +40,7 @@ class BaseGraph(nx.Graph):
         """
         Returns the bonds in the molecule
         """
-        return list(self.edges)
+        return list(self.edges)       
 
     def to_pdb(self, filename: str):
         """
@@ -68,6 +68,8 @@ class BaseGraph(nx.Graph):
         """
         Get the underlying `bio.PDB.Structure` object
         """
+        if not hasattr(list(self.nodes)[0], "get_parent"):
+            raise ValueError("Nodes are not Biopython entities with linked parents!")
         structure = list(self.nodes)[0].get_parent()
         while not isinstance(structure, bio.Structure.Structure):
             structure = structure.get_parent()
