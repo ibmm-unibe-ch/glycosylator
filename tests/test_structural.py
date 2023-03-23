@@ -200,6 +200,32 @@ def test_missing_multiple_random_atoms_galactose():
         assert _diff < MARGIN, f"[{i}] Difference in coordinates is {_diff=}"
 
 
+def test_missing_multiple_random_atoms_mannose9():
+
+    _man = bio.PDBParser().get_structure("MAN9", base.MANNOSE9)
+
+    atoms = list(_man.get_atoms())
+    to_delete = np.random.choice(atoms, 15, replace=False)
+
+    true_coords = [None] * len(to_delete)
+    parents = [i.get_parent() for i in to_delete]
+    for idx, i in enumerate(to_delete):
+        parent = i.get_parent()
+        true_coords[idx] = i.coord
+        parent.detach_child(i.id)
+
+    gl.utils.structural.fill_missing_atoms(_man)
+
+    for i, true_coord, parent in zip(to_delete, true_coords, parents):
+
+        assert parent.child_dict.get(i.id) is not None, f"Atom {i} was not added again!"
+
+        new_coords = i.coord
+
+        _diff = np.sum(np.abs(new_coords - true_coord))
+        assert _diff < MARGIN, f"[{i}] Difference in coordinates is {_diff=}"
+
+
 def test_apply_standard_bonds():
 
     bonds = gl.utils.structural.apply_standard_bonds(MANNOSE)
@@ -404,4 +430,51 @@ def test_infer_residue_connections():
     _recieved = _bond in connections
     _expected = True
     _what = f"for {_bond} in connections"
+    assert _recieved == _expected, f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+
+
+def test_neighborhood_basic():
+
+    mannose = gl.graphs.AtomGraph.from_biopython(MANNOSE)
+
+    _recieved = len(mannose.bonds)
+    _expected = 24
+    _what = "bonds"
+    assert _recieved == _expected, f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+
+    neighborhood = gl.utils.structural.AtomNeighborhood(mannose)
+    assert neighborhood is not None, "No neighborhood object is made..."
+
+    _recieved = len(neighborhood.atoms)
+    _expected = 24
+    _what = "atoms"
+    assert _recieved == _expected, f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+
+    a = neighborhood.get_atom(1)
+    assert a is not None
+
+    a = neighborhood.get_atom("C1")
+    assert a is not None
+    assert not isinstance(a, list), "we get a list of C1s although there is only 1"
+
+
+def test_neighborhood_get():
+
+    mannose = gl.graphs.AtomGraph.from_biopython(MANNOSE)
+    neighborhood = gl.utils.structural.AtomNeighborhood(mannose)
+
+    _recieved = set(i.id for i in neighborhood.get_neighbors("C1"))
+    _expected = {"H1", "C2", "O1", "O5"}
+    _what = "as n=1 neighbors of C1"
+    assert _recieved == _expected, f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+
+    _recieved = set(i.id for i in neighborhood.get_neighbors("C1", 2))
+    _n2 = {"HO1", "H2", "O2", "C3", "C5"}
+    _expected.update(_n2)
+    _what = "as n<=2 neighbors of C1"
+    assert _recieved == _expected, f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+
+    _recieved = set(i.id for i in neighborhood.get_neighbors("C1", 2, mode="at"))
+    _expected = _n2
+    _what = "as n==2 neighbors of C1"
     assert _recieved == _expected, f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"

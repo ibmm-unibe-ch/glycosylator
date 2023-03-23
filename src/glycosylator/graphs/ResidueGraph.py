@@ -150,6 +150,17 @@ class ResidueGraph(BaseGraph):
             bond = self._atomic_bonds.get((residue2, residue1))
         return bond
 
+    def centers_of_gravity(self):
+        """
+        Get the centers of gravity of the residues in the molecule.
+
+        Returns
+        -------
+        dict
+            The centers of gravity of the residues in the molecule
+        """
+        return {residue.id: residue.center_of_mass() for residue in self.residues}
+
 
 if __name__ == '__main__':
 
