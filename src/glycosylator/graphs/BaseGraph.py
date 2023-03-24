@@ -2,11 +2,10 @@
 The basic Class for Molecular Graphs
 """
 
-from typing import Union
+from abc import abstractmethod
+
 import Bio.PDB as bio
 import networkx as nx
-
-import glycosylator.utils.structural as structural
 
 
 class BaseGraph(nx.Graph):
@@ -70,30 +69,30 @@ class BaseGraph(nx.Graph):
         io.set_structure(structure)
         io.save(filename)
 
-    def get_neighbors(self, atom: Union[int, str, bio.Atom.Atom], n: int = 1, mode="upto"):
+    @abstractmethod
+    def get_neighbors(self, node, n: int = 1, mode="upto"):
         """
-        Get the neighbors of an atom
+        Get the neighbors of a node
 
         Parameters
         ----------
-        atom : int, str, bio.Atom.Atom
-            The atom
+        node
+            The target node
+
         n : int, optional
-            The number of bonds to separate the atom from its neighbors.
+            The number of edges to separate the node from its neighbors.
 
         mode : str, optional
             The mode to use for getting the neighbors, by default "upto"
-            - "upto": get all neighbors up to a distance of `n` bonds
-            - "exact": get all neighbors exactly `n` bonds away
+            - "upto": get all neighbors up to a distance of `n` edges
+            - "exact": get all neighbors exactly `n` edges away
 
         Returns
         -------
         set
-            The neighbors of the atom
+            The neighbors of the node
         """
-        if not self._neighborhood:
-            self._neighborhood = structural.AtomNeighborhood(self)
-        return self._neighborhood.get_neighbors(atom, n, mode)
+        raise NotImplementedError
 
     def _get_structure(self):
         """

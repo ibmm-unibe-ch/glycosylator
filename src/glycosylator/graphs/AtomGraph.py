@@ -1,3 +1,4 @@
+from typing import Union
 import networkx as nx
 import Bio.PDB as bio
 
@@ -83,6 +84,31 @@ class AtomGraph(BaseGraph):
 
         bonds = cls._make_bonds(structure, apply_standard_bonds, infer_residue_connections, infer_bonds, max_bond_length, restrict_residues)
         return cls(structure.id, bonds)
+
+    def get_neighbors(self, atom: Union[int, str, bio.Atom.Atom], n: int = 1, mode="upto"):
+        """
+        Get the neighbors of a node
+
+        Parameters
+        ----------
+        atom : int, str, bio.Atom.Atom
+            The atom
+        n : int, optional
+            The number of bonds to separate the atom from its neighbors.
+
+        mode : str, optional
+            The mode to use for getting the neighbors, by default "upto"
+            - "upto": get all neighbors up to a distance of `n` bonds
+            - "exact": get all neighbors exactly `n` bonds away
+
+        Returns
+        -------
+        set
+            The neighbors of the atom
+        """
+        if not self._neighborhood:
+            self._neighborhood = struct.AtomNeighborhood(self)
+        return self._neighborhood.get_neighbors(atom, n, mode)
 
     @staticmethod
     def _make_bonds(structure, apply_standard_bonds: bool, infer_residue_connections: bool, infer_bonds: bool, max_bond_length: float, restrict_residues: bool) -> list:

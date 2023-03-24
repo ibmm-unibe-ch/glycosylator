@@ -433,7 +433,7 @@ def test_infer_residue_connections():
     assert _recieved == _expected, f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
 
 
-def test_neighborhood_basic():
+def test_atom_neighborhood_basic():
 
     mannose = gl.graphs.AtomGraph.from_biopython(MANNOSE)
 
@@ -458,7 +458,7 @@ def test_neighborhood_basic():
     assert not isinstance(a, list), "we get a list of C1s although there is only 1"
 
 
-def test_neighborhood_get():
+def test_atom_neighborhood_get():
 
     mannose = gl.graphs.AtomGraph.from_biopython(MANNOSE)
     neighborhood = gl.utils.structural.AtomNeighborhood(mannose)
@@ -477,4 +477,76 @@ def test_neighborhood_get():
     _recieved = set(i.id for i in neighborhood.get_neighbors("C1", 2, mode="at"))
     _expected = _n2
     _what = "as n==2 neighbors of C1"
+    assert _recieved == _expected, f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+
+
+def test_residue_neighborhood_basic():
+
+    mannose = gl.graphs.ResidueGraph.from_pdb(base.MANNOSE9)
+
+    neighborhood = gl.utils.structural.ResidueNeighborhood(mannose)
+    assert neighborhood is not None, "No neighborhood object is made..."
+
+    _recieved = len(neighborhood.residues)
+    _expected = 11
+    _what = "residues"
+    assert _recieved == _expected, f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+
+    a = neighborhood.get_residue(2)  # first residue is labelled as NAG (resseq=2)
+    assert a is not None
+
+    a = neighborhood.get_residue("MAN")
+    assert a is not None
+    assert isinstance(a, list), "we expect a list of MANs!"
+
+    a = neighborhood.get_residue("BMA")
+    assert a is not None
+    assert not isinstance(a, list), "we expect a single residue of BMA since there is only one!"
+
+
+def test_residue_neighborhood_get():
+
+    mannose = gl.graphs.ResidueGraph.from_pdb(base.MANNOSE9)
+
+    neighborhood = gl.utils.structural.ResidueNeighborhood(mannose)
+    assert neighborhood is not None, "No neighborhood object is made..."
+
+    neigs = neighborhood.get_neighbors("C1")
+    assert isinstance(neigs, set), f"Expected a set but received {type(neigs)}"
+
+    _received = len(neigs)
+    _expected = 0
+    assert _received == _expected, f"Expected {_expected} neighbors, got {_received}"
+
+    neigs = neighborhood.get_neighbors("MAN")
+    assert isinstance(neigs, list), f"Expected a list but received {type(neigs)}"
+
+    _received = len(neigs)
+    _expected = 8
+    assert _received == _expected, f"Expected {_expected} neighbors, got {_received}"
+
+    neigs = neighborhood.get_neighbors("BMA")
+    assert isinstance(neigs, set), f"Expected a set but received {type(neigs)}"
+
+    _received = len(neigs)
+    _expected = 3
+    assert _received == _expected, f"Expected {_expected} neighbors, got {_received}"
+
+    neigs = neighborhood.get_neighbors("BMA", 2)
+    assert isinstance(neigs, set), f"Expected a set but received {type(neigs)}"
+
+    _received = len(neigs)
+    _expected = 7
+    assert _received == _expected, f"Expected {_expected} neighbors, got {_received}"
+
+    neigs = neighborhood.get_neighbors("BMA", 2, "at")
+    assert isinstance(neigs, set), f"Expected a set but received {type(neigs)}"
+
+    _received = len(neigs)
+    _expected = 4
+    assert _received == _expected, f"Expected {_expected} neighbors, got {_received}"
+
+    _recieved = set(i.id[1] for i in neighborhood.get_neighbors("BMA", 2, "at"))
+    _expected = {8, 6, 2, 11}
+    _what = "as n=2 neighbors of BMA"
     assert _recieved == _expected, f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"

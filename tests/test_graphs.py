@@ -12,17 +12,11 @@ import base
 
 
 def test_atom_graph_pdb_one_residue_is_made():
-    """
-    Test the initialisation of the AtomGraph object using a pdb file
-    """
     mol = gl.graphs.AtomGraph.from_pdb(base.MANNOSE)
     assert mol is not None, "No molecule is made"
 
 
-def test_atom_graph_pdb_one_residue_is_correct():
-    """
-    Test the initialisation of the AtomGraph object using a pdb file
-    """
+def test_atom_graph_pdb_one_residue_is_non_empty():
     mol = gl.graphs.AtomGraph.from_pdb(base.MANNOSE)
     _received = len(list(mol.bonds))
     _expected = 24
@@ -34,17 +28,11 @@ def test_atom_graph_pdb_one_residue_is_correct():
 
 
 def test_atom_graph_pdb_multi_residue_is_made():
-    """
-    Test the initialisation of the AtomGraph object using a pdb file
-    """
     mol = gl.graphs.AtomGraph.from_pdb(base.MANNOSE9)
     assert mol is not None, "No molecule is made"
 
 
 def test_atom_graph_pdb_multi_residue_is_non_empty():
-    """
-    Test the initialisation of the AtomGraph object using a pdb file
-    """
     mol = gl.graphs.AtomGraph.from_pdb(base.MANNOSE9)
     _received = len(list(mol.bonds))
     assert _received > 0, f"Expected to find bonds, got {_received}"
@@ -54,23 +42,39 @@ def test_atom_graph_pdb_multi_residue_is_non_empty():
     assert _received == _expected, f"Expected {_expected} atoms, got {_received}"
 
 
+def test_atom_graph_one_residue_get_neighbors():
+    mol = gl.graphs.AtomGraph.from_pdb(base.MANNOSE)
+
+    neigs = mol.get_neighbors("C1")
+    assert isinstance(neigs, set), f"Expected a set but received {type(neigs)}"
+
+    _received = len(neigs)
+    _expected = 4
+    assert _received == _expected, f"Expected {_expected} neighbors, got {_received}"
+
+
+def test_atom_graph_multi_residue_get_neighbors():
+    mol = gl.graphs.AtomGraph.from_pdb(base.MANNOSE9)
+
+    neigs = mol.get_neighbors("C1")
+    assert isinstance(neigs, list), f"Expected a list but received {type(neigs)}"
+
+    _received = len(neigs)
+    _expected = 11
+    assert _received == _expected, f"Expected {_expected} neighbors, got {_received}"
+
+
 # =================================================================
 # ResidueGraph tests
 # =================================================================
 
 
 def test_residue_graph_pdb_is_made():
-    """
-    Test the initialisation of the ResidueGraph object using a pdb file
-    """
     mol = gl.graphs.ResidueGraph.from_pdb(base.MANNOSE9)
     assert mol is not None, "No molecule is made"
 
 
-def test_residue_graph_pdb_is_correct():
-    """
-    Test the initialisation of the ResidueGraph object using a pdb file
-    """
+def test_residue_graph_pdb_is_non_empty():
     mol = gl.graphs.ResidueGraph.from_pdb(base.MANNOSE9)
     _received = len(list(mol.bonds))
     _expected = 10
@@ -82,19 +86,13 @@ def test_residue_graph_pdb_is_correct():
 
 
 def test_residue_graph_atomgraph_is_made():
-    """
-    Test the initialisation of the ResidueGraph object using an AtomGraph object
-    """
     mol = gl.graphs.AtomGraph.from_pdb(base.MANNOSE9)
     mol1 = gl.graphs.ResidueGraph.from_AtomGraph(mol)
     assert mol1 is not None, "No molecule is made"
     assert mol1.to_AtomGraph() == mol, "No link to AtomGraph is made"
 
 
-def test_residue_graph_atomgraph_is_correct():
-    """
-    Test the initialisation of the ResidueGraph object using an AtomGraph object
-    """
+def test_residue_graph_atomgraph_is_non_empty():
     mol = gl.graphs.AtomGraph.from_pdb(base.MANNOSE9)
     mol = gl.graphs.ResidueGraph.from_AtomGraph(mol)
 
@@ -105,3 +103,42 @@ def test_residue_graph_atomgraph_is_correct():
     _received = len(list(mol.nodes))
     _expected = 11
     assert _received == _expected, f"Expected {_expected} residues, got {_received}"
+
+
+def test_residue_graph_multi_residue_get_neighbors():
+    mol = gl.graphs.ResidueGraph.from_pdb(base.MANNOSE9)
+
+    neigs = mol.get_neighbors("C1")
+    assert isinstance(neigs, set), f"Expected a set but received {type(neigs)}"
+
+    _received = len(neigs)
+    _expected = 0
+    assert _received == _expected, f"Expected {_expected} neighbors, got {_received}"
+
+    neigs = mol.get_neighbors("MAN")
+    assert isinstance(neigs, list), f"Expected a list but received {type(neigs)}"
+
+    _received = len(neigs)
+    _expected = 8
+    assert _received == _expected, f"Expected {_expected} neighbors, got {_received}"
+
+    neigs = mol.get_neighbors("BMA")
+    assert isinstance(neigs, set), f"Expected a set but received {type(neigs)}"
+
+    _received = len(neigs)
+    _expected = 3
+    assert _received == _expected, f"Expected {_expected} neighbors, got {_received}"
+
+    neigs = mol.get_neighbors("BMA", 2)
+    assert isinstance(neigs, set), f"Expected a set but received {type(neigs)}"
+
+    _received = len(neigs)
+    _expected = 7
+    assert _received == _expected, f"Expected {_expected} neighbors, got {_received}"
+
+    neigs = mol.get_neighbors("BMA", 2, "at")
+    assert isinstance(neigs, set), f"Expected a set but received {type(neigs)}"
+
+    _received = len(neigs)
+    _expected = 4
+    assert _received == _expected, f"Expected {_expected} neighbors, got {_received}"
