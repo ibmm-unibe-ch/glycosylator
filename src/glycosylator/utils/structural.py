@@ -21,7 +21,155 @@ import glycosylator.utils.constants as constants
 # =================================================================
 
 
-class AtomNeighborhood:
+class Neighborhood:
+    """
+    This class handles graph connectivity of connected nodes and is the basis
+    for the AtomNeighborhood and ResidueNeighborhood classes.
+
+    Parameters
+    ----------
+    graph
+        A networkx graph
+    """
+
+    # the method of node objects to use for mapping to an index-based dictionary
+    # this assumes that the index is a **unique** identifier for the nodes
+    __index_method__ = AttributeError
+
+    # the method of node objects to use for mapping to an id-based dictionary
+    # this allows for multiple nodes with the same id (e.g. multiple 'C1' atoms...)
+    __id_method__ = AttributeError
+
+    def __init__(self, graph):
+        self._src = graph
+
+        # each implementation may call this method before the super init
+        # self._validate_getters()
+
+        self._make_node_dicts()
+
+    def get_neighbors(self, node, n: int = 1, mode: str = "upto"):
+        """
+        Get the neighbors of an atom
+
+        Parameters
+        ----------
+        node : object
+            The target node object.
+        n : int
+            The (maximal) number of edges that should
+            separate the target from neighbors.
+        mode : str
+            The mode of the neighbor search. Can be either
+            "upto" or "at". If "upto", this will get all
+            neighbors that are n edges away from the target or closer.
+            If "at", this will get all neighbors that are exactly n edges
+            away from the target.
+
+        Returns
+        -------
+        neighbors : set
+            The neighbors of the target node
+        """
+        if isinstance(node, list):
+            return [self.get_neighbors(a, n, mode) for a in node]
+
+        self._seen = set()
+        if mode == "upto":
+            return self._get_neighbors_upto(node, n) - {node}
+        elif mode == "at":
+            return self._get_neighbors_at(node, n) - {node}
+        else:
+            raise ValueError(f"Invalid mode: {mode}")
+
+    def _make_node_dicts(self):
+        """
+        Make a dictionary of nodes, which are biopython objects (or anything that has an id and sequence identifier attribute) mapped to their serial number and ids
+        """
+        self._idx_nodes = {}
+        self._ids_nodes = defaultdict(list)
+
+        for node1, node2 in self._src.edges:
+
+            self._idx_nodes.setdefault(self.__index_method__(node1), node1)
+            self._idx_nodes.setdefault(self.__index_method__(node2), node2)
+
+            id1 = self.__id_method__(node1)
+            id2 = self.__id_method__(node2)
+
+            if node1 not in self._ids_nodes[id1]:
+                self._ids_nodes[id1].append(node1)
+            if node2 not in self._ids_nodes[id2]:
+                self._ids_nodes[id2].append(node2)
+
+    def _get_node(self, node: Union[int, str]):
+        """
+        Get a node from its id or sequence index
+        """
+        if isinstance(node, int):
+            node = self._idx_nodes.get(node)
+        elif isinstance(node, str):
+            node = self._ids_nodes.get(node)
+            if node and len(node) > 1:
+                warnings.warn(f"Found multiple nodes with the given id. Returning the full list!")
+            elif node:
+                node = node[0]
+            else:
+                warnings.warn(f"No nodes found with the given id!")
+        else:
+            raise TypeError(f"Invalid node type: {type(node)}")
+        return node
+
+    def _get_neighbors_upto(self, node, n: int):
+        """
+        Get all neighbors of a node that are n edges away from the target or closer
+        """
+        if n == 0:
+            return {node}
+        else:
+            neighbors = set()
+            for neighbor in self._src.adj[node]:
+                if neighbor in self._seen:
+                    continue
+                if n >= 1:
+                    neighbors.update(self._get_neighbors_upto(neighbor, n - 1))
+                neighbors.add(neighbor)
+                self._seen.add(neighbor)
+            return neighbors
+
+    def _get_neighbors_at(self, node, n: int):
+        """
+        Get all neighbors of a node that are exactly n edges away from the target
+        """
+        if n == 0:
+            return {node}
+        else:
+            neighbors = set()
+            for neighbor in self._src.adj[node]:
+                if neighbor in self._seen:
+                    continue
+                if n >= 1:
+                    neighbors.update(self._get_neighbors_upto(neighbor, n - 1))
+                self._seen.add(neighbor)
+            return neighbors
+
+    # def _validate_getters(self):
+    #     """
+    #     Validate the index and id methods
+    #     to make sure we can generate index based and id based dictionaries
+    #     """
+    #     if isinstance(self.__index_method__, str):
+    #         self.__index_method__ = lambda node: getattr(node, self.__index_method__)
+    #     elif not callable(self.__index_method__):
+    #         raise TypeError(f"Invalid index method: {self.__index_method__}, must be either a string for an attribute or a callable function")
+
+    #     if isinstance(self.__id_method__, str):
+    #         self.__id_method__ = lambda node: getattr(node, self.__id_method__)
+    #     elif not callable(self.__id_method__):
+    #         raise TypeError(f"Invalid id method: {self.__id_method__}, must be either a string for an attribute or a callable function")
+
+
+class AtomNeighborhood(Neighborhood):
     """
     This class handles the bond connectivity neighborhood of atoms in a structure
     and can be used to obtain bonded atom triplets.
@@ -32,9 +180,8 @@ class AtomNeighborhood:
         An AtomGraph
     """
 
-    def __init__(self, graph):
-        self._src = graph
-        self._make_atom_dict()
+    __index_method__ = __index_method__ = lambda _, node: getattr(node, "serial_number")
+    __id_method__ = lambda _, node: getattr(node, "id")
 
     @property
     def atoms(self):
@@ -74,92 +221,80 @@ class AtomNeighborhood:
             The neighbors of the atom
         """
         if not isinstance(atom, bio.Atom.Atom):
-            atom = self.get_atom(atom)
-
-        if isinstance(atom, list):
-            return [self.get_neighbors(a, n, mode) for a in atom]
-
-        self._seen = set()
-        if mode == "upto":
-            return self._get_neighbors_upto(atom, n) - {atom}
-        elif mode == "at":
-            return self._get_neighbors_at(atom, n) - {atom}
-        else:
-            raise ValueError(f"Invalid mode: {mode}")
+            atom = self._get_node(atom)
+        if atom is None:
+            return set()
+        return super().get_neighbors(atom, n, mode)
 
     def get_atom(self, atom: Union[int, str]):
         """
         Get an atom from its id or serial number
         """
-        if isinstance(atom, int):
-            atom = self._idx_atoms.get(atom)
-        elif isinstance(atom, str):
-            atom = self._ids_atoms.get(atom)
-            if atom and len(atom) > 1:
-                warnings.warn(f"Multiple atoms with id {atom} found. Returning the full list!")
-            else:
-                atom = atom[0]
-        else:
-            raise TypeError(f"Invalid atom type: {type(atom)}")
-        return atom
+        return self._get_node(atom)
 
-    def _make_atom_dict(self):
-        """
-        Make a dictionary of atoms mapped to their serial number and ids
-        """
-        self._idx_atoms = {}
-        self._ids_atoms = defaultdict(list)
 
-        for bond in self.bonds:
-            atom1, atom2 = bond
+class ResidueNeighborhood(Neighborhood):
+    """
+    This class handles the residue connectivity neighborhood of residues in a structure
+    and can be used to obtain residue triplets.
 
-            self._idx_atoms.setdefault(atom1.serial_number, atom1)
-            self._idx_atoms.setdefault(atom2.serial_number, atom2)
+    Parameters
+    ----------
+    graph
+        A ResidueGraph
+    """
 
-            if atom1 not in self._ids_atoms[atom1.id]:
-                self._ids_atoms[atom1.id].append(atom1)
-            if atom2 not in self._ids_atoms[atom2.id]:
-                self._ids_atoms[atom2.id].append(atom2)
+    __index_method__ = __index_method__ = lambda _, node: node.id[1]
+    __id_method__ = lambda _, node: getattr(node, "resname")
 
-    def _get_neighbors_upto(self, atom, n: int):
+    @property
+    def residues(self):
         """
-        Get all neighbors of an atom that are n bonds away from the target or closer
+        Returns the residues in the structure
         """
-        if n == 0:
-            return {atom}
-        else:
-            neighbors = set()
-            for neighbor in self._src.adj[atom]:
-                if neighbor in self._seen:
-                    continue
-                if n >= 1:
-                    neighbors.update(self._get_neighbors_upto(neighbor, n - 1))
-                neighbors.add(neighbor)
-                self._seen.add(neighbor)
-            return neighbors
+        return self._src.residues
 
-    def _get_neighbors_at(self, atom, n: int):
+    @property
+    def bonds(self):
         """
-        Get all neighbors of an atom that are exactly n bonds away from the target
+        Returns the bonds in the structure
         """
-        # if n == 0:
-        #     return {atom}
-        # else:
-        #     # that one is pretty expensive, but well, it works...
-        #     _closer = self._get_neighbors_upto(atom, n - 1)
-        #     _farther = self._get_neighbors_upto(atom, n)
-        #     return _farther.difference(_closer)
-        if n == 0:
-            return {atom}
-        else:
-            neighbors = set()
-            for neighbor in self._src.adj[atom]:
-                if neighbor in self._seen:
-                    continue
-                if n >= 1:
-                    neighbors.update(self._get_neighbors_upto(neighbor, n - 1))
-                self._seen.add(neighbor)
-            return neighbors
+        return self._src.bonds
+
+    def get_neighbors(self, residue, n: int = 1, mode: str = "upto"):
+        """
+        Get the neighbors of a residue
+
+        Parameters
+        ----------
+        residue : int or str or Bio.PDB.Residue
+            The index or the id (resname) of the residue, or the residue itself.
+        n : int
+            The (maximal) number of bonds that should
+            separate the target from the neighbors.
+        mode : str
+            The mode of the neighbor search. Can be either
+            "upto" or "at". If "upto", this will get all
+            neighbors that are n bonds away from the target or closer.
+            If "at", this will get all neighbors that are exactly n bonds
+            away from the target.
+
+        Returns
+        -------
+        neighbors : set
+            The neighbors of the residue
+        """
+        if not isinstance(residue, bio.Residue.Residue):
+            residue = self._get_node(residue)
+        if residue is None:
+            return set()
+        return super().get_neighbors(residue, n, mode)
+
+    def get_residue(self, residue: Union[int, str]):
+        """
+        Get a residue from its id or index
+        """
+        return self._get_node(residue)
 
 
 # class Bond(tuple):

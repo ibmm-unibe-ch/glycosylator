@@ -1,3 +1,4 @@
+from typing import Union
 import networkx as nx
 import numpy as np
 import mdtraj as md
@@ -149,6 +150,30 @@ class ResidueGraph(BaseGraph):
         if bond is None:
             bond = self._atomic_bonds.get((residue2, residue1))
         return bond
+
+    def get_neighbors(self, residue: Union[int, str, bio.Residue.Residue], n: int = 1, mode="upto"):
+        """
+        Get the neighbors of a residue
+
+        Parameters
+        ----------
+        residue : int, str, bio.Residue.Residue
+            The target residue
+        n : int, optional
+            The number of connections to separate the residue from its neighbors.
+        mode : str, optional
+            The mode to use for getting the neighbors, by default "upto"
+            - "upto": get all neighbors up to a distance of `n` bonds
+            - "exact": get all neighbors exactly `n` bonds away
+
+        Returns
+        -------
+        set
+            The neighbors of the residue
+        """
+        if not self._neighborhood:
+            self._neighborhood = struct.ResidueNeighborhood(self)
+        return self._neighborhood.get_neighbors(residue, n, mode)
 
     def centers_of_gravity(self):
         """
