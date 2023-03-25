@@ -4,6 +4,7 @@ Tests for the auxiliary structure module
 
 from copy import deepcopy
 import numpy as np
+import pytest
 import glycosylator as gl
 import base
 import Bio.PDB as bio
@@ -550,3 +551,92 @@ def test_residue_neighborhood_get():
     _expected = {8, 6, 2, 11}
     _what = "as n=2 neighbors of BMA"
     assert _recieved == _expected, f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+
+
+def test_compute_angle():
+
+    mannose = gl.utils.defaults.__bioPDBParser__.get_structure("MAN", base.MANNOSE)
+    mannose = next(mannose.get_residues())
+
+    top = gl.utils.defaults.get_default_topology()
+    man = top.get_residue("MAN")
+
+    _atom = "O5"  # some ref atom to get ICs for
+    ic, *_ = man.get_internal_coordinates(_atom, None, None, None, mode="partial")
+
+    missing = man.get_missing_atoms(mannose)
+    assert missing == [], f"There are missing atoms: {missing}"
+
+    refs = ic.get_reference_atoms(mannose)
+    assert len(refs) == 4, f"We got weird reference atoms: {refs}"
+
+    _true_angle = ic.bond_angle_123
+    _recieved = gl.utils.structural.compute_angle(*refs[:-1])
+    _what = "° between 1-2-3"
+    assert _recieved == pytest.approx(_true_angle, 1e-3), f"Recieved {_recieved} {_what}, expected {_true_angle} {_what}!"
+
+    _true_angle = ic.bond_angle_234
+    _recieved = gl.utils.structural.compute_angle(*refs[1:])
+    _what = "° between 2-3-4"
+    assert _recieved == pytest.approx(_true_angle, 1e-3), f"Recieved {_recieved} {_what}, expected {_true_angle} {_what}!"
+
+
+def test_compute_dihedral():
+
+    mannose = gl.utils.defaults.__bioPDBParser__.get_structure("MAN", base.MANNOSE)
+    mannose = next(mannose.get_residues())
+
+    top = gl.utils.defaults.get_default_topology()
+    man = top.get_residue("MAN")
+
+    _atom = "O5"  # some ref atom to get ICs for
+    ic, *_ = man.get_internal_coordinates(_atom, None, None, None, mode="partial")
+
+    missing = man.get_missing_atoms(mannose)
+    assert missing == [], f"There are missing atoms: {missing}"
+
+    refs = ic.get_reference_atoms(mannose)
+    assert len(refs) == 4, f"We got weird reference atoms: {refs}"
+
+    _true_dihedral = ic.dihedral
+    _recieved = gl.utils.structural.compute_dihedral(*refs)
+    _what = "° between 1-2-3-4"
+    assert _recieved == pytest.approx(_true_dihedral, 1e-3), f"Recieved {_recieved} {_what}, expected {_true_dihedral} {_what}!"
+
+
+def test_compute_triplets():
+
+    bonds = [(1, 2), (1, 3), (2, 4), (3, 5)]
+    triplets = gl.utils.structural.compute_triplets(bonds)
+    _expected = [(2, 1, 3), (1, 2, 4), (1, 3, 5)]
+    assert triplets == _expected, f"Expected {len(_expected)} triplets, got {len(triplets)}"
+
+
+def test_quartet_class():
+
+    a = gl.utils.structural.Quartet(1, 2, 3, 4, False)
+    b = gl.utils.structural.Quartet(1, 2, 3, 4, False)
+    c = gl.utils.structural.Quartet(5, 3, 4, 6, True)
+
+    assert a == b, "Quartets are not equal!"
+    assert a != c, "Quartets are equal!"
+
+    assert (1, 2, 3, 4) == a
+    assert (1, 2, 3, 4, False) == a
+    assert (1, 2, 3, 4, True) != a
+
+    assert a[0] == 1
+
+
+def test_compute_quartets():
+
+    bonds = [(1, 2), (2, 3), (2, 4), (3, 5), (4, 6), (5, 7)]
+    quartets = gl.utils.structural.compute_quartets(bonds)
+
+    _received = len(quartets)
+    _expected = 6
+    assert _received == _expected, f"Expected {_expected} quartets, got {_received}"
+
+    Quartet = gl.utils.structural.Quartet
+    assert Quartet(1, 2, 4, 6, False) in quartets
+    assert Quartet(1, 4, 2, 3, True) in quartets

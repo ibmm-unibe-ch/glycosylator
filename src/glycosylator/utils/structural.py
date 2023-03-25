@@ -5,7 +5,7 @@ Auxiliary functions related to structure handling
 from collections import defaultdict
 import os
 import pickle
-from typing import Union
+from typing import NamedTuple, Union
 import warnings
 
 import numpy as np
@@ -153,21 +153,6 @@ class Neighborhood:
                 self._seen.add(neighbor)
             return neighbors
 
-    # def _validate_getters(self):
-    #     """
-    #     Validate the index and id methods
-    #     to make sure we can generate index based and id based dictionaries
-    #     """
-    #     if isinstance(self.__index_method__, str):
-    #         self.__index_method__ = lambda node: getattr(node, self.__index_method__)
-    #     elif not callable(self.__index_method__):
-    #         raise TypeError(f"Invalid index method: {self.__index_method__}, must be either a string for an attribute or a callable function")
-
-    #     if isinstance(self.__id_method__, str):
-    #         self.__id_method__ = lambda node: getattr(node, self.__id_method__)
-    #     elif not callable(self.__id_method__):
-    #         raise TypeError(f"Invalid id method: {self.__id_method__}, must be either a string for an attribute or a callable function")
-
 
 class AtomNeighborhood(Neighborhood):
     """
@@ -297,40 +282,94 @@ class ResidueNeighborhood(Neighborhood):
         return self._get_node(residue)
 
 
-# class Bond(tuple):
-#     """
-#     A bond between two atoms
-#     """
+class Quartet:
+    """
+    An atom quartet that can be used to compute internal coordinates
+    """
 
-#     def __new__(cls, atom1, atom2):
-#         return super(Bond, cls).__new__(cls, (atom1, atom2))
+    def __init__(self, atom1, atom2, atom3, atom4, improper: bool = False) -> None:
+        self._atoms = (atom1, atom2, atom3, atom4)
+        self._improper = improper
 
-#     def __init__(self, atom1, atom2):
-#         super().__init__()
-#         self._frozen = False
+    @property
+    def atoms(self):
+        return self._atoms
 
-#     @property
-#     def is_frozen(self):
-#         return self._frozen
+    @property
+    def atom1(self):
+        return self._atoms[0]
 
-#     @is_frozen.setter
-#     def is_frozen(self, value):
-#         self._frozen = value
+    @property
+    def atom2(self):
+        return self._atoms[1]
 
-#     def freeze(self):
-#         self._frozen = True
+    @property
+    def atom3(self):
+        return self._atoms[2]
 
-#     def unfreeze(self):
-#         self._frozen = False
+    @property
+    def atom4(self):
+        return self._atoms[3]
 
-#     def __hash__(self):
-#         return hash(tuple(sorted(self)))
+    @property
+    def improper(self):
+        return self._improper
 
-#     def __eq__(self, other):
-#         return set(self) == set(other)
+    @property
+    def center_atom(self):
+        if self._improper:
+            return self._atoms[2]
+        else:
+            raise TypeError("This quartet is not an improper")
 
-#     def __repr__(self):
-#         return f"Bond({self[0]}, {self[1]}, frozen={self.is_frozen})"
+    @property
+    def bond_length_12(self):
+        return np.linalg.norm(self._atoms[1].coord - self._atoms[0].coord)
+
+    @property
+    def bond_length_23(self):
+        return np.linalg.norm(self._atoms[2].coord - self._atoms[1].coord)
+
+    @property
+    def bond_length_34(self):
+        return np.linalg.norm(self._atoms[3].coord - self._atoms[2].coord)
+
+    @property
+    def bond_angle_123(self):
+        return compute_angle(self._atoms[0], self._atoms[1], self._atoms[2])
+
+    @property
+    def bond_angle_234(self):
+        return compute_angle(self._atoms[1], self._atoms[2], self._atoms[3])
+
+    @property
+    def dihedral(self):
+        return compute_dihedral(self._atoms[0], self._atoms[1], self._atoms[2], self._atoms[3])
+
+    def __hash__(self) -> int:
+        return hash(tuple(sorted(self._atoms))) + hash(self._improper)
+
+    def __eq__(self, other) -> bool:
+        if isinstance(other, Quartet):
+            return set(self._atoms) == set(other._atoms) and self._improper == other._improper
+        elif isinstance(other, (tuple, list)):
+            if len(other) == 4:
+                return set(self._atoms) == set(other)
+            elif len(other) == 5:
+                return set(self._atoms) == set(other[:4]) and self._improper == other[4]
+        return False
+
+    def __repr__(self) -> str:
+        if hasattr(self._atoms[0], "id"):
+            return f"Quartet({self._atoms[0].id}, {self._atoms[1].id}, {self._atoms[2].id}, {self._atoms[3].id}, improper={self._improper})"
+        else:
+            return f"Quartet({self._atoms[0]}, {self._atoms[1]}, {self._atoms[2]}, {self._atoms[3]}, improper={self._improper})"
+
+    def __iter__(self):
+        return iter(self._atoms)
+
+    def __getitem__(self, item):
+        return self._atoms[item]
 
 
 # =================================================================
@@ -725,10 +764,47 @@ def compute_angle(atom1, atom2, atom3):
     return np.degrees(np.arccos(np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))))
 
 
-def compute_atom_connectivity(bonds: list):
+def compute_dihedral(atom1, atom2, atom3, atom4):
     """
-    Compute the direct neighborhood of each atom in a molecule.
-    This will compute all
+    Compute the dihedral angle between four atoms.
+
+    Parameters
+    ----------
+    atom1 : Bio.PDB.Atom
+        The first atom
+    atom2 : Bio.PDB.Atom
+        The second atom
+    atom3 : Bio.PDB.Atom
+        The third atom
+    atom4 : Bio.PDB.Atom
+        The fourth atom
+
+    Returns
+    -------
+    dihedral : float
+        The dihedral angle between the four atoms in degrees
+    """
+    ab = atom1.coord - atom2.coord
+    bc = atom3.coord - atom2.coord
+    cd = atom4.coord - atom3.coord
+
+    # normalize bc so that it does not influence magnitude of vector
+    # rejections that come next
+    bc /= np.linalg.norm(bc)
+
+    # vector rejections
+    v = ab - np.dot(ab, bc) * bc
+    w = cd - np.dot(cd, bc) * bc
+
+    # angle between v and w in radians
+    x = np.dot(v, w)
+    y = np.dot(np.cross(bc, v), w)
+    return np.degrees(np.arctan2(y, x))
+
+
+def compute_triplets(bonds: list):
+    """
+    Compute all possible triplets of atoms from a list of bonds.
 
     Parameters
     ----------
@@ -737,14 +813,102 @@ def compute_atom_connectivity(bonds: list):
 
     Returns
     -------
-    neighborhood : dict
-        A dictionary of the neighborhood of each atom
+    triplets : list
+        A list of triplets
+
+    Examples
+    --------
+    ```
+    ( 1 )---( 2 )---( 4 )
+       \\
+       ( 3 )
+         |
+       ( 5 )
+    ```
+    >>> bonds = [(1, 2), (1, 3), (2, 4), (3, 5)]
+    >>> compute_triplets(bonds)
+    [(2, 1, 3), (1, 2, 4), (1, 3, 5)]
     """
-    neighborhood = defaultdict(set)
-    for bond in bonds:
-        neighborhood[bond.atom1].add(bond.atom2)
-        neighborhood[bond.atom2].add(bond.atom1)
-    return neighborhood
+    triplets = []
+    for i, bond1 in enumerate(bonds):
+        atom_11, atom_12 = bond1
+        for j, bond2 in enumerate(bonds[i + 1 :]):
+            atom_21, atom_22 = bond2
+            if atom_11 == atom_21:
+                triplets.append((atom_12, atom_11, atom_22))
+            elif atom_11 == atom_22:
+                triplets.append((atom_12, atom_11, atom_21))
+            elif atom_12 == atom_21:
+                triplets.append((atom_11, atom_12, atom_22))
+            elif atom_12 == atom_22:
+                triplets.append((atom_11, atom_12, atom_21))
+    return triplets
+
+
+def compute_quartets(bonds: list):
+    """
+    Compute all possible quartets of atoms from a list of bonds.
+
+    Parameters
+    ----------
+    bonds : list
+        A list of bonds
+
+    Returns
+    -------
+    quartets : list
+        A list of quartets
+
+    Examples
+    --------
+    ```
+    ( 1 )---( 2 )---( 4 )
+               \\
+               ( 3 )
+                 |
+               ( 5 )
+    ```
+    >>> bonds = [(1, 2), (2, 3), (2, 4), (3, 5)]
+    >>> compute_quartets(bonds)
+    {Quartet(1, 2, 3, 5, improper=False), Quartet(5, 3, 2, 4, improper=False), Quartet(1, 3, 2, 4, improper=True)}
+    """
+
+    triplets = compute_triplets(bonds)
+    quartets = set()
+    for idx, triplet1 in enumerate(triplets):
+        atom_1, atom_2, atom_3 = triplet1
+
+        for triplet2 in triplets[idx + 1 :]:
+            atom_4, atom_5, atom_6 = triplet2
+
+            # decision tree to map atoms into quartets
+
+            quartet = None
+            if atom_2 == atom_4:
+
+                if atom_1 == atom_5:
+                    quartet = Quartet(atom_6, atom_1, atom_2, atom_3, False)
+
+                elif atom_3 == atom_5:
+                    quartet = Quartet(atom_1, atom_2, atom_3, atom_6, False)
+
+            elif atom_2 == atom_5:
+
+                if atom_1 == atom_4 or atom_3 == atom_4:
+                    quartet = Quartet(atom_1, atom_3, atom_2, atom_6, True)
+
+            elif atom_2 == atom_6:
+
+                if atom_1 == atom_5:
+                    quartet = Quartet(atom_6, atom_1, atom_2, atom_3, False)
+
+                elif atom_3 == atom_5:
+                    quartet = Quartet(atom_1, atom_2, atom_3, atom_6, False)
+
+            if quartet:
+                quartets.add(quartet)
+
+    return quartets
 
 
 @numba.njit
@@ -830,11 +994,16 @@ def _IC_to_xyz(a, b, c, anchor, r, theta, dihedral):
 
 if __name__ == '__main__':
 
-    MANNOSE = bio.PDBParser().get_structure("MAN", "./support/examples/MAN.pdb")
+    # MANNOSE = bio.PDBParser().get_structure("MAN", "./support/examples/MAN.pdb")
 
-    from glycosylator.graphs import AtomGraph
+    # from glycosylator.graphs import AtomGraph
 
-    nei = AtomNeighborhood(AtomGraph.from_biopython(MANNOSE))
+    # nei = AtomNeighborhood(AtomGraph.from_biopython(MANNOSE))
 
-    n2 = nei.get_neighbors("C1", 2)
-    print(n2)
+    # n2 = nei.get_neighbors("C1", 2)
+    # print(n2)
+
+    edges = [(2, 3), (3, 4), (4, 5), (4, 10), (5, 6), (5, 8), (10, 11), (6, 7), (8, 9), (11, 12)]
+    edges = [(1, 2), (2, 3), (2, 4), (3, 5)]
+    q = compute_quartets(edges)
+    print(q)
