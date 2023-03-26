@@ -80,8 +80,11 @@ class AtomGraph(BaseGraph):
             The AtomGraph representation of the molecule
         """
         while structure.level != "S":
-            structure = structure.get_parent()
-
+            _parent = structure.get_parent()
+            if _parent is None:
+                break
+            structure = _parent
+        
         bonds = cls._make_bonds(structure, apply_standard_bonds, infer_residue_connections, infer_bonds, max_bond_length, restrict_residues)
         return cls(structure.id, bonds)
 
