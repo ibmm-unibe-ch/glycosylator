@@ -4,56 +4,117 @@ Tests to check the behaviour of the gl.Molecule object
 
 import numpy as np
 import glycosylator as gl
+import Bio.PDB as bio
+
 import base
 
-# # PRODY IS NOW REPLACED BY MDTRAJ SO THIS IS DEPCRECATED AND DOES NOT WORK ANYMORE
-# def test_molecule_from_prody():
-#     """
-#     Test the initialisation of the Molecule object using a pre-made prody atom group
-#     """
-#     import prody
 
-#     _raw_atom_group = prody.parsePDB(base.MANNOSE9)
-#     serials = list(_raw_atom_group.getSerials())
-#     _root = _raw_atom_group[serials.index(1)]
+def test_molecule_basic():
+    mol = gl.Molecule.from_pdb(base.MANNOSE)
+    assert mol is not None
 
-#     mol = gl.Molecule.from_prody(_raw_atom_group, _root)
-#     assert mol is not None, "No molecule is made"
+    assert len(mol.atoms) == 24
+    assert len(mol.bonds) == 0
 
-#     _received = len(mol.atom_group)
-#     _expected = 246
-#     assert _received == _expected, f"Expected {_expected} atoms, got {_received}"
+    _mol = gl.utils.defaults.__bioPDBParser__.get_structure("MAN", base.MANNOSE)
+    mol = gl.Molecule(_mol)
+    assert mol is not None
 
-#     _received = len(mol.torsionals)
-#     _expected = 236
-#     assert _received == _expected, f"Expected {_expected} atoms, got {_received}"
+    assert len(mol.atoms) == 24
+    assert len(mol.bonds) == 0
+
+    mol = gl.Molecule.from_smiles("OCC1OC(O)C(C(C1O)O)O", add_hydrogens=False)
+    assert mol is not None
+
+    assert len(mol.atoms) == 12
+    assert len(mol.bonds) == 0
+
+    mol = gl.Molecule.from_smiles("OCC1OC(O)C(C(C1O)O)O")
+    assert mol is not None
+
+    assert len(mol.atoms) == 24
+    assert len(mol.bonds) == 0
+
+    mol = gl.Molecule(_mol)
+
+    a = mol.get_atom(serial_number=1)
+    assert a is not None
+
+    b = mol.get_atom(id="C1")
+    assert b is not None
+
+    a.id = "HIHIHI"
+    assert b.id == "HIHIHI"
+    assert a is b
+
+    a = mol.get_residue(1)
+    assert a is not None
+
+    b = mol.get_residue(name="MAN")
+    assert b is not None
+
+    assert a is b
 
 
-def test_init_from_pdb():
-    """
-    Test the initialisation of the Molecule object using a pdb file
-    """
-    _root = 0
-    mol = gl.Molecule.from_pdb(base.MANNOSE9, _root)
-    assert mol is not None, "No molecule is made"
+def test_molecule_bonds():
+    mol = gl.Molecule.from_pdb(base.MANNOSE)
 
-    _received = mol.n_atoms
-    _expected = 246
-    assert _received == _expected, f"Expected {_expected} atoms, got {_received}"
+    mol.apply_standard_bonds()
+    assert len(mol.bonds) == 24
+
+    mol._bonds = []
+
+    mol.infer_bonds()
+    assert len(mol.bonds) == 24
+
+    mol._bonds = []
 
 
-def test_init_from_trajectory():
-    """
-    Test the initialisation of the Molecule object using a pre-made mdtraj trajectory
-    """
-    import mdtraj as md
+def test_angles():
+    mol = gl.Molecule.from_pdb(base.MANNOSE)
+    mol.apply_standard_bonds()
 
-    _raw_traj = md.load(base.MANNOSE9)
-    _root = 0
+    top = gl.utils.get_default_topology()
+    abstract = top.get_residue("MAN")
 
-    mol = gl.Molecule.from_trajectory(_raw_traj, _root)
-    assert mol is not None, "No molecule is made"
+    could_match_any = False
+    for triplet, angle in mol.angles.items():
 
-    _received = mol.n_atoms
-    _expected = 246
-    assert _received == _expected, f"Expected {_expected} atoms, got {_received}"
+        triplet = [i.id for i in triplet]
+
+        ics = abstract.get_internal_coordinates(*triplet, None, mode="partial")
+        _angle = "bond_angle_123"
+        if len(ics) == 0:
+            ics = abstract.get_internal_coordinates(None, *triplet, mode="partial")
+            _angle = "bond_angle_234"
+            if len(ics) == 0:
+                continue
+        _angle = getattr(ics[0], _angle)
+        assert np.abs(_angle - angle) < 0.01, f"Angle {angle} does not match reference {_angle}"
+        could_match_any = True
+
+    assert could_match_any, "No angles could be matched"
+
+
+def test_dihedrals():
+    mol = gl.Molecule.from_pdb(base.MANNOSE)
+    mol.apply_standard_bonds()
+
+    top = gl.utils.get_default_topology()
+    abstract = top.get_residue("MAN")
+
+    could_match_any = False
+    for quartet, dihedral in mol.dihedrals.items():
+
+        quartet = [i.id for i in quartet]
+        ics = abstract.get_internal_coordinates(*quartet)
+        if len(ics) == 0:
+            ics = abstract.get_internal_coordinates(*quartet[::-1])
+            if len(ics) == 0:
+                continue
+        _dihedral = ics[0].dihedral
+
+        assert np.abs(_dihedral - dihedral) < 0.01, f"Dihedral {dihedral} does not match reference {_dihedral}"
+        could_match_any = True
+
+    assert could_match_any, "No dihedrals could be matched"
