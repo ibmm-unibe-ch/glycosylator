@@ -126,16 +126,16 @@ class Molecule:
         return self._base_struct
 
     @property
-    def chains(self):
-        return list(self._base_struct.get_chains())
+    def chain(self):
+        return self._chain
 
     @property
     def residues(self):
-        return list(self._base_struct.get_residues())
+        return list(self._chain.get_residues())
 
     @property
     def atoms(self):
-        return list(self._base_struct.get_atoms())
+        return list(self._chain.get_atoms())
 
     @property
     def bonds(self):
@@ -297,7 +297,7 @@ class Molecule:
         Reindex the atoms and residues in the molecule.
         You can use this method if you made substantial changes
         to the molecule and want to be sure that there are no gaps in the
-        atom and residue numbering. 
+        atom and residue numbering.
         """
         j = 1
         for i, residue in enumerate(self._chain.child_list):
@@ -313,7 +313,7 @@ class Molecule:
         self._idx_atoms
         self._ids_atoms
         self._full_id_atoms
-        
+
     def add_residues(self, *residues: bio.Residue.Residue, adjust_seqid: bool = True):
         """
         Add residues to the structure
@@ -329,10 +329,11 @@ class Molecule:
             (i.e. a new residue can be given seqid 1, and it will be adjusted
             to the correct value of 3 if there are already two other residues in the molecule).
         """
-        if adjust_seqid:
-            rdx = len(self.residues)
-            residue.id = (rdx, *residue.id[1:])
+        rdx = len(self.residues)
         for residue in residues:
+            if adjust_seqid:
+                rdx += 1
+                residue.id = (rdx, *residue.id[1:])
             self._chain.add(residue)
 
     def remove_residues(self, *residues: bio.Residue.Residue):
