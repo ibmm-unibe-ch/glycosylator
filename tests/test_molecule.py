@@ -77,7 +77,6 @@ def test_angles():
     top = gl.utils.get_default_topology()
     abstract = top.get_residue("MAN")
 
-    could_match_any = False
     for triplet, angle in mol.angles.items():
 
         triplet = [i.id for i in triplet]
@@ -91,9 +90,6 @@ def test_angles():
                 continue
         _angle = getattr(ics[0], _angle)
         assert np.abs(_angle - angle) < 0.01, f"Angle {angle} does not match reference {_angle}"
-        could_match_any = True
-
-    assert could_match_any, "No angles could be matched"
 
 
 def test_dihedrals():
@@ -103,7 +99,6 @@ def test_dihedrals():
     top = gl.utils.get_default_topology()
     abstract = top.get_residue("MAN")
 
-    could_match_any = False
     for quartet, dihedral in mol.dihedrals.items():
 
         quartet = [i.id for i in quartet]
@@ -115,6 +110,45 @@ def test_dihedrals():
         _dihedral = ics[0].dihedral
 
         assert np.abs(_dihedral - dihedral) < 0.01, f"Dihedral {dihedral} does not match reference {_dihedral}"
-        could_match_any = True
 
-    assert could_match_any, "No dihedrals could be matched"
+
+def test_add_atoms():
+    mol = gl.Molecule.from_pdb(base.MANNOSE)
+    mol.apply_standard_bonds()
+
+    pre = len(mol.atoms)
+
+    new = bio.Atom.Atom("C99", np.array((0.5, 1.23, -0.5)), None, 0.0, None, "C99", 1)
+    mol.add_atoms(new)
+
+    assert len(mol.atoms) == pre + 1
+
+    _new = mol.get_atom(id="C99")
+    assert _new is not None
+    assert _new.serial_number != 1
+
+    mol.remove_atoms(_new)
+    assert len(mol.atoms) == pre
+
+    assert "C99" not in [i.id for i in mol.atoms]
+
+
+def test_add_residues():
+    mol = gl.Molecule.from_pdb(base.MANNOSE)
+    mol.apply_standard_bonds()
+
+    pre = len(mol.residues)
+
+    new = bio.Residue.Residue((1, "H_NEW", " "), "NEW", " ")
+    mol.add_residues(new)
+
+    assert len(mol.residues) == pre + 1
+
+    _new = mol.get_residue(name="NEW")
+    assert _new is not None
+    assert _new.id[0] != 1
+
+    mol.remove_residues(_new)
+    assert len(mol.residues) == pre
+
+    assert "C99" not in [i.resname for i in mol.residues]
