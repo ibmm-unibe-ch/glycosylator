@@ -235,6 +235,8 @@ class Molecule:
         the same id are present (e.g. 'C1' from different residues)
         all of them are returned in a list. It is a safer option to use the
         full_id or serial number to get a specific atom.
+        The input parameters do support lists or tuples of multiple serial numbers or ids (only one type of parameter is supported per call, however).
+        In case multiple serial numbers are provided, a list of atoms is returned.
 
         Parameters
         ----------
@@ -251,10 +253,16 @@ class Molecule:
             The atom
         """
         if serial_number:
+            if isinstance(serial_number, (list, tuple)):
+                return [self._get_atom(i) for i in serial_number]
             return self._get_atom(serial_number)
         elif id:
+            if isinstance(id, (list, tuple)):
+                return [self._get_atom(i) for i in id]
             return self._get_atom(id)
         elif full_id:
+            if isinstance(full_id, (list, tuple)):
+                return [self._get_atom(i) for i in full_id]
             return self._get_atom(full_id)
         else:
             raise ValueError("Either id, serial_number or full_id must be provided")
@@ -269,6 +277,9 @@ class Molecule:
         """
         Generate an AtomGraph for the Molecule
         """
+        if len(self._bonds) == 0:
+            warnings.warn("No bonds found (yet), be sure to first apply or infer bonds to generate a graph")
+            return
         self._AtomGraph = AtomGraph(self._base_struct.id, self._bonds)
         return self._AtomGraph
 
@@ -276,10 +287,13 @@ class Molecule:
         """
         Generate a ResidueGraph for the Molecule
         """
+        if len(self._bonds) == 0:
+            warnings.warn("No bonds found (yet), be sure to first apply or infer bonds to generate a graph")
+            return
         self._ResidueGraph = ResidueGraph.from_AtomGraph(self.make_atom_graph())
         return self._ResidueGraph
 
-    def add_residues(self, *residues: bio.Residue.Residue):
+    def add_residues(self, *residues: bio.Residue.Residue, adjust_seqid: bool = True):
         """
         Add residues to the structure
 
@@ -287,7 +301,16 @@ class Molecule:
         ----------
         residues : bio.Residue.Residue
             The residues to add
+
+        adjust_seqid : bool
+            If True, the seqid of the residues is adjusted to
+            match the current number of residues in the structure
+            (i.e. a new residue can be given seqid 1, and it will be adjusted
+            to the correct value of 3 if there are already two other residues in the molecule).
         """
+        if adjust_seqid:
+            rdx = len(self.residues)
+            residue.id = (rdx, *residue.id[1:])
         for residue in residues:
             self._chain.add(residue)
 
