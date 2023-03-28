@@ -1,3 +1,4 @@
+from collections import defaultdict
 import warnings
 import networkx as nx
 import numpy as np
@@ -50,11 +51,9 @@ class Molecule:
         self._ResidueGraph = None
 
         self._bonds = []
-        self._idx_atoms = {i.serial_number: i for i in structure.get_atoms()}
-        self._full_id_atoms = {i.full_id: i for i in structure.get_atoms()}
-        self._ids_atoms = {}
-        for i in structure.get_atoms():
-            self._ids_atoms.setdefault(i.id, []).append(i)
+        self._idx_atoms_cache = None
+        self._ids_atoms_cache = None
+        self._full_id_atoms_cache = None
 
     @classmethod
     def from_pdb(
@@ -293,6 +292,28 @@ class Molecule:
         self._ResidueGraph = ResidueGraph.from_AtomGraph(self.make_atom_graph())
         return self._ResidueGraph
 
+    def reindex(self):
+        """
+        Reindex the atoms and residues in the molecule.
+        You can use this method if you made substantial changes
+        to the molecule and want to be sure that there are no gaps in the
+        atom and residue numbering. 
+        """
+        j = 1
+        for i, residue in enumerate(self._chain.child_list):
+            residue.id = (i + 1, *residue.id[1:])
+            for atom in residue.get_atoms():
+                atom.serial_number = j
+                j += 1
+
+        self._idx_atoms_cache = None
+        self._ids_atoms_cache = None
+        self._full_id_atoms_cache = None
+
+        self._idx_atoms
+        self._ids_atoms
+        self._full_id_atoms
+        
     def add_residues(self, *residues: bio.Residue.Residue, adjust_seqid: bool = True):
         """
         Add residues to the structure
@@ -358,11 +379,11 @@ class Molecule:
                 _max_serial += 1
                 atom.serial_number = _max_serial
 
+            target.add(atom)
+
             self._idx_atoms[atom.serial_number] = atom
             self._full_id_atoms[atom.full_id] = atom
-            self._ids_atoms[atom.id].append(atom)
-
-            target.add(atom)
+            self._ids_atoms.setdefault(atom.id, []).append(atom)
 
     def remove_atoms(self, *atoms: bio.Atom.Atom):
         """
@@ -531,6 +552,35 @@ class Molecule:
         atom3 = self._get_atom(atom3)
         atom4 = self._get_atom(atom4)
         return structural.compute_dihedral(atom1, atom2, atom3, atom4)
+
+    @property
+    def _idx_atoms(self):
+        """
+        Get a dictionary of atoms indexed by their serial number
+        """
+        if self._idx_atoms_cache is None:
+            self._idx_atoms_cache = {a.serial_number: a for a in self._chain.get_atoms()}
+        return self._idx_atoms_cache
+
+    @property
+    def _ids_atoms(self):
+        """
+        Get a dictionary of atoms indexed by their id
+        """
+        if self._ids_atoms_cache is None:
+            self._ids_atoms_cache = defaultdict(list)
+            for a in self._chain.get_atoms():
+                self._ids_atoms_cache[a.id].append(a)
+        return self._ids_atoms_cache
+
+    @property
+    def _full_id_atoms(self):
+        """
+        Get a dictionary of atoms indexed by their full id
+        """
+        if self._full_id_atoms_cache is None:
+            self._full_id_atoms_cache = {a.full_id: a for a in self._chain.get_atoms()}
+        return self._full_id_atoms_cache
 
     def _get_atom(self, _atom):
         """
