@@ -11,23 +11,50 @@ import glycosylator.utils as utils
 import glycosylator.utils.structural as structural
 
 
-class TooManyChains(Exception):
-    """Raise when Molecule class has an AtomGroup with more than one chain/segment"""
-
-
 class Molecule:
+    """
+    A molecule to add onto a protein.
+
+    Parameters
+    ----------
+    structure : bio.PDB.Structure
+        A biopython structure that stores the atomic structure
+    root_atom : str or int or bio.PDB.Atom
+        The id or the serial number of the root atom
+        at which the molecule would be attached to a protein scaffold
+        (optional, necessary for Molecules that shall be added onto a protein)
+    """
+
     def __init__(
         self,
         structure,
         root_atom: Union[str, int, bio.Atom.Atom] = None,
     ):
-        self._struct = structure
-        self.root_atom = root_atom
+        self._base_struct = structure
+
+        if len(structure.child_list) == 1:
+            self._chain = structure.child_list[0]
+        else:
+            raise ValueError("Molecule class only supports structures with one model")
+        if len(self._chain.child_list) == 1:
+            self._chain = self._chain.child_list[0]
+        else:
+            raise ValueError("Molecule class only supports structures with one chain/segment")
+
+        if root_atom:
+            if not root_atom in self._chain.get_atoms():
+                raise ValueError("The root atom is not in the structure")
+        self._root_atom = root_atom
 
         self._AtomGraph = None
         self._ResidueGraph = None
 
         self._bonds = []
+        self._idx_atoms = {i.serial_number: i for i in structure.get_atoms()}
+        self._full_id_atoms = {i.full_id: i for i in structure.get_atoms()}
+        self._ids_atoms = {}
+        for i in structure.get_atoms():
+            self._ids_atoms.setdefault(i.id, []).append(i)
 
     @classmethod
     def from_pdb(
@@ -53,6 +80,32 @@ class Molecule:
         struct = utils.defaults.__bioPDBParser__.get_structure(id, filename)
         return cls(struct, root_atom)
 
+    @classmethod
+    def from_smiles(
+        cls,
+        smiles: str,
+        id: str = None,
+        root_atom: Union[str, int] = None,
+        add_hydrogens: bool = True,
+    ):
+        """
+        Read a Molecule from a SMILES string
+
+        Parameters
+        ----------
+        smiles : str
+            The SMILES string
+        id : str
+            The id of the Molecule. By default the provided smiles string is used.
+        root_atom : str or int
+            The id or the serial number of the root atom (optional)
+        add_hydrogens : bool
+            Whether to add hydrogens to the molecule
+        """
+        struct = structural.read_smiles(smiles, add_hydrogens)
+        struct.id = id if id else smiles
+        return cls(struct, root_atom)
+
     @property
     def root_atom(self):
         return self._root_atom
@@ -61,7 +114,8 @@ class Molecule:
     def root_atom(self, value):
         if value is None:
             self._root_atom = None
-        self._root_atom = self._get_atom(value)
+        else:
+            self._root_atom = self._get_atom(value)
 
     @property
     def root_residue(self):
@@ -70,27 +124,140 @@ class Molecule:
 
     @property
     def structure(self):
-        return self._struct
+        return self._base_struct
 
     @property
     def chains(self):
-        return list(self._struct.get_chains())
+        return list(self._base_struct.get_chains())
 
     @property
     def residues(self):
-        return list(self._struct.get_residues())
+        return list(self._base_struct.get_residues())
 
     @property
     def atoms(self):
-        return list(self._struct.get_atoms())
+        return list(self._base_struct.get_atoms())
 
     @property
     def bonds(self):
         return self._bonds
 
     @property
+    def atom_triplets(self):
+        """
+        Compute triplets of three consequtively bonded atoms
+        """
+        if len(self._bonds) == 0:
+            warnings.warn("No bonds found (yet), returning empty list")
+            return []
+        return structural.compute_triplets(self._bonds)
+
+    @property
+    def atom_quartets(self):
+        """
+        Compute quartets of four consequtively bonded atoms
+        """
+        if len(self._bonds) == 0:
+            warnings.warn("No bonds found (yet), returning empty list")
+            return []
+        return structural.compute_quartets(self._bonds)
+
+    @property
     def angles(self):
-        raise NotImplementedError
+        """
+        Compute all angles of consecutively bonded atom triplets within the molecule.
+
+        Returns
+        -------
+        angles : dict
+            A dictionary of the form {atom_triplet: angle}
+        """
+        return {triplet: structural.compute_angle(*triplet) for triplet in self.atom_triplets}
+
+    @property
+    def dihedrals(self):
+        """
+        Compute all dihedrals of consecutively bonded atom quartets within the molecule.
+
+        Returns
+        -------
+        dihedrals : dict
+            A dictionary of the form {atom_quartet: dihedral}
+        """
+        return {quartet: structural.compute_dihedral(*quartet) for quartet in self.atom_quartets}
+
+    def to_pdb(self, filename: str):
+        """
+        Write the molecule to a PDB file
+
+        Parameters
+        ----------
+        filename : str
+            Path to the PDB file
+        """
+        io = bio.PDBIO()
+        io.set_structure(self._base_struct)
+        io.save(filename)
+
+    def get_residue(self, seqid: int = None, name: str = None):
+        """
+        Get a residue from the structure either based on its
+        seqid or its residue name. Note, if there are multiple
+        residues with the same name, all of them are returned
+        in a list!
+
+        Parameters
+        ----------
+        seqid : int
+            The sequence id of the residue
+        name : str
+            The name of the residue
+
+        Returns
+        -------
+        residue : bio.Residue.Residue or list
+            The residue(s)
+        """
+        if seqid:
+            return self._chain.child_list[seqid - 1]
+        elif name:
+            res = [i for i in self._base_struct.get_residues() if i.resname == name]
+            if len(res) == 1:
+                res = res[0]
+            return res
+        else:
+            raise ValueError("Either seqid or name must be provided")
+
+    def get_atom(self, serial_number: int = None, id: Union[str, int] = None, full_id: tuple = None):
+        """
+        Get an atom from the structure either based on its
+        id, serial number or full_id. Note, if multiple atoms with
+        the same id are present (e.g. 'C1' from different residues)
+        all of them are returned in a list. It is a safer option to use the
+        full_id or serial number to get a specific atom.
+
+        Parameters
+        ----------
+        serial_number : int
+            The serial number of the atom
+        id : str or int
+            The id of the atom
+        full_id : tuple
+            The full_id of the atom
+
+        Returns
+        -------
+        atom : bio.Atom.Atom
+            The atom
+        """
+        if serial_number:
+            return self._get_atom(serial_number)
+        elif id:
+            return self._get_atom(id)
+        elif full_id:
+            return self._get_atom(full_id)
+        else:
+            raise ValueError("Either id, serial_number or full_id must be provided")
 
     def get_root(self):
         return self.root_atom
@@ -98,21 +265,122 @@ class Molecule:
     def set_root(self, atom):
         self.root_atom = atom
 
-    def get_atom_graph(self):
+    def make_atom_graph(self):
         """
         Generate an AtomGraph for the Molecule
         """
-        if self._AtomGraph is None:
-            self._AtomGraph = AtomGraph(self._struct.id, self._bonds)
+        self._AtomGraph = AtomGraph(self._base_struct.id, self._bonds)
         return self._AtomGraph
 
-    def get_residue_graph(self):
+    def make_residue_graph(self):
         """
         Generate a ResidueGraph for the Molecule
         """
-        if self._ResidueGraph is None:
-            self._ResidueGraph = ResidueGraph.from_AtomGraph(self.get_atom_graph())
+        self._ResidueGraph = ResidueGraph.from_AtomGraph(self.make_atom_graph())
         return self._ResidueGraph
+
+    def add_residues(self, *residues: bio.Residue.Residue):
+        """
+        Add residues to the structure
+
+        Parameters
+        ----------
+        residues : bio.Residue.Residue
+            The residues to add
+        """
+        for residue in residues:
+            self._chain.add(residue)
+
+    def remove_residues(self, *residues: bio.Residue.Residue):
+        """
+        Remove residues from the structure
+
+        Parameters
+        ----------
+        residues : bio.Residue.Residue
+            The residues to remove
+        """
+        for residue in residues:
+            self._chain.detach_child(residue.id)
+
+    def add_atoms(self, *atoms: bio.Atom.Atom, residue=None):
+        """
+        Add atoms to the structure
+
+        Parameters
+        ----------
+        atoms : bio.Atom.Atom
+            The atoms to add
+        residue : int or str
+            The residue to which the atoms should be added,
+            this may be either the seqid or the residue name,
+            if None the atoms are added to the last residue.
+            Note, that if multiple identically named residues
+            are present, the first one is chosen, so using the
+            seqid is a safer option!
+        """
+        if residue is not None:
+            if isinstance(residue, int):
+                residue = self._chain.child_list[residue - 1]
+            elif isinstance(residue, str):
+                residue = next(i for i in self._chain.child_list if i.resname == i)
+            target = residue
+        else:
+            target = self._chain.child_list[-1]
+
+        _max_serial = max(self._idx_atoms.keys())
+        for atom in atoms:
+
+            if atom.serial_number in self._idx_atoms:
+                _max_serial += 1
+                atom.serial_number = _max_serial
+
+            self._idx_atoms[atom.serial_number] = atom
+            self._full_id_atoms[atom.full_id] = atom
+            self._ids_atoms[atom.id].append(atom)
+
+            target.add(atom)
+
+    def remove_atoms(self, *atoms: bio.Atom.Atom):
+        """
+        Remove an atom from the structure
+
+        Parameters
+        ----------
+        atom : bio.Atom.Atom
+            The atom to remove
+        """
+        for atom in atoms:
+            atom.get_parent().detach_child(atom.id)
+            del self._idx_atoms[atom.serial_number]
+            del self._full_id_atoms[atom.full_id]
+            self._ids_atoms[atom.id].remove(atom)
+
+    def add_bond(self, atom1: bio.Atom.Atom, atom2: bio.Atom.Atom):
+        """
+        Add a bond between two atoms
+
+        Parameters
+        ----------
+        atom1 : bio.Atom.Atom
+            The first atom
+        atom2 : bio.Atom.Atom
+            The second atom
+        """
+        self._bonds.append((atom1, atom2))
+
+    def remove_bond(self, atom1: bio.Atom.Atom, atom2: bio.Atom.Atom):
+        """
+        Remove a bond between two atoms
+
+        Parameters
+        ----------
+        atom1 : bio.Atom.Atom
+            The first atom
+        atom2 : bio.Atom.Atom
+            The second atom
+        """
+        self._bonds.remove((atom1, atom2))
 
     def infer_missing_atoms(self, _topology=None):
         """
@@ -124,9 +392,9 @@ class Molecule:
             A specific topology to use for referencing.
             If None, the default CHARMM topology is used.
         """
-        structural.fill_missing_atoms(self._struct, _topology)
+        structural.fill_missing_atoms(self._base_struct, _topology)
 
-    def get_standard_bonds(self, _topology=None) -> list:
+    def apply_standard_bonds(self, _topology=None) -> list:
         """
         Get the standard bonds for the structure
 
@@ -141,7 +409,7 @@ class Molecule:
         list
             A list of tuples of atom pairs that are bonded
         """
-        bonds = structural.apply_standard_bonds(self._struct, _topology)
+        bonds = structural.apply_standard_bonds(self._base_struct, _topology)
         self._bonds.extend([b for b in bonds if b not in self._bonds])
         return bonds
 
@@ -163,7 +431,7 @@ class Molecule:
         list
             A list of tuples of atom pairs that are bonded
         """
-        bonds = structural.infer_bonds(self._struct, max_bond_length, restrict_residues)
+        bonds = structural.infer_bonds(self._base_struct, max_bond_length, restrict_residues)
         self._bonds.extend([b for b in bonds if b not in self._bonds])
         return bonds
 
@@ -177,7 +445,7 @@ class Molecule:
             The maximum distance between atoms to consider them bonded.
             If None, the default value is 1.6 Angstroms.
         """
-        bonds = structural.infer_residue_connections(self._struct, max_bond_length)
+        bonds = structural.infer_residue_connections(self._base_struct, max_bond_length)
         self._bonds.extend([b for b in bonds if b not in self._bonds])
         return bonds
 
@@ -209,26 +477,69 @@ class Molecule:
         atom3 = self._get_atom(atom3)
         return structural.compute_angle(atom1, atom2, atom3)
 
+    def compute_dihedral(
+        self,
+        atom1: Union[str, int, bio.Atom.Atom],
+        atom2: Union[str, int, bio.Atom.Atom],
+        atom3: Union[str, int, bio.Atom.Atom],
+        atom4: Union[str, int, bio.Atom.Atom],
+    ):
+        """
+        Compute the dihedral angle between four atoms
+
+        Parameters
+        ----------
+        atom1
+            The first atom
+        atom2
+            The second atom
+        atom3
+            The third atom
+        atom4
+            The fourth atom
+
+        Returns
+        -------
+        float
+            The dihedral angle in degrees
+        """
+        atom1 = self._get_atom(atom1)
+        atom2 = self._get_atom(atom2)
+        atom3 = self._get_atom(atom3)
+        atom4 = self._get_atom(atom4)
+        return structural.compute_dihedral(atom1, atom2, atom3, atom4)
+
     def _get_atom(self, _atom):
         """
         Get an atom based on its id, serial number or check if it is available...
         """
         if isinstance(_atom, str):
-            atoms = {i.id: i for i in self._struct.get_atoms()}
-            if not _atom in atoms:
+            if not _atom in self._ids_atoms:
                 raise ValueError(f"Atom {_atom} not found in structure")
-            return atoms[_atom]
+            atom = self._ids_atoms[_atom]
+            if len(atom) == 1:
+                atom = atom[0]
+            else:
+                warnings.warn("Multiple atoms with the same id found. Returning the full list!")
+            return atom
+
         elif isinstance(_atom, int):
-            atoms = {i.serial_number: i for i in self._struct.get_atoms()}
-            if not _atom in atoms:
+            if not _atom in self._idx_atoms:
                 raise ValueError(f"Atom {_atom} not found in structure")
-            return atoms[_atom]
+            return self._idx_atoms[_atom]
+
+        elif isinstance(_atom, tuple):
+            if not _atom in self._full_id_atoms:
+                raise ValueError(f"Atom {_atom} not found in structure")
+            return self._full_id_atoms[_atom]
+
         elif isinstance(_atom, bio.Atom.Atom):
-            if _atom in self._struct.get_atoms():
+            if _atom in self._base_struct.get_atoms():
                 return _atom
             else:
                 warnings.warn(f"Atom {_atom} not found in structure")
                 return _atom
+
         else:
             raise TypeError(f"Invalid type for atom: {type(_atom)}")
 

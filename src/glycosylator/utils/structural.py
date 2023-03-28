@@ -10,11 +10,12 @@ import warnings
 
 import numpy as np
 import Bio.PDB as bio
+from openbabel import pybel
 import numba
 
 import glycosylator.utils.defaults as defaults
 import glycosylator.utils.constants as constants
-
+import glycosylator.utils.convert as convert
 
 # =================================================================
 # Structure related classes
@@ -375,6 +376,36 @@ class Quartet:
 # =================================================================
 # Structure related functions
 # =================================================================
+
+
+def read_smiles(smiles: str, add_hydrogens: bool = True):
+    """
+    Read a SMILES string into a Bio.PDB.Structure
+
+    Parameters
+    ----------
+    smiles : str
+        The SMILES string to read
+    add_hydrogens : bool
+        Whether to add hydrogens to the structure
+
+    Returns
+    -------
+    structure : Bio.PDB.Structure
+        The structure
+    """
+    mol = pybel.readstring("smi", smiles)
+    if mol is None:
+        raise ValueError(f"Could not parse SMILES string {smiles}")
+    mol.make3D()
+
+    if not add_hydrogens:
+        mol.removeh()
+
+    converter = convert.PybelBioPythonConverter()
+    mol = converter.pybel_molecule_to_biopython(mol)
+
+    return mol
 
 
 def infer_residue_connections(structure, bond_length: float = None):
@@ -802,6 +833,44 @@ def compute_dihedral(atom1, atom2, atom3, atom4):
     return np.degrees(np.arctan2(y, x))
 
 
+def compute_torsional(atom1, atom2, atom3, atom4):
+    """
+    Compute the torsional angle between four atoms.
+
+    Parameters
+    ----------
+    atom1 : Bio.PDB.Atom
+        The first atom
+    atom2 : Bio.PDB.Atom
+        The second atom
+    atom3 : Bio.PDB.Atom
+        The third atom
+    atom4 : Bio.PDB.Atom
+        The fourth atom
+
+    Returns
+    -------
+    torsional : float
+        The torsional angle between the four atoms in degrees
+    """
+    ab = atom1.coord - atom2.coord
+    bc = atom3.coord - atom2.coord
+    cd = atom4.coord - atom3.coord
+
+    # normalize b so that it does not influence magnitude of vector
+    # rejections that come next
+    bc /= np.linalg.norm(bc)
+
+    # vector rejections
+    v = ab - np.dot(ab, bc) * bc
+    w = cd - np.dot(cd, bc) * bc
+
+    # angle between v and w in radians
+    x = np.dot(v, w)
+    y = np.dot(np.cross(bc, v), w)
+    return np.degrees(np.arctan2(y, x))
+
+
 def compute_triplets(bonds: list):
     """
     Compute all possible triplets of atoms from a list of bonds.
@@ -911,7 +980,7 @@ def compute_quartets(bonds: list):
     return quartets
 
 
-@numba.njit
+# @numba.njit
 def _rotation_matrix(axis, angle):
     """
     Compute the rotation matrix about an arbitrary axis in 3D
