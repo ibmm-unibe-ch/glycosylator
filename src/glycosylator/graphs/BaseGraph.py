@@ -6,9 +6,15 @@ from abc import abstractmethod
 
 import Bio.PDB as bio
 import networkx as nx
+import numpy as np
+from scipy.spatial.transform import Rotation
 
 
 class BaseGraph(nx.Graph):
+    """
+    The basic class for molecular graphs
+    """
+
     def __init__(self, id, bonds: list):
         if len(bonds) == 0:
             raise ValueError("Cannot create a graph with no bonds")
@@ -93,6 +99,111 @@ class BaseGraph(nx.Graph):
             The neighbors of the node
         """
         raise NotImplementedError
+
+    def get_descendants(self, node_1, node_2):
+        """
+        Get all descendant nodes that come after a specific edge
+        defined in the direction from node1 to node2 (i.e. get all
+        nodes that come after node2). This method is directed
+        in contrast to the `get_neighbors()` method, which will get all neighboring
+        nodes of an anchor node irrespective of direction.
+
+        Parameters
+        ----------
+        node_1, node_2
+            The nodes that define the edge
+
+        Returns
+        -------
+        set
+            The descendants of the node
+
+        Examples
+        --------
+        In case of this graph
+        ```
+        A---B---C---D---E
+             \\
+              F---H
+              |
+              G
+        ```
+        >>> graph.get_descendants("B", "C")
+        {"D", "E"}
+        >>> graph.get_descendants("B", "F")
+        {"H", "G"}
+        >>> graph.get_descendants("B", "A")
+        set() # because in this direction there are no other nodes
+        """
+        if node_1 == node_2:
+            raise ValueError("Cannot get descendants if only one node is given (no direction)!")
+
+        neighbors = self.get_neighbors(node_2)
+        neighbors.remove(node_1)
+        if len(neighbors) == 0:
+            return neighbors
+
+        _new_neighbors = neighbors.copy()
+        _seen = set((node_1, node_2))
+
+        while len(_new_neighbors) > 0:
+
+            neighbor = _new_neighbors.pop()
+            descendants = self.get_neighbors(neighbor)
+
+            descendants -= _seen
+            _seen.add(neighbor)
+            neighbors.add(neighbor)
+
+            if len(descendants) == 0:
+                continue
+            _new_neighbors.update(descendants)
+
+        return neighbors
+
+    def rotate_around_edge(self, node_1, node_2, angle: float, descentens_only: bool = False):
+        """
+        Rotate descending nodes around a specific edge by a given angle.
+
+        Parameters
+        ----------
+        node_1, node_2
+            The nodes that define the edge around which to rotate.
+        angle: float
+            The angle to rotate by, in radians.
+        descentens_only: bool, optional
+            Whether to only rotate the descending nodes, by default False
+        """
+
+        # get the node coordinates as a dictionary
+        node_dict = nx.get_node_attributes(self, 'coord')
+
+        if node_1 not in self.nodes or node_2 not in self.nodes:
+            raise ValueError("One or more nodes not in graph!")
+
+        # define the axis of rotation as the cross product of the edge's vectors
+        edge_vector = node_dict[node_2] - node_dict[node_1]
+        edge_vector /= np.linalg.norm(edge_vector)
+
+        # create the rotation matrix
+        r = Rotation.from_rotvec(angle * edge_vector)
+
+        # create a numpy array of the node coordinates
+        if descentens_only:
+            node_coords = np.array([i.coord for i in nx.descendants(self, node_2)])
+        else:
+            node_coords = np.array([i.coord for i in self.nodes])
+
+        # apply the rotation matrix to the node coordinates
+        node_coords_rotated = r.apply(node_coords)
+
+        # update the node coordinates in the graph
+        for i, node in enumerate(self.nodes):
+            node_dict[node] = node_coords_rotated[i]
+            node.coord = node_coords_rotated[i]
+
+        # set the node attributes in the graph
+        nx.set_node_attributes(self, node_dict, 'coord')
 
     def _get_structure(self):
         """
