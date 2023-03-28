@@ -12,6 +12,10 @@ class AtomGraph(BaseGraph):
     A graph representation of atoms and bonds in a contiguous molecule.
     """
 
+    def __init__(self, id, bonds: list):
+        super().__init__(id, bonds)
+        nx.set_node_attributes(self, {i: i.coord for i in self.nodes}, "coord")
+
     @classmethod
     def from_pdb(cls, filename: str, id=None, apply_standard_bonds: bool = True, infer_residue_connections: bool = True, infer_bonds: bool = False, max_bond_length: float = None, restrict_residues: bool = True, _topology=None):
         """
@@ -84,7 +88,7 @@ class AtomGraph(BaseGraph):
             if _parent is None:
                 break
             structure = _parent
-        
+
         bonds = cls._make_bonds(structure, apply_standard_bonds, infer_residue_connections, infer_bonds, max_bond_length, restrict_residues)
         return cls(structure.id, bonds)
 
