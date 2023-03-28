@@ -19,6 +19,9 @@ class ResidueGraph(BaseGraph):
         self._AtomGraph = None
         self._atomic_bonds = {}
         self._residues = {i.id: i for i in self.nodes}
+        for r in self.nodes:
+            r.coord = r.center_of_mass()
+        nx.set_node_attributes(self, {i: i.center_of_mass() for i in self.nodes}, "coord")
 
     @classmethod
     def from_AtomGraph(cls, atom_graph):
