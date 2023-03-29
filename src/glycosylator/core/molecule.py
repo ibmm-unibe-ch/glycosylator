@@ -114,7 +114,7 @@ class Molecule:
         if value is None:
             self._root_atom = None
         else:
-            self._root_atom = self._get_atom(value)
+            self._root_atom = self.get_atom(value)
 
     @property
     def root_residue(self):
@@ -185,6 +185,18 @@ class Molecule:
         """
         return {quartet: structural.compute_dihedral(*quartet) for quartet in self.atom_quartets}
 
+    @property
+    def AtomGraph(self):
+        if not self._AtomGraph:
+            self.make_atom_graph()
+        return self._AtomGraph
+
+    @property
+    def ResidueGraph(self):
+        if not self._ResidueGraph:
+            self.make_residue_graph()
+        return self._ResidueGraph
+
     def to_pdb(self, filename: str):
         """
         Write the molecule to a PDB file
@@ -227,44 +239,99 @@ class Molecule:
         else:
             raise ValueError("Either seqid or name must be provided")
 
-    def get_atom(self, serial_number: int = None, id: Union[str, int] = None, full_id: tuple = None):
+    def get_atoms(self, *atoms: Union[int, str, tuple], by: str = None) -> list:
         """
-        Get an atom from the structure either based on its
-        id, serial number or full_id. Note, if multiple atoms with
-        the same id are present (e.g. 'C1' from different residues)
-        all of them are returned in a list. It is a safer option to use the
-        full_id or serial number to get a specific atom.
-        The input parameters do support lists or tuples of multiple serial numbers or ids (only one type of parameter is supported per call, however).
-        In case multiple serial numbers are provided, a list of atoms is returned.
+        Get one or more atoms from the structure either based on their
+        id, serial number or full_id. Note, if multiple atoms match the requested criteria,
+        for instance there are multiple 'C1' from different residues all of them are returned in a list.
+        It is a safer option to use the full_id or serial number to retrieve a specific atom.
+        If no search parameters are provided, the underlying iterator of the structure is returned.
 
         Parameters
         ----------
-        serial_number : int
-            The serial number of the atom
-        id : str or int
-            The id of the atom
-        full_id : tuple
-            The full_id of the atom
+        atoms
+            The atom id, serial number or full_id tuple,
+            this supports multiple atoms to search for. However,
+            only one type of parameter is supported per call.
+        by : str
+            The type of parameter to search for. Can be either 'id', 'serial' or 'full_id'
+            If None is given, the parameter is inferred from the datatype of the atoms argument
+            'serial' in case of `int`, 'id' in case of `str`, `full_id` in case of a tuple.
+
+        Returns
+        -------
+        atom : list
+            The atom(s)
+        """
+        if len(atoms) == 0:
+            return self._base_struct.get_atoms()
+
+        if by is None:
+            if isinstance(atoms[0], int):
+                by = "serial"
+            elif isinstance(atoms[0], str):
+                by = "id"
+            elif isinstance(atoms[0], tuple):
+                by = "full_id"
+            else:
+                raise ValueError("Unknown search parameter, must be either 'id', 'serial' or 'full_id'")
+
+        if by == "id":
+            atoms = [i for i in self._base_struct.get_atoms() if i.id in atoms]
+        elif by == "serial":
+            atoms = [i for i in self._base_struct.get_atoms() if i.serial_number in atoms]
+        elif by == "full_id":
+            atoms = [i for i in self._base_struct.get_atoms() if i.full_id in atoms]
+        else:
+            raise ValueError("Unknown search parameter, must be either 'id', 'serial' or 'full_id'")
+
+        return atoms
+
+    def get_atom(self, atom: Union[int, str, tuple], by: str = None):
+        """
+        Get an atom from the structure either based on its
+        id, serial number or full_id. Note, if multiple atoms match the requested criteria,
+        for instance there are multiple 'C1' from different residues, the first one is returned.
+
+        Parameters
+        ----------
+        atom
+            The atom id, serial number or full_id tuple
+        by : str
+            The type of parameter to search for. Can be either 'id', 'serial' or 'full_id'
+            Because this looks for one specific atom, this parameter can be inferred from the datatype
+            of the atom parameter. If it is an integer, it is assumed to be the serial number,
+            if it is a string, it is assumed to be the atom id and if it is a tuple, it is assumed
+            to be the full_id.
 
         Returns
         -------
         atom : bio.Atom.Atom
             The atom
         """
-        if serial_number:
-            if isinstance(serial_number, (list, tuple)):
-                return [self._get_atom(i) for i in serial_number]
-            return self._get_atom(serial_number)
-        elif id:
-            if isinstance(id, (list, tuple)):
-                return [self._get_atom(i) for i in id]
-            return self._get_atom(id)
-        elif full_id:
-            if isinstance(full_id, (list, tuple)):
-                return [self._get_atom(i) for i in full_id]
-            return self._get_atom(full_id)
+        if isinstance(atom, bio.Atom.Atom):
+            return atom
+
+        if by is None:
+            if isinstance(atom, int):
+                by = "serial"
+            elif isinstance(atom, str):
+                by = "id"
+            elif isinstance(atom, tuple):
+                by = "full_id"
+            else:
+                raise ValueError("Unknown search parameter, must be either 'id', 'serial' or 'full_id'")
+
+        if by == "id":
+            atom = next(i for i in self._base_struct.get_atoms() if i.id == atom)
+        elif by == "serial":
+            atom = next(i for i in self._base_struct.get_atoms() if i.serial_number == atom)
+        elif by == "full_id":
+            atom = next(i for i in self._base_struct.get_atoms() if i.full_id == atom)
         else:
-            raise ValueError("Either id, serial_number or full_id must be provided")
+            raise ValueError("Unknown search parameter, must be either 'id', 'serial' or 'full_id'")
+
+        return atom
 
     def get_root(self):
         return self.root_atom
@@ -309,6 +376,9 @@ class Molecule:
         self._idx_atoms_cache = None
         self._ids_atoms_cache = None
         self._full_id_atoms_cache = None
+
+        self._AtomGraph = None
+        self._ResidueGraph = None
 
         self._idx_atoms
         self._ids_atoms
@@ -494,6 +564,97 @@ class Molecule:
         self._bonds.extend([b for b in bonds if b not in self._bonds])
         return bonds
 
+    def rotate_around_bond(self, atom1: Union[str, int, bio.Atom.Atom], atom2: Union[str, int, bio.Atom.Atom], angle: float, descendants_only: bool = False):
+        """
+        Rotate the structure around a bond
+
+        Parameters
+        ----------
+        atom1
+            The first atom
+        atom2
+            The second atom
+        angle
+            The angle to rotate by in degrees
+        descendants_only
+            Whether to only rotate the descendants of the bond
+            (sensible only for linear molecules, or bonds that are not part of a circular structure).
+        
+        Examples
+        --------
+        For a molecule starting as:
+        ```
+                     OH
+                    /
+        (1)CH3 --- CH 
+                    \\
+                    CH2 --- (2)CH3
+        ```
+        we can rotate around the bond `(1)CH3 --- CH` by 180° using
+
+        >>> import numpy as np
+        >>> angle = np.radians(180) # rotation angle needs to be in radians
+        >>> mol.rotate_around_bond("(1)CH3", "CH", angle)
+
+        and thus achieve the following:
+        ```
+                     CH2 --- (2)CH3
+                    /
+        (1)CH3 --- CH 
+                    \\
+                     OH
+        ```
+
+        """
+        atom1 = self.get_atom(atom1)
+        atom2 = self.get_atom(atom2)
+
+        self.AtomGraph.rotate_around_edge(atom1, atom2, angle, descendants_only)
+
+    def get_descendants(
+        self,
+        atom1: Union[str, int, bio.Atom.Atom],
+        atom2: Union[str, int, bio.Atom.Atom],
+    ):
+        """
+        Get the atoms downstream of a bond. This will return the set
+        of all atoms that are connected after the bond atom1-atom2 in the direction of atom2,
+        the selection can be reversed by reversing the order of atoms (atom2-atom1).
+
+        Parameters
+        ----------
+        atom1
+            The first atom
+        atom2
+            The second atom
+
+        Returns
+        -------
+        set
+            A set of atoms
+
+        Examples
+        --------
+        For a molecule
+        ```
+                     OH
+                    /
+        (1)CH3 --- CH 
+                    \\
+                    CH2 --- (2)CH3
+        ```
+        >>> mol.get_descendants("(1)CH3", "CH")
+        {"OH", "CH2", "(2)CH3"}
+        >>> mol.get_descendants("CH", "CH2")
+        {"(2)CH3"}
+        >>> mol.get_descendants("CH2", "CH")
+        {"OH", "(1)CH3"}
+        """
+        atom1 = self.get_atom(atom1)
+        atom2 = self.get_atom(atom2)
+
+        return self.AtomGraph.get_descendants(atom1, atom2)
+
     def compute_angle(
         self,
         atom1: Union[str, int, bio.Atom.Atom],
@@ -501,7 +662,7 @@ class Molecule:
         atom3: Union[str, int, bio.Atom.Atom],
     ):
         """
-        Compute the angle between three atoms
+        Compute the angle between three atoms where atom2 is the middle atom.
 
         Parameters
         ----------
@@ -517,9 +678,9 @@ class Molecule:
         float
             The angle in degrees
         """
-        atom1 = self._get_atom(atom1)
-        atom2 = self._get_atom(atom2)
-        atom3 = self._get_atom(atom3)
+        atom1 = self.get_atom(atom1)
+        atom2 = self.get_atom(atom2)
+        atom3 = self.get_atom(atom3)
         return structural.compute_angle(atom1, atom2, atom3)
 
     def compute_dihedral(
@@ -548,10 +709,10 @@ class Molecule:
         float
             The dihedral angle in degrees
         """
-        atom1 = self._get_atom(atom1)
-        atom2 = self._get_atom(atom2)
-        atom3 = self._get_atom(atom3)
-        atom4 = self._get_atom(atom4)
+        atom1 = self.get_atom(atom1)
+        atom2 = self.get_atom(atom2)
+        atom3 = self.get_atom(atom3)
+        atom4 = self.get_atom(atom4)
         return structural.compute_dihedral(atom1, atom2, atom3, atom4)
 
     @property
@@ -583,39 +744,31 @@ class Molecule:
             self._full_id_atoms_cache = {a.full_id: a for a in self._chain.get_atoms()}
         return self._full_id_atoms_cache
 
-    def _get_atom(self, _atom):
-        """
-        Get an atom based on its id, serial number or check if it is available...
-        """
-        if isinstance(_atom, str):
-            if not _atom in self._ids_atoms:
-                raise ValueError(f"Atom {_atom} not found in structure")
-            atom = self._ids_atoms[_atom]
-            if len(atom) == 1:
-                atom = atom[0]
-            else:
-                warnings.warn("Multiple atoms with the same id found. Returning the full list!")
-            return atom
+    # def _get_atom(self, _atom):
+    #     """
+    #     Get an atom based on its id, serial number or check if it is available...
+    #     """
+    #     if isinstance(_atom, str):
+    #         _atom = self.get_atoms(_atom, by="id")
+    #         if len(_atom) == 0:
+    #             raise ValueError(f"Atom {_atom} not found in structure")
 
-        elif isinstance(_atom, int):
-            if not _atom in self._idx_atoms:
-                raise ValueError(f"Atom {_atom} not found in structure")
-            return self._idx_atoms[_atom]
+    #     elif isinstance(_atom, int):
 
-        elif isinstance(_atom, tuple):
-            if not _atom in self._full_id_atoms:
-                raise ValueError(f"Atom {_atom} not found in structure")
-            return self._full_id_atoms[_atom]
+    #     elif isinstance(_atom, tuple):
+    #         if not _atom in self._full_id_atoms:
+    #             raise ValueError(f"Atom {_atom} not found in structure")
+    #         return self._full_id_atoms[_atom]
 
-        elif isinstance(_atom, bio.Atom.Atom):
-            if _atom in self._base_struct.get_atoms():
-                return _atom
-            else:
-                warnings.warn(f"Atom {_atom} not found in structure")
-                return _atom
+    #     elif isinstance(_atom, bio.Atom.Atom):
+    #         if _atom in self._base_struct.get_atoms():
+    #             return _atom
+    #         else:
+    #             warnings.warn(f"Atom {_atom} not found in structure")
+    #             return _atom
 
-        else:
-            raise TypeError(f"Invalid type for atom: {type(_atom)}")
+    #     else:
+    #         raise TypeError(f"Invalid type for atom: {type(_atom)}")
 
 
 #         _validate_atom_group(atom_group)
@@ -787,3 +940,19 @@ class Molecule:
 #     paths = [[node] + path for neighbor in G.neighbors(node) if neighbor not in excludeSet for path in _find_paths(G, neighbor, length - 1, excludeSet)]
 #     excludeSet.remove(node)
 #     return paths
+
+
+if __name__ == "__main__":
+
+    mol = Molecule.from_pdb("support/examples/MAN.pdb")
+    mol.infer_bonds()
+
+    d = mol._get_descendents(mol.get_atoms(id="HO3"), mol.get_atoms(id="O3"))
+    assert len(d) == 22
+
+    d = mol._get_descendents(mol.get_atoms(id="C5"), mol.get_atoms(id="C6"))
+    assert len(d) == 4
+
+    d = mol._get_descendents(mol.get_atoms(id="C4"), mol.get_atoms(id="C5"))
+
+    # mol.rotate_around_bond("C5", "C6", np.radians(25), True)
