@@ -2,6 +2,7 @@
 Tests to check the behaviour of the gl.AtomGraph and gl.ResidueGraph object
 """
 
+import numpy as np
 import glycosylator as gl
 import base
 
@@ -96,6 +97,53 @@ def test_atom_graph_get_descendants():
     _received = len(_received)
     _expected = 4
     assert _received == _expected, f"Expected {_expected} descendants, got {_received}"
+
+
+def test_atom_graph_rotate_descendants_only():
+    mol = gl.graphs.AtomGraph.from_pdb(base.MANNOSE)
+
+    c6 = next(i for i in mol.structure.get_atoms() if i.id == "C6")
+    c5 = next(i for i in mol.structure.get_atoms() if i.id == "C5")
+
+    descendants = mol.get_descendants(c5, c6)
+    others = set(i for i in mol.atoms if i not in descendants)
+
+    current_descendants = np.array([i.coord for i in descendants])
+    current_others = np.array([i.coord for i in others])
+
+    mol.rotate_around_edge(c5, c6, np.radians(35), descendants_only=True)
+
+    new_descendants = np.array([i.coord for i in descendants])
+    new_others = np.array([i.coord for i in others])
+
+    assert np.all(current_others == new_others), "Other atoms have also moved!"
+    assert not np.allclose(current_descendants, new_descendants), "Descendants have not moved"
+
+
+def test_atom_graph_rotate_all():
+    mol = gl.graphs.AtomGraph.from_pdb(base.MANNOSE)
+
+    c6 = next(i for i in mol.structure.get_atoms() if i.id == "C6")
+    c5 = next(i for i in mol.structure.get_atoms() if i.id == "C5")
+
+    descendants = mol.get_descendants(c5, c6)
+    others = set(i for i in mol.atoms if i not in descendants)
+    others.remove(c6)
+    others.remove(c5)
+
+    current_descendants = np.array([i.coord for i in descendants])
+    current_others = np.array([i.coord for i in others])
+    current_ref = np.array((c5.coord, c6.coord))
+
+    mol.rotate_around_edge(c5, c6, np.radians(35), descendants_only=False)
+
+    new_descendants = np.array([i.coord for i in descendants])
+    new_others = np.array([i.coord for i in others])
+    new_ref = np.array((c5.coord, c6.coord))
+
+    assert not np.all(current_others == new_others), "Other atoms have not moved!"
+    assert not np.allclose(current_descendants, new_descendants), "Descendants have not moved"
+    assert np.allclose(current_ref, new_ref), "Reference atoms have moved"
 
 
 # =================================================================
@@ -205,3 +253,50 @@ def test_residue_graph_get_descendants():
     _received = len(_received)
     _expected = 1
     assert _received == _expected, f"Expected {_expected} descendants, got {_received}"
+
+
+def test_residue_graph_rotate_descendants_only():
+    mol = gl.graphs.ResidueGraph.from_pdb(base.MANNOSE9)
+
+    nag3 = mol.residues[1]
+    bma = mol.residues[2]
+
+    descendants = mol.get_descendants(nag3, bma)
+    others = set(i for i in mol.residues if i not in descendants)
+
+    current_descendants = np.array([i.coord for i in descendants])
+    current_others = np.array([i.coord for i in others])
+
+    mol.rotate_around_edge(nag3, bma, np.radians(35), descendants_only=True)
+
+    new_descendants = np.array([i.coord for i in descendants])
+    new_others = np.array([i.coord for i in others])
+
+    assert np.all(current_others == new_others), "Other residues have also moved!"
+    assert not np.allclose(current_descendants, new_descendants), "Descendants have not moved"
+
+
+def test_residue_graph_rotate_all():
+    mol = gl.graphs.ResidueGraph.from_pdb(base.MANNOSE9)
+
+    nag3 = mol.residues[1]
+    bma = mol.residues[2]
+
+    descendants = mol.get_descendants(nag3, bma)
+    others = set(i for i in mol.residues if i not in descendants)
+    others.remove(nag3)
+    others.remove(bma)
+
+    current_descendants = np.array([i.coord for i in descendants])
+    current_others = np.array([i.coord for i in others])
+    current_ref = np.array((nag3.coord, bma.coord))
+
+    mol.rotate_around_edge(nag3, bma, np.radians(35), descendants_only=False)
+
+    new_descendants = np.array([i.coord for i in descendants])
+    new_others = np.array([i.coord for i in others])
+    new_ref = np.array((nag3.coord, bma.coord))
+
+    assert not np.all(current_others == new_others), "Other residues have not moved!"
+    assert not np.allclose(current_descendants, new_descendants), "Descendants have not moved"
+    assert np.allclose(current_ref, new_ref), "Reference residues have moved"

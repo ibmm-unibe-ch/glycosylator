@@ -178,14 +178,14 @@ class ResidueGraph(BaseGraph):
             self._neighborhood = struct.ResidueNeighborhood(self)
         return self._neighborhood.get_neighbors(residue, n, mode)
 
-    def centers_of_gravity(self):
+    def centers_of_mass(self):
         """
-        Get the centers of gravity of the residues in the molecule.
+        Get the centers of mass of the residues in the molecule.
 
         Returns
         -------
         dict
-            The centers of gravity of the residues in the molecule
+            The centers of mass of the residues in the molecule
         """
         return {residue.id: residue.center_of_mass() for residue in self.residues}
 
