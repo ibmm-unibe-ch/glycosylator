@@ -161,7 +161,7 @@ class BaseGraph(nx.Graph):
 
         return neighbors
 
-    def rotate_around_edge(self, node_1, node_2, angle: float, descentens_only: bool = False):
+    def rotate_around_edge(self, node_1, node_2, angle: float, descendants_only: bool = False):
         """
         Rotate descending nodes around a specific edge by a given angle.
 
@@ -171,39 +171,57 @@ class BaseGraph(nx.Graph):
             The nodes that define the edge around which to rotate.
         angle: float
             The angle to rotate by, in radians.
-        descentens_only: bool, optional
-            Whether to only rotate the descending nodes, by default False
+        descendants_only: bool, optional
+            Whether to only rotate the descending nodes, by default False, in which case the entire graph
+            will be rotated.
         """
 
         # get the node coordinates as a dictionary
-        node_dict = nx.get_node_attributes(self, 'coord')
+        # # we do this in order to update the node attributes later...
+        # node_dict = nx.get_node_attributes(self, 'coord')
 
         if node_1 not in self.nodes or node_2 not in self.nodes:
             raise ValueError("One or more nodes not in graph!")
 
+        # we need to get a reference node index to normalise the rotated
+        # coordinates to the original coordinate system
+        indices = list(self.nodes)
+        idx_1 = indices.index(node_1)
+
         # define the axis of rotation as the cross product of the edge's vectors
-        edge_vector = node_dict[node_2] - node_dict[node_1]
+        edge_vector = node_2.coord - node_1.coord
         edge_vector /= np.linalg.norm(edge_vector)
 
         # create the rotation matrix
         r = Rotation.from_rotvec(angle * edge_vector)
 
         # create a numpy array of the node coordinates
-        if descentens_only:
-            node_coords = np.array([i.coord for i in nx.descendants(self, node_2)])
+        if descendants_only:
+            nodes = {i: i.coord for i in self.get_descendants(node_1, node_2)}
+            nodes[node_2] = node_2.coord
         else:
-            node_coords = np.array([i.coord for i in self.nodes])
+            nodes = nx.get_node_attributes(self, 'coord')
+
+        node_coords = np.array(tuple(nodes.values()))
+
+        indices = list(nodes.keys())
+        idx_2 = indices.index(node_2)
 
         # apply the rotation matrix to the node coordinates
         node_coords_rotated = r.apply(node_coords)
 
+        # now adjust for the translational shift around the axis
+        _diff = node_coords_rotated[idx_2] - node_coords[idx_2]
+        node_coords_rotated -= _diff
+
         # update the node coordinates in the graph
-        for i, node in enumerate(self.nodes):
-            node_dict[node] = node_coords_rotated[i]
+        for i, node in enumerate(nodes):
             node.coord = node_coords_rotated[i]
 
+        new_coords = {i: i.coord for i in self.nodes}
+
         # set the node attributes in the graph
-        nx.set_node_attributes(self, node_dict, 'coord')
+        nx.set_node_attributes(self, new_coords, 'coord')
 
     def _get_structure(self):
         """
