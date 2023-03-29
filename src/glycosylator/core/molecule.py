@@ -22,8 +22,8 @@ class Molecule:
         A biopython structure that stores the atomic structure
     root_atom : str or int or bio.PDB.Atom
         The id or the serial number of the root atom
-        at which the molecule would be attached to a protein scaffold
-        (optional, necessary for Molecules that shall be added onto a protein)
+        at which the molecule would be attached to a another
+        structure such as protein scaffold or another Molecule.
     """
 
     def __init__(
@@ -51,6 +51,7 @@ class Molecule:
         self._ResidueGraph = None
 
         self._bonds = []
+        self._locked_bonds = set()
         self._idx_atoms_cache = None
         self._ids_atoms_cache = None
         self._full_id_atoms_cache = None
@@ -406,21 +407,24 @@ class Molecule:
                 residue.id = (rdx, *residue.id[1:])
             self._chain.add(residue)
 
-    def remove_residues(self, *residues: bio.Residue.Residue):
+    def remove_residues(self, *residues: Union[int, bio.Residue.Residue]):
         """
         Remove residues from the structure
 
         Parameters
         ----------
-        residues : bio.Residue.Residue
-            The residues to remove
+        residues : int or bio.Residue.Residue
+            The residues to remove, either the object itself or its seqid
         """
         for residue in residues:
+            if isinstance(residue, int):
+                residue = self._chain.child_list[residue - 1]
             self._chain.detach_child(residue.id)
 
     def add_atoms(self, *atoms: bio.Atom.Atom, residue=None):
         """
-        Add atoms to the structure
+        Add atoms to the structure. This will automatically adjust the atom's serial number to
+        fit into the structure.
 
         Parameters
         ----------
@@ -456,46 +460,140 @@ class Molecule:
             self._full_id_atoms[atom.full_id] = atom
             self._ids_atoms.setdefault(atom.id, []).append(atom)
 
-    def remove_atoms(self, *atoms: bio.Atom.Atom):
+    def remove_atoms(self, *atoms: Union[int, str, tuple, bio.Atom.Atom]):
         """
-        Remove an atom from the structure
+        Remove one or more atoms from the structure
 
         Parameters
         ----------
-        atom : bio.Atom.Atom
-            The atom to remove
+        atoms
+            The atoms to remove, which can either be directly provided (biopython object)
+            or by providing the serial number, the full_id or the id of the atoms.
         """
         for atom in atoms:
+            atom = self.get_atom(atom)
             atom.get_parent().detach_child(atom.id)
             del self._idx_atoms[atom.serial_number]
             del self._full_id_atoms[atom.full_id]
             self._ids_atoms[atom.id].remove(atom)
 
-    def add_bond(self, atom1: bio.Atom.Atom, atom2: bio.Atom.Atom):
+    def add_bond(self, atom1: Union[int, str, tuple, bio.Atom.Atom], atom2: Union[int, str, tuple, bio.Atom.Atom]):
         """
         Add a bond between two atoms
 
         Parameters
         ----------
-        atom1 : bio.Atom.Atom
-            The first atom
-        atom2 : bio.Atom.Atom
-            The second atom
+        atom1, atom2
+            The atoms to bond, which can either be directly provided (biopython object)
+            or by providing the serial number, the full_id or the id of the atoms.
         """
-        self._bonds.append((atom1, atom2))
+        atom1 = self.get_atom(atom1)
+        atom2 = self.get_atom(atom2)
 
-    def remove_bond(self, atom1: bio.Atom.Atom, atom2: bio.Atom.Atom):
+        bond = (atom1, atom2)
+        self._bonds.append(bond)
+
+    def remove_bond(self, atom1: Union[int, str, tuple, bio.Atom.Atom], atom2: Union[int, str, tuple, bio.Atom.Atom]):
         """
         Remove a bond between two atoms
 
         Parameters
         ----------
-        atom1 : bio.Atom.Atom
-            The first atom
-        atom2 : bio.Atom.Atom
-            The second atom
+        atom1, atom2
+            The atoms to bond, which can either be directly provided (biopython object)
+            or by providing the serial number, the full_id or the id of the atoms.
         """
-        self._bonds.remove((atom1, atom2))
+        atom1 = self.get_atom(atom1)
+        atom2 = self.get_atom(atom2)
+
+        bond = (atom1, atom2)
+        self._bonds.remove(bond)
+        if bond in self._locked_bonds:
+            self._locked_bonds.remove(bond)
+
+    def lock_all(self, both_ways: bool = True):
+        """
+        Lock all bonds in the structure
+
+        Parameters
+        ----------
+        both_ways : bool
+            If True, the bond is locked in both directions
+            i.e. atom1 --- atom2 direction will be unavailable for
+            rotation as well as atom2 --- atom1 direction as well.
+        """
+        self._locked_bonds = set(self._bonds)
+        if both_ways:
+            self._locked_bonds.update(b[::-1] for b in self._bonds)
+
+    def unlock_all(self):
+        """
+        Unlock all bonds in the structure
+        """
+        self._locked_bonds = set()
+
+    def lock_bond(self, atom1: Union[int, str, tuple, bio.Atom.Atom], atom2: Union[int, str, tuple, bio.Atom.Atom], both_ways: bool = False):
+        """
+        Lock a bond between two atoms
+
+        Parameters
+        ----------
+        atom1, atom2
+            The atoms to bond, which can either be directly provided (biopython object)
+            or by providing the serial number, the full_id or the id of the atoms.
+
+        both_ways : bool
+            If True, the bond is locked in both directions. By default the bond is only locked in the specified direction.
+        """
+        atom1 = self.get_atom(atom1)
+        atom2 = self.get_atom(atom2)
+
+        bond = (atom1, atom2)
+        self._locked_bonds.add(bond)
+        if both_ways:
+            self._locked_bonds.add(bond[::-1])
+
+    def unlock_bond(self, atom1: Union[int, str, tuple, bio.Atom.Atom], atom2: Union[int, str, tuple, bio.Atom.Atom], both_ways: bool = False):
+        """
+        Unlock a bond between two atoms
+
+        Parameters
+        ----------
+        atom1, atom2
+            The atoms to bond, which can either be directly provided (biopython object)
+            or by providing the serial number, the full_id or the id of the atoms.
+
+        both_ways : bool
+            If True, the bond is unlocked in both directions. By default the bond is only unlocked in the specified direction.
+        """
+        atom1 = self.get_atom(atom1)
+        atom2 = self.get_atom(atom2)
+
+        bond = (atom1, atom2)
+        self._locked_bonds.remove(bond)
+        if both_ways and bond[::-1] in self._locked_bonds:
+            self._locked_bonds.remove(bond[::-1])
+
+    def bond_is_locked(self, atom1: Union[int, str, tuple, bio.Atom.Atom], atom2: Union[int, str, tuple, bio.Atom.Atom]):
+        """
+        Check if a bond is locked
+
+        Parameters
+        ----------
+        atom1, atom2
+            The atoms to bond, which can either be directly provided (biopython object)
+            or by providing the serial number, the full_id or the id of the atoms.
+
+        Returns
+        -------
+        bool
+            True if the bond is locked, False otherwise
+        """
+        atom1 = self.get_atom(atom1)
+        atom2 = self.get_atom(atom2)
+
+        bond = (atom1, atom2)
+        return bond in self._locked_bonds
 
     def infer_missing_atoms(self, _topology=None):
         """
@@ -608,6 +706,8 @@ class Molecule:
         """
         atom1 = self.get_atom(atom1)
         atom2 = self.get_atom(atom2)
+        if (atom1, atom2) in self._locked_bonds:
+            raise RuntimeError("Cannot rotate around a locked bond")
 
         self.AtomGraph.rotate_around_edge(atom1, atom2, angle, descendants_only)
 
