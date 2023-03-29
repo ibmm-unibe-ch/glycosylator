@@ -37,10 +37,10 @@ def test_molecule_basic():
 
     mol = gl.Molecule(_mol)
 
-    a = mol.get_atom(serial_number=1)
+    a = mol.get_atom(1)
     assert a is not None
 
-    b = mol.get_atom(id="C1")
+    b = mol.get_atom("C1")
     assert b is not None
 
     a.id = "HIHIHI"
@@ -123,7 +123,7 @@ def test_add_atoms():
 
     assert len(mol.atoms) == pre + 1
 
-    _new = mol.get_atom(id="C99")
+    _new = mol.get_atom("C99")
     assert _new is not None
     assert _new.serial_number != 1
 
@@ -152,3 +152,95 @@ def test_add_residues():
     assert len(mol.residues) == pre
 
     assert "C99" not in [i.resname for i in mol.residues]
+
+
+def test_get_descendants():
+    mol = gl.Molecule.from_pdb(base.MANNOSE)
+    mol.apply_standard_bonds()
+
+    descendants = mol.get_descendants("C5", "C6")
+    _received = len(descendants)
+    _expected = 4
+    assert _received == _expected, f"Expected {_expected} descendants, received {_received}"
+
+    descendants = mol.get_descendants("O3", "C3")
+    _received = len(descendants)
+    _expected = 21
+    assert _received == _expected, f"Expected {_expected} descendants, received {_received}"
+
+
+def test_rotate_all():
+    mol = gl.Molecule.from_pdb(base.MANNOSE)
+    mol.apply_standard_bonds()
+
+    first = mol.get_atom("O3")
+    second = mol.get_atom("C3")
+    angle = np.radians(45)
+
+    current_coords = np.array([i.coord for i in mol.get_atoms() if i != first and i != second])
+    current_refs = np.array((first.coord, second.coord))
+    mol.rotate_around_bond(first, second, angle)
+
+    new_coords = np.array([i.coord for i in mol.get_atoms() if i != first and i != second])
+    new_refs = np.array((first.coord, second.coord))
+
+    assert not np.allclose(current_coords, new_coords)
+    assert np.allclose(current_refs, new_refs)
+
+    # and rotate back to revert...
+    mol.rotate_around_bond(first, second, -angle)
+    new_coords = np.array([i.coord for i in mol.get_atoms() if i != first and i != second])
+
+    assert np.allclose(current_coords, new_coords)
+
+
+def test_rotate_some():
+    mol = gl.Molecule.from_pdb(base.MANNOSE)
+    mol.apply_standard_bonds()
+
+    first = mol.get_atom("O3")
+    second = mol.get_atom("C3")
+    angle = np.radians(45)
+
+    # HO3 should not change in dicrection O3---C3
+    anchor = mol.get_atom("HO3")
+
+    current_coords = np.array([i.coord for i in mol.get_atoms() if i != first and i != second and i != anchor])
+    current_refs = np.array((first.coord, second.coord))
+    current_anchor = anchor.coord
+
+    mol.rotate_around_bond(first, second, angle, descendants_only=True)
+
+    new_coords = np.array([i.coord for i in mol.get_atoms() if i != first and i != second and i != anchor])
+    new_refs = np.array((first.coord, second.coord))
+    new_anchor = anchor.coord
+
+    assert not np.allclose(current_coords, new_coords)
+    assert np.allclose(current_refs, new_refs)
+    assert np.allclose(current_anchor, new_anchor)
+
+
+def test_rotate_some_inverse():
+    mol = gl.Molecule.from_pdb(base.MANNOSE)
+    mol.apply_standard_bonds()
+
+    first = mol.get_atom("O3")
+    second = mol.get_atom("C3")
+    angle = np.radians(45)
+
+    # HO3 should be the only change in dicrection C3---O3
+    anchor = mol.get_atom("HO3")
+
+    current_coords = np.array([i.coord for i in mol.get_atoms() if i != first and i != second and i != anchor])
+    current_refs = np.array((first.coord, second.coord))
+    current_anchor = anchor.coord
+
+    mol.rotate_around_bond(second, first, angle, descendants_only=True)
+
+    new_coords = np.array([i.coord for i in mol.get_atoms() if i != first and i != second and i != anchor])
+    new_refs = np.array((first.coord, second.coord))
+    new_anchor = anchor.coord
+
+    assert np.allclose(current_coords, new_coords)
+    assert np.allclose(current_refs, new_refs)
+    assert not np.allclose(current_anchor, new_anchor)
