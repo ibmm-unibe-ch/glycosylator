@@ -4,7 +4,7 @@ Classes to handle the atom and residue neighborhoods of a structure
 
 import numpy as np
 from collections import defaultdict
-from ctypes import Union
+from typing import Union
 import warnings
 
 import Bio.PDB as bio

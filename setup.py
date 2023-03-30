@@ -20,6 +20,7 @@ setuptools.setup(
         "glycosylator.core",
         "glycosylator.resources",
         "glycosylator.utils",
+        "glycosylator.utils.structural",
         "glycosylator.force_fields",
         "glycosylator.graphs",
     ],
