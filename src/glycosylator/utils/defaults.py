@@ -120,7 +120,7 @@ def set_default_parameters(obj, overwrite: bool = False):
         obj.save(DEFAULT_CHARMM_PARAMETERS_FILE)
 
 
-def get_default_parameters():
+def get_default_parameters() -> charmm.CHARMMParameters:
     """
     Get the default CHARMMParameters object
 
@@ -132,7 +132,7 @@ def get_default_parameters():
     return __default_instances__["Parameters"]
 
 
-def get_default_topology():
+def get_default_topology() -> charmm.CHARMMTopology:
     """
     Get the default CHARMMTopology object
 

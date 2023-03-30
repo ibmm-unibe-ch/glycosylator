@@ -110,7 +110,7 @@ class MoleculeViewer3D:
                 ),
             )
 
-    def draw_point(self, id, coords, color="black", showlegend=True):
+    def draw_point(self, id, coords, color="black", opacity=1.0, showlegend=True):
         """
         Draw a point on the figure
 
@@ -122,6 +122,8 @@ class MoleculeViewer3D:
             The coordinates of the point
         color : str
             The color of the point
+        opacity : float
+            The opacity of the point
         showlegend : bool
             Whether to show the legend or not
         """
@@ -130,7 +132,7 @@ class MoleculeViewer3D:
             y=[coords[1]],
             z=[coords[2]],
             mode="markers",
-            marker=dict(opacity=1, color=color),
+            marker=dict(opacity=opacity, color=color),
             name=id,
             hoverinfo="name",
             showlegend=showlegend,

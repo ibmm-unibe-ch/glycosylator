@@ -980,6 +980,35 @@ def compute_quartets(bonds: list):
     return quartets
 
 
+def apply_patch(parent_chain, new_chain, patch, copy: bool = False):
+    """
+    Join two biopython structures by merging one into the other
+    and connecting them according to a specific patch.
+    This will integrate the
+
+    Parameters
+    ----------
+    parent_chain : Bio.PDB.Chain
+        The parent chain into which a new chain should be integrated.
+        This chain will recieve all residues of the new chain (minus whatever
+        atoms are lost in the patching).
+    new_chain : Bio.PDB.Chain
+        The new chain to be integrated into the parent chain.
+    patch : AbstractPatch
+        The patch to apply
+    copy : bool
+        Whether to copy the parent chain or modify it in place.
+        This also supports a tuple of two booleans to select if
+        the parent and new chains should be copied, only the parent
+        or only the new chain.
+
+    Returns
+    -------
+    parent_chain : Bio.PDB.Chain
+        The modified parent chain or a modified copy thereof
+    """
+
+
 # @numba.njit
 def _rotation_matrix(axis, angle):
     """

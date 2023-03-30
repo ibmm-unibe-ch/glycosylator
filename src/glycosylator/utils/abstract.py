@@ -491,8 +491,14 @@ class AbstractPatch(AbstractEntity):
     def deletes(self):
         """
         Returns the atom IDs to delete
+        in a tuple of lists where the first list
+        contains the atom IDs to delete from the
+        first structure and the second one from the second structure
         """
-        return self._delete_ids
+        deletes = ([i[1:] for i in self._delete_ids if i[0] == "1"],
+                   [i[1:] for i in self._delete_ids if i[0] == "2"]
+        )
+        return deletes
 
     def add_delete(self, id):
         """
