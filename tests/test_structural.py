@@ -640,3 +640,23 @@ def test_compute_quartets():
     Quartet = gl.utils.structural.Quartet
     assert Quartet(1, 2, 4, 6, False) in quartets
     assert Quartet(1, 4, 2, 3, True) in quartets
+
+
+def test_patcher_anchors():
+
+    man1 = gl.Molecule.from_pdb(base.MANNOSE)
+    man1.infer_bonds()
+    man2 = deepcopy(man1)
+    
+    top = gl.get_default_topology()
+    patch = top.get_patch("12aa")
+
+    p = gl.utils.structural.Patcher()
+    p.target = man1
+    p.source = man2
+    p.patch = patch
+    anchors = p.get_anchor_atoms()
+
+    assert anchors[0] and anchors[1]
+    assert anchors[0].id == "O2"
+    assert anchors[1].id == "C1"
