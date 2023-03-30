@@ -3,11 +3,13 @@
 # from glycosylator.molecule_builder import MoleculeBuilder
 # from glycosylator.sampler import
 
-from glycosylator.molecule import Molecule
 import glycosylator.utils as utils
 import glycosylator.resources as resources
 import glycosylator.graphs as graphs
 import glycosylator.force_fields as force_fields
+
+from glycosylator.core import *
+from glycosylator.utils import get_default_parameters, get_default_topology, set_default_topology, set_default_parameters
 
 __all__ = [
     # Drawer,
@@ -19,4 +21,5 @@ __all__ = [
     resources,
     graphs,
     Molecule,
+    get_default_parameters, get_default_topology, set_default_topology, set_default_parameters,
 ]
