@@ -810,6 +810,46 @@ class Molecule:
 
         return self.AtomGraph.get_descendants(atom1, atom2)
 
+    def get_neighbors(self, atom: Union[int, str, tuple, bio.Atom.Atom], n: int = 1, mode: str = "upto"):
+        """
+        Get the neighbors of an atom.
+
+        Parameters
+        ----------
+        atom
+            The atom
+        n
+            The number of bonds that may separate the atom from its neighbors.
+        mode
+            The mode to use. Can be "upto" or "at". If `upto`, all neighbors that are at most `n` bonds away
+            are returned. If `at`, only neighbors that are exactly `n` bonds away are returned.
+
+        Returns
+        -------
+        set
+            A set of atoms
+
+
+        Examples
+        --------
+        For a molecule
+        ```
+                     O --- (2)CH2
+                    /         \\
+        (1)CH3 --- CH          OH
+                    \\
+                    (1)CH2 --- (2)CH3
+        ```
+        >>> mol.get_neighbors("(2)CH2", n=1)
+        {"O", "OH"}
+        >>> mol.get_neighbors("(2)CH2", n=2, mode="upto")
+        {"O", "OH", "CH"}
+        >>> mol.get_neighbors("(2)CH2", n=2, mode="at")
+        {"CH"}
+        """
+        atom = self.get_atom(atom)
+        return self.AtomGraph.get_neighbors(atom, n, mode)
+
     def compute_angle(
         self,
         atom1: Union[str, int, bio.Atom.Atom],
