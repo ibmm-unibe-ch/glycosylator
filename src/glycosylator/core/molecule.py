@@ -31,6 +31,7 @@ class Molecule:
         structure,
         root_atom: Union[str, int, bio.Atom.Atom] = None,
     ):
+        self._id = structure.id
         self._base_struct = structure
 
         if len(structure.child_list) == 1:
@@ -105,6 +106,15 @@ class Molecule:
         struct = structural.read_smiles(smiles, add_hydrogens)
         struct.id = id if id else smiles
         return cls(struct, root_atom)
+
+    @property
+    def id(self):
+        return self._id
+
+    @id.setter
+    def id(self, value):
+        self._id = value
+        self._base_struct.id = value
 
     @property
     def root_atom(self):
@@ -632,10 +642,10 @@ class Molecule:
 
         Parameters
         ----------
-        max_bond_length
+        max_bond_length : float
             The maximum distance between atoms to consider them bonded.
             If None, the default value is 1.6 Angstroms.
-        restrict_residues
+        restrict_residues : bool
             Whether to restrict bonds to only those in the same residue.
             If False, bonds between atoms in different residues are also inferred.
 
@@ -648,19 +658,64 @@ class Molecule:
         self._bonds.extend([b for b in bonds if b not in self._bonds])
         return bonds
 
-    def infer_residue_connections(self, max_bond_length: float = None):
+    def infer_residue_connections(self, max_bond_length: float = None) -> list:
         """
         Infer bonds between atoms that connect different residues in the structure
 
         Parameters
         ----------
-        max_bond_length
+        max_bond_length : float
             The maximum distance between atoms to consider them bonded.
             If None, the default value is 1.6 Angstroms.
         """
         bonds = structural.infer_residue_connections(self._base_struct, max_bond_length)
         self._bonds.extend([b for b in bonds if b not in self._bonds])
         return bonds
+
+    def attach(
+        self,
+        other: "Molecule",
+        patch: Union[utils.abstract.AbstractPatch, str] = None,
+        at: Union[int, str, tuple, bio.Atom.Atom] = None,
+        other_at: Union[int, str, tuple, bio.Atom.Atom] = None,
+        _topology=None,
+    ):
+        """
+        Attach another structure to this one.
+
+        Parameters
+        ----------
+        other : Molecule
+            The other molecule to attach to this one
+        patch : str or AbstractResidue
+            A patch to apply when attaching. If none is given, an appropriate patch
+            is searched based on the provided bonds at which to attach. However,
+            if the patch is not found, an error is raised. Hence, it is safer to provide this parameter,
+            in which case no `at`-bonds need to be specified as the patch holds this information. Either a
+            patch object can be supplied or its id by which it can be retrieved from the used topology.
+        at : tuple
+            This molecule's bond that should be replaced by the bond attaching this and the other molecule.
+        other_at : tuple
+            The other molecule's bond that should be replaced by the bond attaching this and the other molecule.
+        _topology
+            A specific topology to use for referencing.
+            If None, the default CHARMM topology is used.
+        """
+        if at is None and patch is None:
+            at = other.root_atom
+        if other_at is None and patch is None:
+            other_at = self.root_atom
+
+        if not at or not other_at:
+            raise ValueError("Cannot attach: no atoms or patch specified")
+
+        if patch is not None:
+            if isinstance(patch, str):
+                if not _topology:
+                    _topology = utils.get_default_topology()
+                patch = _topology.get_patch(patch)
+
+        structural.apply_patch(self._base_struct, other._base_struct, at, other_at, patch, _topology)
 
     def rotate_around_bond(self, atom1: Union[str, int, bio.Atom.Atom], atom2: Union[str, int, bio.Atom.Atom], angle: float, descendants_only: bool = False):
         """
