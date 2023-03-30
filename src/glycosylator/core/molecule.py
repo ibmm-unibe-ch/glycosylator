@@ -344,6 +344,50 @@ class Molecule:
 
         return atom
 
+    def get_bonds(self, atom1 : Union[int, str, tuple, bio.Atom.Atom], atom2: Union[int, str, tuple, bio.Atom.Atom] = None, either_way: bool = True):
+        """
+        Get one or multiple bonds from the molecule. If only one atom is provided, all bonds
+        that are connected to that atom are returned.
+
+        Parameters
+        ----------
+        atom1
+            The atom id, serial number or full_id tuple of the first atom
+        atom2
+            The atom id, serial number or full_id tuple of the second atom
+        either_way : bool
+            If True, the order of the atoms does not matter, if False, the order of the atoms
+            does matter. By setting this to false, it is possible to also search for bonds that have
+            a specific atom in position 1 or 2 depending on which argument was set, while leaving the other input as none.
+
+        Returns
+        -------
+        bond : list
+            The bond(s)
+        """
+        if atom1:
+            atom1 = self.get_atom(atom1)
+        if atom2:
+            atom2 = self.get_atom(atom2)
+        
+        if atom1 and atom2:
+            if either_way:
+                return [i for i in self._bonds if atom1 in i and atom2 in i]
+            else:
+                return [i for i in self._bonds if atom1 in i and atom2 in i and i[0] == atom1 and i[1] == atom2]
+        elif atom1:
+            if either_way:
+                return [i for i in self._bonds if atom1 in i]
+            else:
+                return [i for i in self._bonds if atom1 in i and i[0] == atom1]
+        elif atom2:
+            if either_way:
+                return [i for i in self._bonds if atom2 in i]
+            else:
+                return [i for i in self._bonds if atom2 in i and i[1] == atom2]
+        else:
+            raise ValueError("No atom provided")
+
     def get_root(self):
         return self.root_atom
 
