@@ -5,6 +5,82 @@ Basic structure related functions
 import numpy as np
 
 
+def vector_between(atom1, atom2):
+    """
+    Compute the vector between two atoms.
+
+    Parameters
+    ----------
+    atom1 : Bio.PDB.Atom
+        The first atom
+    atom2 : Bio.PDB.Atom
+        The second atom
+
+    Returns
+    -------
+    vector : numpy.ndarray
+        The vector between the two atoms
+    """
+    return atom2.coord - atom1.coord
+
+
+def norm_vector(atom1, atom2):
+    """
+    Compute the normalized vector between two atoms.
+
+    Parameters
+    ----------
+    atom1 : Bio.PDB.Atom
+        The first atom
+    atom2 : Bio.PDB.Atom
+        The second atom
+
+    Returns
+    -------
+    vector : numpy.ndarray
+        The normalized vector between the two atoms
+    """
+    v = vector_between(atom1, atom2)
+    return v / np.linalg.norm(v)
+
+
+def plane_vector(vec1, vec2):
+    """
+    Compute the vector in the plane of two vectors.
+
+    Parameters
+    ----------
+    vec1 : numpy.ndarray
+        The first vector
+    vec2 : numpy.ndarray
+        The second vector
+
+    Returns
+    -------
+    vector : numpy.ndarray
+        The vector in the plane of the two vectors
+    """
+    v = np.cross(vec1, vec2)
+    return v / np.linalg.norm(v)
+
+
+def bond_vector(bond):
+    """
+    Compute the vector between two atoms in a bond.
+
+    Parameters
+    ----------
+    bond : Bio.PDB.Bond
+        The bond
+
+    Returns
+    -------
+    vector : numpy.ndarray
+        The vector between the two atoms in the bond
+    """
+    return vector_between(*bond)
+
+
 def compute_angle(atom1, atom2, atom3):
     """
     Compute the angle between three atoms.
@@ -23,9 +99,52 @@ def compute_angle(atom1, atom2, atom3):
     angle : float
         The angle between the three atoms in degrees
     """
-    a = atom1.coord - atom2.coord
-    b = atom3.coord - atom2.coord
+    return angle_between(atom1.coord, atom2.coord, atom3.coord)
+
+
+def angle_between(coords1, coords2, coords3):
+    """
+    Compute the angle between three atoms.
+
+    Parameters
+    ----------
+    coords1 : numpy.ndarray
+        The coordinates of the first atom
+    coords2 : numpy.ndarray
+        The coordinates of the second atom
+    coords3 : numpy.ndarray
+        The coordinates of the third atom
+
+    Returns
+    -------
+    angle : float
+        The angle between the three atoms in degrees
+    """
+    a = coords1 - coords2
+    b = coords3 - coords2
     return np.degrees(np.arccos(np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))))
+
+
+def bond_angle(bond1, bond2):
+    """
+    Compute the angle between two bonds.
+
+    Parameters
+    ----------
+    bond1 : Bio.PDB.Bond
+        The first bond
+    bond2 : Bio.PDB.Bond
+        The second bond
+
+    Returns
+    -------
+    angle : float
+        The angle between the two bonds in degrees
+    """
+    if isinstance(bond1[0], np.ndarray):
+        return angle_between(bond1[0], bond1[1], bond2[1])
+    else:
+        return angle_between(bond1[0].coord, bond1[1].coord, bond2[1].coord)
 
 
 def compute_dihedral(atom1, atom2, atom3, atom4):
@@ -103,6 +222,24 @@ def compute_torsional(atom1, atom2, atom3, atom4):
     y = np.dot(np.cross(bc, v), w)
     return np.degrees(np.arctan2(y, x))
 
+
+def compute_distance(atom1, atom2):
+    """
+    Compute the distance between two atoms.
+
+    Parameters
+    ----------
+    atom1 : Bio.PDB.Atom
+        The first atom
+    atom2 : Bio.PDB.Atom
+        The second atom
+
+    Returns
+    -------
+    distance : float
+        The distance between the two atoms
+    """
+    return np.linalg.norm(atom1.coord - atom2.coord)
 
 
 def center_of_gravity(masses, coords):
