@@ -7,7 +7,7 @@ import pickle
 
 import re
 import warnings
-import glycosylator.utils.abstract as abstracts
+import glycosylator.utils.abstract as _abstract
 
 # ===================================================================
 # Base Parser
@@ -77,7 +77,9 @@ class CHARMMParser:
         """
         if not filename:
             if not self._file:
-                raise ValueError("No filename was given and no filename from a source file is available!")
+                raise ValueError(
+                    "No filename was given and no filename from a source file is available!"
+                )
             filename = self._file
             if not self._was_loaded_from_pickle and not filename.endswith(".pkl"):
                 filename += ".pkl"
@@ -127,7 +129,9 @@ class CHARMMParser:
         filename: str
             The path to the CHARMM file
         """
-        raise NotImplementedError("This method needs to be implemented by the subclass!")
+        raise NotImplementedError(
+            "This method needs to be implemented by the subclass!"
+        )
 
     def _vet_load(self, _data):
         """
@@ -275,7 +279,7 @@ class CHARMMTopology(CHARMMParser):
             for r in residue:
                 self.add_residue(r)
             return
-        elif not isinstance(residue, abstracts.AbstractResidue):
+        elif not isinstance(residue, _abstract.AbstractResidue):
             raise TypeError("The residue must be an instance of AbstractResidue")
         self._dict["residues"][residue.id] = residue
 
@@ -310,7 +314,7 @@ class CHARMMTopology(CHARMMParser):
             for p in patch:
                 self.add_patch(p)
             return
-        elif not isinstance(patch, abstracts.AbstractPatch):
+        elif not isinstance(patch, _abstract.AbstractPatch):
             raise TypeError("The patch must be an instance of AbstractPatch")
         self._dict["patches"][patch.id] = patch
 
@@ -325,8 +329,12 @@ class CHARMMTopology(CHARMMParser):
         """
         with open(filename, "r") as file:
             lines = file.read().split("\n")  # readlines but remove the endlines
-            lines = [line.strip().split("!") for line in lines]  # get rid of all comments
-            lines = [line[0] for line in lines if line[0] != ""]  # get rid of all empty lines
+            lines = [
+                line.strip().split("!") for line in lines
+            ]  # get rid of all comments
+            lines = [
+                line[0] for line in lines if line[0] != ""
+            ]  # get rid of all empty lines
 
         idx = 0
         while idx < len(lines):
@@ -370,7 +378,7 @@ class CHARMMTopology(CHARMMParser):
         """
         line = self._read_line(lines[idx])
 
-        residue = abstracts.AbstractResidue(id=line[1])
+        residue = _abstract.AbstractResidue(id=line[1])
 
         idx += 1
         while idx < len(lines):
@@ -411,7 +419,7 @@ class CHARMMTopology(CHARMMParser):
         """
         line = self._read_line(lines[idx])
 
-        patch = abstracts.AbstractPatch(id=line[1])
+        patch = _abstract.AbstractPatch(id=line[1])
 
         idx += 1
         while idx < len(lines):
@@ -472,8 +480,14 @@ class CHARMMTopology(CHARMMParser):
         """
         if not isinstance(_data, dict):
             raise TypeError("The file must contain a dictionary object")
-        if "residues" not in _data.keys() or "patches" not in _data.keys() or "masses" not in _data.keys():
-            raise KeyError("The dictionary must contain 'residues', 'masses', and 'patches' keys")
+        if (
+            "residues" not in _data.keys()
+            or "patches" not in _data.keys()
+            or "masses" not in _data.keys()
+        ):
+            raise KeyError(
+                "The dictionary must contain 'residues', 'masses', and 'patches' keys"
+            )
 
     @staticmethod
     def _parse_ic(line: list, obj):
@@ -496,7 +510,7 @@ class CHARMMTopology(CHARMMParser):
         atom3 = line[3]
         atom4 = line[4]
 
-        if isinstance(obj, abstracts.AbstractResidue):
+        if isinstance(obj, _abstract.AbstractResidue):
 
             atom1 = obj.get_atom(atom1)
             atom2 = obj.get_atom(atom2)
@@ -504,7 +518,9 @@ class CHARMMTopology(CHARMMParser):
             atom4 = obj.get_atom(atom4)
 
             if atom1 is None or atom2 is None or atom3 is None or atom4 is None:
-                warnings.warn(f"[ignoring line] Found an invalid internal coordinate in {line}")
+                warnings.warn(
+                    f"[ignoring line] Found an invalid internal coordinate in {line}"
+                )
                 return
 
         if is_improper:
@@ -520,7 +536,7 @@ class CHARMMTopology(CHARMMParser):
                 "bond_length_34": float(line[9]),
             }
 
-        ic = abstracts.AbstractInternalCoordinates(
+        ic = _abstract.AbstractInternalCoordinates(
             atom1=atom1,
             atom2=atom2,
             atom3=atom3,
@@ -546,7 +562,7 @@ class CHARMMTopology(CHARMMParser):
         obj : AbstractResidue or AbstractPatch
             The object to which the atom belongs
         """
-        atom = abstracts.AbstractAtom(id=line[1], type=line[2], charge=float(line[3]))
+        atom = _abstract.AbstractAtom(id=line[1], type=line[2], charge=float(line[3]))
         obj.add_atom(atom)
 
     @staticmethod
@@ -566,7 +582,7 @@ class CHARMMTopology(CHARMMParser):
         # split line into tuple pairs
         line = [(line[i], line[i + 1]) for i in range(0, len(line), 2)]
 
-        if isinstance(obj, abstracts.AbstractResidue):
+        if isinstance(obj, _abstract.AbstractResidue):
             for a1, a2 in line:
 
                 atom1 = obj.get_atom(a1)
@@ -575,12 +591,12 @@ class CHARMMTopology(CHARMMParser):
                     warnings.warn(f"[ignoring bond] Found an invalid bond in {line}")
                     return
 
-                bond = abstracts.AbstractBond(atom1, atom2)
+                bond = _abstract.AbstractBond(atom1, atom2)
                 obj.add_bond(bond)
 
-        elif isinstance(obj, abstracts.AbstractPatch):
+        elif isinstance(obj, _abstract.AbstractPatch):
             for a1, a2 in line:
-                bond = abstracts.AbstractBond(a1, a2)
+                bond = _abstract.AbstractBond(a1, a2)
                 obj.add_bond(bond)
 
     @staticmethod
@@ -749,7 +765,9 @@ class CHARMMParameters(CHARMMParser):
             The bond
         """
         if len(atoms) != 2:
-            raise IndexError("Bonds can only be retrieved through a two-long tuple of participating atoms.")
+            raise IndexError(
+                "Bonds can only be retrieved through a two-long tuple of participating atoms."
+            )
         return self._dict["bonds"].get(tuple(atoms))
 
     def add_bond(self, bond):
@@ -777,7 +795,7 @@ class CHARMMParameters(CHARMMParser):
         AbstractNonbonded
             The nonbonded
         """
-        if isinstance(atom, abstracts.AbstractAtom):
+        if isinstance(atom, _abstract.AbstractAtom):
             atom = atom.type
         return self._dict["nonbonded"].get(atom)
 
@@ -869,7 +887,9 @@ class CHARMMParameters(CHARMMParser):
                 epsilon_14 = float(line[5])
                 min_radius_14 = float(line[6])
 
-            nonbonded = abstracts.AbstractNonBonded(atom, epsilon, min_radius, epsilon_14, min_radius_14)
+            nonbonded = _abstract.AbstractNonBonded(
+                atom, epsilon, min_radius, epsilon_14, min_radius_14
+            )
             self.add_nonbonded(nonbonded)
 
             idx += 1
@@ -905,7 +925,7 @@ class CHARMMParameters(CHARMMParser):
             atoms = tuple(line[0:4])
             k = float(line[4])
             phi = float(line[6])
-            improper = abstracts.AbstractImproper(*atoms, K=k, angle=phi)
+            improper = _abstract.AbstractImproper(*atoms, K=k, angle=phi)
             self.add_improper(improper)
 
             idx += 1
@@ -961,7 +981,7 @@ class CHARMMParameters(CHARMMParser):
             if len(line) == 7:
                 _attrs["angle"] = float(line[6])
 
-            dihedral = abstracts.AbstractDihedral(
+            dihedral = _abstract.AbstractDihedral(
                 line[0],
                 line[1],
                 line[2],
@@ -1006,7 +1026,7 @@ class CHARMMParameters(CHARMMParser):
                 _urey_bradley["urey_bradley_k"] = float(line[5])
                 _urey_bradley["urey_bradley_length"] = float(line[6])
 
-            _angle = abstracts.AbstractAngle(
+            _angle = _abstract.AbstractAngle(
                 line[0],
                 line[1],
                 line[2],
@@ -1046,7 +1066,7 @@ class CHARMMParameters(CHARMMParser):
                 idx += 1
                 continue
 
-            _bond = abstracts.AbstractBond(
+            _bond = _abstract.AbstractBond(
                 line[0],
                 line[1],
                 K=float(line[2]),
@@ -1068,7 +1088,7 @@ class CHARMMParameters(CHARMMParser):
 __all__ = [CHARMMTopology, CHARMMParameters]
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
 
     _carbs = "/Users/noahhk/GIT/glycosylator/support/toppar_charmm/carbohydrates.rtf"
     _top = CHARMMTopology.from_file(_carbs)
@@ -1078,7 +1098,10 @@ if __name__ == '__main__':
     _prm = CHARMMParameters.from_file(_carbs)
     print(_prm)
 
-    from glycosylator.utils.defaults import DEFAULT_CHARMM_TOPOLOGY_FILE, DEFAULT_CHARMM_PARAMETERS_FILE
+    from glycosylator.utils.defaults import (
+        DEFAULT_CHARMM_TOPOLOGY_FILE,
+        DEFAULT_CHARMM_PARAMETERS_FILE,
+    )
 
     _save_to = "/Users/noahhk/GIT/glycosylator/glycosylator/resources/"
     _top.save(_save_to + os.path.basename(DEFAULT_CHARMM_TOPOLOGY_FILE))
