@@ -7,8 +7,6 @@ import attr
 import Bio.PDB as bio
 import numpy as np
 
-import glycosylator.utils.structural as structural
-
 
 class AbstractEntity:
     """
@@ -419,8 +417,11 @@ class AbstractInternalCoordinates:
         """
         Returns the ids of the atoms that constitute the internal coordinate
         """
-        return (self.atom1.id, self.atom2.id, self.atom3.id, self.atom4.id)
-
+        if hasattr(self.atom1, "id"):
+            return (self.atom1.id, self.atom2.id, self.atom3.id, self.atom4.id)
+        else:
+            return (self.atom1, self.atom2, self.atom3, self.atom4)
+        
     @property
     def is_improper(self):
         """
@@ -500,14 +501,29 @@ class AbstractPatch(AbstractEntity):
         )
         return deletes
 
+    @property
+    def IC_atom_ids(self):
+        """
+        Returns a set of all atom IDs of all atoms for which the patch also stores 
+        internal coordinates.
+        """
+        ids = set()
+        for ic in self.internal_coordinates:
+            if isinstance(ic.atom1, str):
+                ids.update(ic.atoms)
+                continue
+            ids.update(ic.ids)
+        return ids
+
     def add_delete(self, id):
         """
         Add an atom ID to delete
         """
         self._delete_ids.append(id)
 
-    add_id_to_delete = add_delete
 
+    add_id_to_delete = add_delete
+    
 
 @attr.s
 class AbstractAngle:
