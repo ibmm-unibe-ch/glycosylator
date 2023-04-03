@@ -84,6 +84,33 @@ class MoleculeViewer3D:
     def figure(self):
         return self._fig
 
+    def get_color(self, atom):
+        """
+        Get the color of an atom
+
+        Parameters
+        ----------
+        atom : Bio.PDB.Atom
+            The atom to get the color of
+
+        Returns
+        -------
+        color : str
+            The color of the atom
+        """
+        return self.__atom_colors__.get(atom.element)
+
+    def update_colors(self, color_dict):
+        """
+        Update the colors of the atoms
+
+        Parameters
+        ----------
+        color_dict : dict
+            A dictionary of the form {atom: color}
+        """
+        self.__atom_colors__.update(color_dict)
+
     def highlight(self, ids):
         """
         Highlight a set of atoms or residues from their ids to draw them at full opacity.
@@ -187,6 +214,38 @@ class MoleculeViewer3D:
     def show(self):
         self._fig.show()
 
+    def draw_edges(self, edges=None, color="black", linewidth=1, opacity=1.0):
+        """
+        Draw edges on the figure
+
+        Parameters
+        ----------
+        edges : list
+            The edges to draw
+        color : str
+            The color of the edges
+        linewidth : int
+            The width of the edges
+        opacity : float
+            The opacity of the edges
+        """
+        if not edges:
+            edges = self._get_bonds(self._bonds_obj)
+        for edge in edges:
+            a1, a2 = edge
+            new = go.Scatter3d(
+                x=[a1.coord[0], a2.coord[0]],
+                y=[a1.coord[1], a2.coord[1]],
+                z=[a1.coord[2], a2.coord[2]],
+                mode="lines",
+                line=dict(color=color, width=linewidth),
+                name=f"{a1.id}-{a2.id}",
+                hoverinfo="skip",
+                showlegend=False,
+                opacity=opacity,
+            )
+            _ = self._fig.add_trace(new)
+
     def setup(self):
         """
         Draw the basic molecule setup with all atoms and bonds.
@@ -240,7 +299,7 @@ class MoleculeViewer3D:
     def _get_atoms(obj):
         if hasattr(obj, "nodes"):
             return obj.nodes
-        elif hasattr(obj, 'atoms'):
+        elif hasattr(obj, "atoms"):
             return obj.atoms
         elif hasattr(obj, "get_atoms"):
             return obj.get_atoms()
@@ -253,7 +312,7 @@ class MoleculeViewer3D:
     def _get_bonds(obj):
         if hasattr(obj, "edges"):
             return obj.edges
-        elif hasattr(obj, 'bonds'):
+        elif hasattr(obj, "bonds"):
             return obj.bonds
         elif hasattr(obj, "get_bonds"):
             return obj.get_bonds()
