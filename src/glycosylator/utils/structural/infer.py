@@ -7,8 +7,11 @@ import numpy as np
 
 from Bio.PDB import NeighborSearch
 
+import glycosylator.utils.abstract as _abstract
 import glycosylator.utils.defaults as defaults
 import glycosylator.utils.structural.base as base
+import glycosylator.utils.structural.neighbors as neighbors
+
 
 def infer_residue_connections(structure, bond_length: float = None):
     """
@@ -135,19 +138,30 @@ def apply_standard_bonds(structure, _topology=None):
             _topology = defaults.get_default_topology()
 
         if not _topology.has_residue(residue.resname):
-            warnings.warn(f"[ignoring] No abstract residue found in Topology for {residue.resname}!")
+            warnings.warn(
+                f"[ignoring] No abstract residue found in Topology for {residue.resname}!"
+            )
             return
 
         atoms = residue.child_dict
         abstract_residue = _topology.get_residue(residue.resname)
-        bonds = [(atoms.get(bond.atom1.id), atoms.get(bond.atom2.id)) for bond in abstract_residue.bonds]
-        bonds = [bond for bond in bonds if bond[0] and bond[1]]  # make sure to have no None entries...
+        bonds = [
+            (atoms.get(bond.atom1.id), atoms.get(bond.atom2.id))
+            for bond in abstract_residue.bonds
+        ]
+        bonds = [
+            bond for bond in bonds if bond[0] and bond[1]
+        ]  # make sure to have no None entries...
         return bonds
 
     elif structure.level == "A":
         residue = structure.get_parent()
         bonds = apply_standard_bonds(residue, _topology)
-        bonds = [bond for bond in bonds if bond[0].id == structure.id or bond[1].id == structure.id]
+        bonds = [
+            bond
+            for bond in bonds
+            if bond[0].id == structure.id or bond[1].id == structure.id
+        ]
         return bonds
 
     else:
@@ -186,7 +200,9 @@ def fill_missing_atoms(structure, _topology=None):
         _topology = defaults.get_default_topology()
 
     if not _topology.has_residue(structure.resname):
-        warnings.warn(f"[ignoring] No abstract residue found in Topology for {structure.resname}!")
+        warnings.warn(
+            f"[ignoring] No abstract residue found in Topology for {structure.resname}!"
+        )
         return
     _abstract = _topology.get_residue(structure.resname)
 
@@ -199,18 +215,62 @@ def fill_missing_atoms(structure, _topology=None):
     _fail_timer = 0
     while len(_atoms_to_add) != 0:
         _atom = _atoms_to_add.pop(0)
-        _success = compute_atom_coordinate(_atom, structure, _abstract)
+        _success = impute_atom_from_IC(_atom, structure, _abstract)
         if not _success:
             _atoms_to_add.append(_atom)
             _fail_timer += 1
             if _fail_timer == len(_atoms_to_add) + 1:
-                warnings.warn(f"Could not impute atoms: {[i.id for i in _atoms_to_add]}! Aborting...", RuntimeWarning)
+                warnings.warn(
+                    f"Could not impute atoms: {[i.id for i in _atoms_to_add]}! Aborting...",
+                    RuntimeWarning,
+                )
                 return
             continue
         _fail_timer = 0
 
 
-def compute_atom_coordinate(atom, residue, abstract):
+def compute_internal_coordinates(bonds: list):
+    """
+    Compute internal coordinates for a structure.
+
+    Parameters
+    ----------
+    bonds : list
+        A list of tuples of atoms that are bonded.
+        The atoms must be `Bio.PDB.Atom` objects with coordinates.
+
+    Returns
+    -------
+    list
+        A list of AbstractInternalCoordinates
+    """
+    quartets = neighbors.compute_quartets(bonds)
+    ics = []
+    for quartet in quartets:
+        angle_123 = base.compute_angle(quartet[0], quartet[1], quartet[2])
+        angle_234 = base.compute_angle(quartet[1], quartet[2], quartet[3])
+        dihedral = base.compute_dihedral(quartet[0], quartet[1], quartet[2], quartet[3])
+        l_12 = base.compute_distance(quartet[0], quartet[1])
+        l_23 = base.compute_distance(quartet[1], quartet[2])
+        l_34 = base.compute_distance(quartet[2], quartet[3])
+
+        ic = _abstract.AbstractInternalCoordinates(
+            quartet[0].id,
+            quartet[1].id,
+            quartet[2].id,
+            quartet[3].id,
+            l_12,
+            l_34,
+            angle_123,
+            angle_234,
+            dihedral,
+            improper=quartet.improper,
+        )
+        ics.append(ic)
+    return ics
+
+
+def impute_atom_from_IC(atom, residue, abstract):
     """
     Compute the coordinates of an atom from internal coordinates from an AbstractResidue into a structure.
 
@@ -231,7 +291,39 @@ def compute_atom_coordinate(atom, residue, abstract):
         to lacking reference atoms. In this case it may be necessary
         to first impute other atoms.
     """
+    success, _coord = compute_atom_coordinate_from_IC(atom, residue, abstract)
+    if not success:
+        return False
 
+    # create the new atom
+    _new_atom = atom.to_biopython()
+    _new_atom.set_coord(_coord)
+
+    # add the new atom to the residue
+    residue.add(_new_atom)
+    return True
+
+
+def compute_atom_coordinate_from_IC(atom, residue, abstract):
+    """
+    Compute the coordinates of an atom from internal coordinates from an AbstractResidue into a structure.
+
+    Parameters
+    ----------
+    atom : AbstractAtom
+        The atom to compute the coordinates for.
+    residue : Bio.PDB.Residue
+        The target residue where other reference atoms are located.
+    abstract : AbstractResidue
+        The abstract residue to reference internal coordinates from.
+
+    Returns
+    -------
+    success: bool
+        Whether the atom could successfully be integrated.
+    coords : np.ndarray
+        The coordinates of the atom
+    """
     # get the internal coordinates to impute the atom positions from
     # since we can either compute atoms at position 1 or 4, we will specifically
     # search for ICs with these properties...
@@ -242,7 +334,7 @@ def compute_atom_coordinate(atom, residue, abstract):
         _ics = abstract.get_internal_coordinates(None, None, None, atom, mode="partial")
         if len(_ics) == 0:
             # warnings.warn(f"Cannot find suitable IC for {atom}!")
-            return False
+            return False, None
 
     # try finding an IC that has available reference atoms
     for ic in _ics:
@@ -251,7 +343,7 @@ def compute_atom_coordinate(atom, residue, abstract):
             break
     else:
         # warnings.warn(f"Cannot find suitable IC for {atom}!")
-        return False
+        return False, None
 
     # get the coordinates of the reference atoms
     _ref = [i.coord for i in _ref]
@@ -259,13 +351,7 @@ def compute_atom_coordinate(atom, residue, abstract):
     # now use the internal coordinates to compute the new atom coordinate
     _coord = _coord_func(*_ref, ic)
 
-    # create the new atom
-    _new_atom = atom.to_biopython()
-    _new_atom.set_coord(_coord)
-
-    # add the new atom to the residue
-    residue.add(_new_atom)
-    return True
+    return True, _coord
 
 
 def compute_atom1_from_others(coords2, coords3, coords4, ic):
@@ -310,7 +396,9 @@ def compute_atom1_from_others(coords2, coords3, coords4, ic):
         else:
             BC = np.linalg.norm(coords2 - coords3)
             AC = ic.bond_length_12
-            AB = np.sqrt(BC**2 + AC**2 - 2 * BC * AC * np.cos(np.radians(ic.bond_angle_123)))
+            AB = np.sqrt(
+                BC**2 + AC**2 - 2 * BC * AC * np.cos(np.radians(ic.bond_angle_123))
+            )
             _vec *= AB
         final = coords3 + _vec
         return final
