@@ -408,43 +408,12 @@ if __name__ == "__main__":
     top = gl.get_default_topology()
     _abstract = top.get_residue(man1.id)
 
-    patch = top.get_patch("12bb")
+    patcher = Patcher(True, True)
+    for i in ("12ab", "14bb", "12ab"):
+        patch = top.get_patch(i)
+        new = patcher.patch_molecules(patch, man1, man2)
 
-    patcher = Patcher()
-    patcher.set_patch(patch)
-    patcher.set_target(man1)
-    patcher.set_source(man2)
-    patcher.get_anchor_atoms()
-
-    # v = gl.utils.visual.MoleculeViewer3D(man1)
-    # v.opacity = 0.1
-
-    # v.draw_point("anchor target", patcher._anchors[0].coord, color="blue")
-    # v.draw_point("anchor source (orig)", patcher._anchors[1].coord, color="red")
-
-    # patcher._v = v
-    man1 = patcher.patch_molecules()
-
-    # for atom in man2.atoms:
-    #     v.draw_point(
-    #         "2" + atom.id,
-    #         atom.coord,
-    #         color=v.get_color(atom),
-    #         opacity=0.3,
-    #         showlegend=False,
-    #     )
-
-    # v.draw_edges(man2.bonds, color="magenta", opacity=1)
-
-    # v.draw_edges(
-    #     [(patcher._anchors[0], patcher._anchors[1])], color="limegreen", linewidth=5
-    # )
-
-    # v.show()
-    # pass
-
-    v2 = gl.utils.visual.MoleculeViewer3D(man1)
-    v2.draw_edges(edges=list(man1.bonds), color="blue", opacity=1)
-    v2.draw_edges(edges=list(man1._locked_bonds), color="red", linewidth=3)
-    v2.show()
-    pass
+        v2 = gl.utils.visual.MoleculeViewer3D(new)
+        v2.draw_edges(edges=list(new.bonds), color="blue", opacity=1)
+        v2.draw_edges(edges=list(new._locked_bonds), color="red", linewidth=3)
+        v2.show()
