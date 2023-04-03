@@ -10,6 +10,7 @@ import warnings
 import Bio.PDB as bio
 import glycosylator.utils.structural.base as base
 
+
 class Neighborhood:
     """
     This class handles graph connectivity of connected nodes and is the basis
@@ -100,7 +101,9 @@ class Neighborhood:
         elif isinstance(node, str):
             node = self._ids_nodes.get(node)
             if node and len(node) > 1:
-                warnings.warn(f"Found multiple nodes with the given id. Returning the full list!")
+                warnings.warn(
+                    f"Found multiple nodes with the given id. Returning the full list!"
+                )
             elif node:
                 node = node[0]
             else:
@@ -271,9 +274,6 @@ class ResidueNeighborhood(Neighborhood):
         return self._get_node(residue)
 
 
-
-
-
 class Quartet:
     """
     An atom quartet that can be used to compute internal coordinates
@@ -336,14 +336,19 @@ class Quartet:
 
     @property
     def dihedral(self):
-        return base.compute_dihedral(self._atoms[0], self._atoms[1], self._atoms[2], self._atoms[3])
+        return base.compute_dihedral(
+            self._atoms[0], self._atoms[1], self._atoms[2], self._atoms[3]
+        )
 
     def __hash__(self) -> int:
         return hash(tuple(sorted(self._atoms))) + hash(self._improper)
 
     def __eq__(self, other) -> bool:
         if isinstance(other, Quartet):
-            return set(self._atoms) == set(other._atoms) and self._improper == other._improper
+            return (
+                set(self._atoms) == set(other._atoms)
+                and self._improper == other._improper
+            )
         elif isinstance(other, (tuple, list)):
             if len(other) == 4:
                 return set(self._atoms) == set(other)
@@ -362,7 +367,6 @@ class Quartet:
 
     def __getitem__(self, item):
         return self._atoms[item]
-    
 
 
 def compute_triplets(bonds: list):
@@ -445,6 +449,8 @@ def compute_quartets(bonds: list):
             atom_4, atom_5, atom_6 = triplet2
 
             # decision tree to map atoms into quartets
+            if all([atom_1 == atom_4, atom_2 == atom_5, atom_3 == atom_6]):
+                continue
 
             quartet = None
             if atom_2 == atom_4:
