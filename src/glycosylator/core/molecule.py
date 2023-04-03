@@ -41,7 +41,9 @@ class Molecule:
         if len(self._chain.child_list) == 1:
             self._chain = self._chain.child_list[0]
         else:
-            raise ValueError("Molecule class only supports structures with one chain/segment")
+            raise ValueError(
+                "Molecule class only supports structures with one chain/segment"
+            )
 
         if root_atom:
             if not root_atom in self._chain.get_atoms():
@@ -182,7 +184,10 @@ class Molecule:
         angles : dict
             A dictionary of the form {atom_triplet: angle}
         """
-        return {triplet: structural.compute_angle(*triplet) for triplet in self.atom_triplets}
+        return {
+            triplet: structural.compute_angle(*triplet)
+            for triplet in self.atom_triplets
+        }
 
     @property
     def dihedrals(self):
@@ -194,7 +199,10 @@ class Molecule:
         dihedrals : dict
             A dictionary of the form {atom_quartet: dihedral}
         """
-        return {quartet: structural.compute_dihedral(*quartet) for quartet in self.atom_quartets}
+        return {
+            quartet: structural.compute_dihedral(*quartet)
+            for quartet in self.atom_quartets
+        }
 
     @property
     def AtomGraph(self):
@@ -285,16 +293,22 @@ class Molecule:
             elif isinstance(atoms[0], tuple):
                 by = "full_id"
             else:
-                raise ValueError("Unknown search parameter, must be either 'id', 'serial' or 'full_id'")
+                raise ValueError(
+                    "Unknown search parameter, must be either 'id', 'serial' or 'full_id'"
+                )
 
         if by == "id":
             atoms = [i for i in self._base_struct.get_atoms() if i.id in atoms]
         elif by == "serial":
-            atoms = [i for i in self._base_struct.get_atoms() if i.serial_number in atoms]
+            atoms = [
+                i for i in self._base_struct.get_atoms() if i.serial_number in atoms
+            ]
         elif by == "full_id":
             atoms = [i for i in self._base_struct.get_atoms() if i.full_id in atoms]
         else:
-            raise ValueError("Unknown search parameter, must be either 'id', 'serial' or 'full_id'")
+            raise ValueError(
+                "Unknown search parameter, must be either 'id', 'serial' or 'full_id'"
+            )
 
         return atoms
 
@@ -331,20 +345,31 @@ class Molecule:
             elif isinstance(atom, tuple):
                 by = "full_id"
             else:
-                raise ValueError("Unknown search parameter, must be either 'id', 'serial' or 'full_id'")
+                raise ValueError(
+                    "Unknown search parameter, must be either 'id', 'serial' or 'full_id'"
+                )
 
         if by == "id":
             atom = next(i for i in self._base_struct.get_atoms() if i.id == atom)
         elif by == "serial":
-            atom = next(i for i in self._base_struct.get_atoms() if i.serial_number == atom)
+            atom = next(
+                i for i in self._base_struct.get_atoms() if i.serial_number == atom
+            )
         elif by == "full_id":
             atom = next(i for i in self._base_struct.get_atoms() if i.full_id == atom)
         else:
-            raise ValueError("Unknown search parameter, must be either 'id', 'serial' or 'full_id'")
+            raise ValueError(
+                "Unknown search parameter, must be either 'id', 'serial' or 'full_id'"
+            )
 
         return atom
 
-    def get_bonds(self, atom1 : Union[int, str, tuple, bio.Atom.Atom], atom2: Union[int, str, tuple, bio.Atom.Atom] = None, either_way: bool = True):
+    def get_bonds(
+        self,
+        atom1: Union[int, str, tuple, bio.Atom.Atom],
+        atom2: Union[int, str, tuple, bio.Atom.Atom] = None,
+        either_way: bool = True,
+    ):
         """
         Get one or multiple bonds from the molecule. If only one atom is provided, all bonds
         that are connected to that atom are returned.
@@ -369,12 +394,16 @@ class Molecule:
             atom1 = self.get_atom(atom1)
         if atom2:
             atom2 = self.get_atom(atom2)
-        
+
         if atom1 and atom2:
             if either_way:
                 return [i for i in self._bonds if atom1 in i and atom2 in i]
             else:
-                return [i for i in self._bonds if atom1 in i and atom2 in i and i[0] == atom1 and i[1] == atom2]
+                return [
+                    i
+                    for i in self._bonds
+                    if atom1 in i and atom2 in i and i[0] == atom1 and i[1] == atom2
+                ]
         elif atom1:
             if either_way:
                 return [i for i in self._bonds if atom1 in i]
@@ -399,7 +428,9 @@ class Molecule:
         Generate an AtomGraph for the Molecule
         """
         if len(self._bonds) == 0:
-            warnings.warn("No bonds found (yet), be sure to first apply or infer bonds to generate a graph")
+            warnings.warn(
+                "No bonds found (yet), be sure to first apply or infer bonds to generate a graph"
+            )
             return
         self._AtomGraph = AtomGraph(self._base_struct.id, self._bonds)
         return self._AtomGraph
@@ -409,7 +440,9 @@ class Molecule:
         Generate a ResidueGraph for the Molecule
         """
         if len(self._bonds) == 0:
-            warnings.warn("No bonds found (yet), be sure to first apply or infer bonds to generate a graph")
+            warnings.warn(
+                "No bonds found (yet), be sure to first apply or infer bonds to generate a graph"
+            )
             return
         self._ResidueGraph = ResidueGraph.from_AtomGraph(self.make_atom_graph())
         return self._ResidueGraph
@@ -455,10 +488,16 @@ class Molecule:
             to the correct value of 3 if there are already two other residues in the molecule).
         """
         rdx = len(self.residues)
+        adx = len(self.atoms)
         for residue in residues:
             if adjust_seqid:
                 rdx += 1
-                residue.id = (rdx, *residue.id[1:])
+                residue.id = (residue.id[0], rdx, *residue.id[2:])
+            for atom in residue.get_atoms():
+                adx += 1
+                atom.serial_number = adx
+                atom.set_parent(residue)
+
             self._chain.add(residue)
 
     def remove_residues(self, *residues: Union[int, bio.Residue.Residue]):
@@ -473,6 +512,7 @@ class Molecule:
         for residue in residues:
             if isinstance(residue, int):
                 residue = self._chain.child_list[residue - 1]
+            self.remove_atoms(*residue.child_list)
             self._chain.detach_child(residue.id)
 
     def add_atoms(self, *atoms: bio.Atom.Atom, residue=None):
@@ -526,12 +566,25 @@ class Molecule:
         """
         for atom in atoms:
             atom = self.get_atom(atom)
-            atom.get_parent().detach_child(atom.id)
+
+            bonds = [i for i in self._bonds if atom in i]
+            for bond in bonds:
+                self._bonds.remove(bond)
+
+            bonds = [i for i in self._locked_bonds if atom in i]
+            for bond in bonds:
+                self._locked_bonds.remove(bond)
+
             del self._idx_atoms[atom.serial_number]
             del self._full_id_atoms[atom.full_id]
             self._ids_atoms[atom.id].remove(atom)
+            atom.get_parent().detach_child(atom.id)
 
-    def add_bond(self, atom1: Union[int, str, tuple, bio.Atom.Atom], atom2: Union[int, str, tuple, bio.Atom.Atom]):
+    def add_bond(
+        self,
+        atom1: Union[int, str, tuple, bio.Atom.Atom],
+        atom2: Union[int, str, tuple, bio.Atom.Atom],
+    ):
         """
         Add a bond between two atoms
 
@@ -547,7 +600,11 @@ class Molecule:
         bond = (atom1, atom2)
         self._bonds.append(bond)
 
-    def remove_bond(self, atom1: Union[int, str, tuple, bio.Atom.Atom], atom2: Union[int, str, tuple, bio.Atom.Atom]):
+    def remove_bond(
+        self,
+        atom1: Union[int, str, tuple, bio.Atom.Atom],
+        atom2: Union[int, str, tuple, bio.Atom.Atom],
+    ):
         """
         Remove a bond between two atoms
 
@@ -586,7 +643,12 @@ class Molecule:
         """
         self._locked_bonds = set()
 
-    def lock_bond(self, atom1: Union[int, str, tuple, bio.Atom.Atom], atom2: Union[int, str, tuple, bio.Atom.Atom], both_ways: bool = False):
+    def lock_bond(
+        self,
+        atom1: Union[int, str, tuple, bio.Atom.Atom],
+        atom2: Union[int, str, tuple, bio.Atom.Atom],
+        both_ways: bool = False,
+    ):
         """
         Lock a bond between two atoms
 
@@ -607,7 +669,12 @@ class Molecule:
         if both_ways:
             self._locked_bonds.add(bond[::-1])
 
-    def unlock_bond(self, atom1: Union[int, str, tuple, bio.Atom.Atom], atom2: Union[int, str, tuple, bio.Atom.Atom], both_ways: bool = False):
+    def unlock_bond(
+        self,
+        atom1: Union[int, str, tuple, bio.Atom.Atom],
+        atom2: Union[int, str, tuple, bio.Atom.Atom],
+        both_ways: bool = False,
+    ):
         """
         Unlock a bond between two atoms
 
@@ -628,7 +695,11 @@ class Molecule:
         if both_ways and bond[::-1] in self._locked_bonds:
             self._locked_bonds.remove(bond[::-1])
 
-    def bond_is_locked(self, atom1: Union[int, str, tuple, bio.Atom.Atom], atom2: Union[int, str, tuple, bio.Atom.Atom]):
+    def bond_is_locked(
+        self,
+        atom1: Union[int, str, tuple, bio.Atom.Atom],
+        atom2: Union[int, str, tuple, bio.Atom.Atom],
+    ):
         """
         Check if a bond is locked
 
@@ -680,7 +751,9 @@ class Molecule:
         self._bonds.extend([b for b in bonds if b not in self._bonds])
         return bonds
 
-    def infer_bonds(self, max_bond_length: float = None, restrict_residues: bool = True) -> list:
+    def infer_bonds(
+        self, max_bond_length: float = None, restrict_residues: bool = True
+    ) -> list:
         """
         Infer bonds between atoms in the structure
 
@@ -698,7 +771,9 @@ class Molecule:
         list
             A list of tuples of atom pairs that are bonded
         """
-        bonds = structural.infer_bonds(self._base_struct, max_bond_length, restrict_residues)
+        bonds = structural.infer_bonds(
+            self._base_struct, max_bond_length, restrict_residues
+        )
         self._bonds.extend([b for b in bonds if b not in self._bonds])
         return bonds
 
@@ -719,7 +794,7 @@ class Molecule:
     def attach(
         self,
         other: "Molecule",
-        patch: Union[utils.abstract.AbstractPatch, str] = None,
+        patch: Union[utils._abstract.AbstractPatch, str] = None,
         at: Union[int, str, tuple, bio.Atom.Atom] = None,
         other_at: Union[int, str, tuple, bio.Atom.Atom] = None,
         _topology=None,
@@ -759,9 +834,17 @@ class Molecule:
                     _topology = utils.get_default_topology()
                 patch = _topology.get_patch(patch)
 
-        structural.apply_patch(self._base_struct, other._base_struct, at, other_at, patch, _topology)
+        structural.apply_patch(
+            self._base_struct, other._base_struct, at, other_at, patch, _topology
+        )
 
-    def rotate_around_bond(self, atom1: Union[str, int, bio.Atom.Atom], atom2: Union[str, int, bio.Atom.Atom], angle: float, descendants_only: bool = False):
+    def rotate_around_bond(
+        self,
+        atom1: Union[str, int, bio.Atom.Atom],
+        atom2: Union[str, int, bio.Atom.Atom],
+        angle: float,
+        descendants_only: bool = False,
+    ):
         """
         Rotate the structure around a bond
 
@@ -854,7 +937,12 @@ class Molecule:
 
         return self.AtomGraph.get_descendants(atom1, atom2)
 
-    def get_neighbors(self, atom: Union[int, str, tuple, bio.Atom.Atom], n: int = 1, mode: str = "upto"):
+    def get_neighbors(
+        self,
+        atom: Union[int, str, tuple, bio.Atom.Atom],
+        n: int = 1,
+        mode: str = "upto",
+    ):
         """
         Get the neighbors of an atom.
 
@@ -960,7 +1048,9 @@ class Molecule:
         Get a dictionary of atoms indexed by their serial number
         """
         if self._idx_atoms_cache is None:
-            self._idx_atoms_cache = {a.serial_number: a for a in self._chain.get_atoms()}
+            self._idx_atoms_cache = {
+                a.serial_number: a for a in self._chain.get_atoms()
+            }
         return self._idx_atoms_cache
 
     @property
@@ -1186,12 +1276,14 @@ if __name__ == "__main__":
     mol = Molecule.from_pdb("support/examples/MAN.pdb")
     mol.infer_bonds()
 
-    d = mol._get_descendents(mol.get_atoms(id="HO3"), mol.get_atoms(id="O3"))
-    assert len(d) == 22
+    # d = mol._get_descendents(mol.get_atoms(id="HO3"), mol.get_atoms(id="O3"))
+    # assert len(d) == 22
 
-    d = mol._get_descendents(mol.get_atoms(id="C5"), mol.get_atoms(id="C6"))
-    assert len(d) == 4
+    # d = mol._get_descendents(mol.get_atoms(id="C5"), mol.get_atoms(id="C6"))
+    # assert len(d) == 4
 
-    d = mol._get_descendents(mol.get_atoms(id="C4"), mol.get_atoms(id="C5"))
+    # d = mol._get_descendents(mol.get_atoms(id="C4"), mol.get_atoms(id="C5"))
 
-    # mol.rotate_around_bond("C5", "C6", np.radians(25), True)
+    # # mol.rotate_around_bond("C5", "C6", np.radians(25), True)
+
+    mol.remove_atoms("C5", "HO4", "C1", "H61")
