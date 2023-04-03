@@ -15,7 +15,7 @@ MANNOSE = bio.PDBParser().get_structure("MAN", base.MANNOSE)
 
 def test_missing_proper_1():
 
-    to_deletes = {'C1', 'C2', 'C3', 'C4', 'C5', 'O5'}
+    to_deletes = {"C1", "C2", "C3", "C4", "C5", "O5"}
 
     for to_delete in to_deletes:
 
@@ -41,7 +41,7 @@ def test_missing_proper_1():
 
 def test_missing_proper_4():
 
-    to_deletes = {'H1', 'HO1', 'HO2', 'HO3', 'HO4', 'HO6', 'O1'}
+    to_deletes = {"H1", "HO1", "HO2", "HO3", "HO4", "HO6", "O1"}
 
     for to_delete in to_deletes:
 
@@ -68,7 +68,7 @@ def test_missing_proper_4():
 
 def test_missing_improper_1():
 
-    to_deletes = {'C6', 'O3', 'O4', 'O6'}
+    to_deletes = {"C6", "O3", "O4", "O6"}
 
     for to_delete in to_deletes:
 
@@ -101,7 +101,7 @@ def test_missing_improper_1():
 
 def test_missing_improper_4():
 
-    to_deletes = {'H2', 'H3', 'H4', 'H5', 'H61', 'H62'}
+    to_deletes = {"H2", "H3", "H4", "H5", "H61", "H62"}
 
     for to_delete in to_deletes:
 
@@ -147,7 +147,9 @@ def test_missing_one_random_atom():
 
     gl.utils.structural.fill_missing_atoms(_man)
 
-    assert _man.child_dict.get(to_delete) is not None, f"Atom {to_delete} was not added again!"
+    assert (
+        _man.child_dict.get(to_delete) is not None
+    ), f"Atom {to_delete} was not added again!"
 
     new_coords = _man.child_dict.get(to_delete).coord
 
@@ -234,7 +236,9 @@ def test_apply_standard_bonds():
     _recieved = len(bonds)
     _expected = 24
     _what = "bonds"
-    assert _recieved == _expected, f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+    assert (
+        _recieved == _expected
+    ), f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
 
     bonds = [set((i.id, j.id)) for i, j in bonds]
 
@@ -242,55 +246,73 @@ def test_apply_standard_bonds():
     _recieved = _bond in bonds
     _expected = True
     _what = f"for {_bond} in bonds"
-    assert _recieved == _expected, f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+    assert (
+        _recieved == _expected
+    ), f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
 
     _bond = set(("C5", "C6"))
     _recieved = _bond in bonds
     _expected = True
     _what = f"for {_bond} in bonds"
-    assert _recieved == _expected, f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+    assert (
+        _recieved == _expected
+    ), f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
 
     _bond = set(("C5", "C4"))
     _recieved = _bond in bonds
     _expected = True
     _what = f"for {_bond} in bonds"
-    assert _recieved == _expected, f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+    assert (
+        _recieved == _expected
+    ), f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
 
     _bond = set(("C6", "O6"))
     _recieved = _bond in bonds
     _expected = True
     _what = f"for {_bond} in bonds"
-    assert _recieved == _expected, f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+    assert (
+        _recieved == _expected
+    ), f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
 
     _bond = set(("C4", "C3"))
     _recieved = _bond in bonds
     _expected = True
     _what = f"for {_bond} in bonds"
-    assert _recieved == _expected, f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+    assert (
+        _recieved == _expected
+    ), f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
 
     _bond = set(("C1", "C2"))
     _recieved = _bond in bonds
     _expected = True
     _what = f"for {_bond} in bonds"
-    assert _recieved == _expected, f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+    assert (
+        _recieved == _expected
+    ), f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
 
     _bond = set(("C3", "C4"))
     _recieved = _bond in bonds
     _expected = True
     _what = f"for {_bond} in bonds"
-    assert _recieved == _expected, f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+    assert (
+        _recieved == _expected
+    ), f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
 
     _bond = set(("C3", "O3"))
     _recieved = _bond in bonds
     _expected = True
     _what = f"for {_bond} in bonds"
-    assert _recieved == _expected, f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+    assert (
+        _recieved == _expected
+    ), f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
 
     _bond = set(("C3", "C2"))
     _recieved = _bond in bonds
     _expected = True
     _what = f"for {_bond} in bonds"
-    assert _recieved == _expected, f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+    assert (
+        _recieved == _expected
+    ), f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
 
 
 def test_apply_standard_bonds_one_atom():
@@ -304,25 +326,33 @@ def test_apply_standard_bonds_one_atom():
     _recieved = len(bonds)
     _expected = 4
     _what = "bonds"
-    assert _recieved == _expected, f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+    assert (
+        _recieved == _expected
+    ), f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
 
     _bond = set(("C1", "C2"))
     _recieved = _bond in bonds
     _expected = True
     _what = f"for {_bond} in bonds"
-    assert _recieved == _expected, f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+    assert (
+        _recieved == _expected
+    ), f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
 
     _bond = set(("C1", "O1"))
     _recieved = _bond in bonds
     _expected = True
     _what = f"for {_bond} in bonds"
-    assert _recieved == _expected, f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+    assert (
+        _recieved == _expected
+    ), f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
 
     _bond = set(("C1", "O5"))
     _recieved = _bond in bonds
     _expected = True
     _what = f"for {_bond} in bonds"
-    assert _recieved == _expected, f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+    assert (
+        _recieved == _expected
+    ), f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
 
 
 def test_infer_bonds():
@@ -332,7 +362,9 @@ def test_infer_bonds():
     _recieved = len(bonds)
     _expected = 24
     _what = "bonds"
-    assert _recieved == _expected, f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+    assert (
+        _recieved == _expected
+    ), f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
 
     bonds = [set((i.id, j.id)) for i, j in bonds]
 
@@ -340,55 +372,73 @@ def test_infer_bonds():
     _recieved = _bond in bonds
     _expected = True
     _what = f"for {_bond} in bonds"
-    assert _recieved == _expected, f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+    assert (
+        _recieved == _expected
+    ), f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
 
     _bond = set(("C5", "C6"))
     _recieved = _bond in bonds
     _expected = True
     _what = f"for {_bond} in bonds"
-    assert _recieved == _expected, f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+    assert (
+        _recieved == _expected
+    ), f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
 
     _bond = set(("C5", "C4"))
     _recieved = _bond in bonds
     _expected = True
     _what = f"for {_bond} in bonds"
-    assert _recieved == _expected, f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+    assert (
+        _recieved == _expected
+    ), f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
 
     _bond = set(("C6", "O6"))
     _recieved = _bond in bonds
     _expected = True
     _what = f"for {_bond} in bonds"
-    assert _recieved == _expected, f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+    assert (
+        _recieved == _expected
+    ), f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
 
     _bond = set(("C4", "C3"))
     _recieved = _bond in bonds
     _expected = True
     _what = f"for {_bond} in bonds"
-    assert _recieved == _expected, f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+    assert (
+        _recieved == _expected
+    ), f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
 
     _bond = set(("C1", "C2"))
     _recieved = _bond in bonds
     _expected = True
     _what = f"for {_bond} in bonds"
-    assert _recieved == _expected, f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+    assert (
+        _recieved == _expected
+    ), f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
 
     _bond = set(("C3", "C4"))
     _recieved = _bond in bonds
     _expected = True
     _what = f"for {_bond} in bonds"
-    assert _recieved == _expected, f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+    assert (
+        _recieved == _expected
+    ), f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
 
     _bond = set(("C3", "O3"))
     _recieved = _bond in bonds
     _expected = True
     _what = f"for {_bond} in bonds"
-    assert _recieved == _expected, f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+    assert (
+        _recieved == _expected
+    ), f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
 
     _bond = set(("C3", "C2"))
     _recieved = _bond in bonds
     _expected = True
     _what = f"for {_bond} in bonds"
-    assert _recieved == _expected, f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+    assert (
+        _recieved == _expected
+    ), f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
 
 
 def test_infer_residue_connections():
@@ -396,7 +446,9 @@ def test_infer_residue_connections():
     _man9 = bio.PDBParser().get_structure("MANNOSE9", base.MANNOSE9)
     bonds = gl.utils.structural.infer_residue_connections(_man9)
 
-    connections = [set((i.get_parent()._id[1], j.get_parent()._id[1])) for i, j in bonds]
+    connections = [
+        set((i.get_parent()._id[1], j.get_parent()._id[1])) for i, j in bonds
+    ]
     bonds = [set((i.id, j.id)) for i, j in bonds]
 
     _received = len(bonds)
@@ -407,31 +459,41 @@ def test_infer_residue_connections():
     _recieved = _bond in bonds
     _expected = True
     _what = f"for {_bond} in bonds"
-    assert _recieved == _expected, f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+    assert (
+        _recieved == _expected
+    ), f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
 
     _bond = set(("O3", "C1"))
     _recieved = _bond in bonds
     _expected = True
     _what = f"for {_bond} in bonds"
-    assert _recieved == _expected, f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+    assert (
+        _recieved == _expected
+    ), f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
 
     _bond = set((2, 3))
     _recieved = _bond in connections
     _expected = True
     _what = f"for {_bond} in connections"
-    assert _recieved == _expected, f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+    assert (
+        _recieved == _expected
+    ), f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
 
     _bond = set((5, 6))
     _recieved = _bond in connections
     _expected = True
     _what = f"for {_bond} in connections"
-    assert _recieved == _expected, f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+    assert (
+        _recieved == _expected
+    ), f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
 
     _bond = set((5, 8))
     _recieved = _bond in connections
     _expected = True
     _what = f"for {_bond} in connections"
-    assert _recieved == _expected, f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+    assert (
+        _recieved == _expected
+    ), f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
 
 
 def test_atom_neighborhood_basic():
@@ -441,7 +503,9 @@ def test_atom_neighborhood_basic():
     _recieved = len(mannose.bonds)
     _expected = 24
     _what = "bonds"
-    assert _recieved == _expected, f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+    assert (
+        _recieved == _expected
+    ), f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
 
     neighborhood = gl.utils.structural.AtomNeighborhood(mannose)
     assert neighborhood is not None, "No neighborhood object is made..."
@@ -449,7 +513,9 @@ def test_atom_neighborhood_basic():
     _recieved = len(neighborhood.atoms)
     _expected = 24
     _what = "atoms"
-    assert _recieved == _expected, f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+    assert (
+        _recieved == _expected
+    ), f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
 
     a = neighborhood.get_atom(1)
     assert a is not None
@@ -467,18 +533,24 @@ def test_atom_neighborhood_get():
     _recieved = set(i.id for i in neighborhood.get_neighbors("C1"))
     _expected = {"H1", "C2", "O1", "O5"}
     _what = "as n=1 neighbors of C1"
-    assert _recieved == _expected, f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+    assert (
+        _recieved == _expected
+    ), f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
 
     _recieved = set(i.id for i in neighborhood.get_neighbors("C1", 2))
     _n2 = {"HO1", "H2", "O2", "C3", "C5"}
     _expected.update(_n2)
     _what = "as n<=2 neighbors of C1"
-    assert _recieved == _expected, f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+    assert (
+        _recieved == _expected
+    ), f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
 
     _recieved = set(i.id for i in neighborhood.get_neighbors("C1", 2, mode="at"))
     _expected = _n2
     _what = "as n==2 neighbors of C1"
-    assert _recieved == _expected, f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+    assert (
+        _recieved == _expected
+    ), f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
 
 
 def test_residue_neighborhood_basic():
@@ -491,7 +563,9 @@ def test_residue_neighborhood_basic():
     _recieved = len(neighborhood.residues)
     _expected = 11
     _what = "residues"
-    assert _recieved == _expected, f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+    assert (
+        _recieved == _expected
+    ), f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
 
     a = neighborhood.get_residue(2)  # first residue is labelled as NAG (resseq=2)
     assert a is not None
@@ -502,7 +576,9 @@ def test_residue_neighborhood_basic():
 
     a = neighborhood.get_residue("BMA")
     assert a is not None
-    assert not isinstance(a, list), "we expect a single residue of BMA since there is only one!"
+    assert not isinstance(
+        a, list
+    ), "we expect a single residue of BMA since there is only one!"
 
 
 def test_residue_neighborhood_get():
@@ -550,7 +626,9 @@ def test_residue_neighborhood_get():
     _recieved = set(i.id[1] for i in neighborhood.get_neighbors("BMA", 2, "at"))
     _expected = {8, 6, 2, 11}
     _what = "as n=2 neighbors of BMA"
-    assert _recieved == _expected, f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
+    assert (
+        _recieved == _expected
+    ), f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
 
 
 def test_compute_angle():
@@ -573,12 +651,16 @@ def test_compute_angle():
     _true_angle = ic.bond_angle_123
     _recieved = gl.utils.structural.compute_angle(*refs[:-1])
     _what = "° between 1-2-3"
-    assert _recieved == pytest.approx(_true_angle, 1e-3), f"Recieved {_recieved} {_what}, expected {_true_angle} {_what}!"
+    assert _recieved == pytest.approx(
+        _true_angle, 1e-3
+    ), f"Recieved {_recieved} {_what}, expected {_true_angle} {_what}!"
 
     _true_angle = ic.bond_angle_234
     _recieved = gl.utils.structural.compute_angle(*refs[1:])
     _what = "° between 2-3-4"
-    assert _recieved == pytest.approx(_true_angle, 1e-3), f"Recieved {_recieved} {_what}, expected {_true_angle} {_what}!"
+    assert _recieved == pytest.approx(
+        _true_angle, 1e-3
+    ), f"Recieved {_recieved} {_what}, expected {_true_angle} {_what}!"
 
 
 def test_compute_dihedral():
@@ -601,7 +683,9 @@ def test_compute_dihedral():
     _true_dihedral = ic.dihedral
     _recieved = gl.utils.structural.compute_dihedral(*refs)
     _what = "° between 1-2-3-4"
-    assert _recieved == pytest.approx(_true_dihedral, 1e-3), f"Recieved {_recieved} {_what}, expected {_true_dihedral} {_what}!"
+    assert _recieved == pytest.approx(
+        _true_dihedral, 1e-3
+    ), f"Recieved {_recieved} {_what}, expected {_true_dihedral} {_what}!"
 
 
 def test_compute_triplets():
@@ -609,14 +693,16 @@ def test_compute_triplets():
     bonds = [(1, 2), (1, 3), (2, 4), (3, 5)]
     triplets = gl.utils.structural.compute_triplets(bonds)
     _expected = [(2, 1, 3), (1, 2, 4), (1, 3, 5)]
-    assert triplets == _expected, f"Expected {len(_expected)} triplets, got {len(triplets)}"
+    assert (
+        triplets == _expected
+    ), f"Expected {len(_expected)} triplets, got {len(triplets)}"
 
 
 def test_quartet_class():
 
-    a = gl.utils.structural.Quartet(1, 2, 3, 4, False)
-    b = gl.utils.structural.Quartet(1, 2, 3, 4, False)
-    c = gl.utils.structural.Quartet(5, 3, 4, 6, True)
+    a = gl.utils.structural.neighbors.Quartet(1, 2, 3, 4, False)
+    b = gl.utils.structural.neighbors.Quartet(1, 2, 3, 4, False)
+    c = gl.utils.structural.neighbors.Quartet(5, 3, 4, 6, True)
 
     assert a == b, "Quartets are not equal!"
     assert a != c, "Quartets are equal!"
@@ -637,7 +723,7 @@ def test_compute_quartets():
     _expected = 6
     assert _received == _expected, f"Expected {_expected} quartets, got {_received}"
 
-    Quartet = gl.utils.structural.Quartet
+    Quartet = gl.utils.structural.neighbors.Quartet
     assert Quartet(1, 2, 4, 6, False) in quartets
     assert Quartet(1, 4, 2, 3, True) in quartets
 
@@ -647,7 +733,7 @@ def test_patcher_anchors():
     man1 = gl.Molecule.from_pdb(base.MANNOSE)
     man1.infer_bonds()
     man2 = deepcopy(man1)
-    
+
     top = gl.get_default_topology()
     patch = top.get_patch("12aa")
 
