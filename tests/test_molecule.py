@@ -146,12 +146,12 @@ def test_add_residues():
 
     _new = mol.get_residue(name="NEW")
     assert _new is not None
-    assert _new.id[0] != 1
+    assert _new.id[1] != 1
 
     mol.remove_residues(_new)
     assert len(mol.residues) == pre
 
-    assert "C99" not in [i.resname for i in mol.residues]
+    assert "NEW" not in [i.resname for i in mol.residues]
 
 
 def test_get_descendants():
