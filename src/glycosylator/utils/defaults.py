@@ -3,7 +3,7 @@ import pickle
 import Bio.PDB as bio
 
 import glycosylator.utils.constants as constants
-import glycosylator.force_fields.charmm as charmm
+import glycosylator.resources.charmm as charmm
 
 # =================================================================
 # Default settings of values
