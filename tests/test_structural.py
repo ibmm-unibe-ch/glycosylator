@@ -795,10 +795,12 @@ def test_patcher_two_man():
         # however, we need x2 because the locked bonds are in "either way"
         # mode which means we get twice the bonds once as A-B, and once as B-A
 
-        connection = new.infer_residue_connections()
+        connection = new.infer_residue_connections(triplet=False)
         assert len(connection) == 1
         assert len(new.get_bonds(*connection[0])) == 1
         assert new.bond_is_locked(*connection[0]) is False
+
+        assert len(new.infer_residue_connections(triplet=True)) == 2
 
         # check that the atoms have been properly renumbered
         _seen_serials = set()
