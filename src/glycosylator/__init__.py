@@ -8,7 +8,12 @@ import glycosylator.resources as resources
 import glycosylator.graphs as graphs
 
 from glycosylator.core import *
-from glycosylator.utils import get_default_parameters, get_default_topology, set_default_topology, set_default_parameters
+from glycosylator.utils import (
+    get_default_parameters,
+    get_default_topology,
+    set_default_topology,
+    set_default_parameters,
+)
 
 __all__ = [
     # Drawer,
@@ -19,5 +24,8 @@ __all__ = [
     resources,
     graphs,
     Molecule,
-    get_default_parameters, get_default_topology, set_default_topology, set_default_parameters,
+    get_default_parameters,
+    get_default_topology,
+    set_default_topology,
+    set_default_parameters,
 ]
