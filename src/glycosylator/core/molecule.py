@@ -3,10 +3,11 @@ import warnings
 import networkx as nx
 import numpy as np
 
+from copy import deepcopy
+
 from typing import Union
 
 import Bio.PDB as bio
-
 from glycosylator.graphs import AtomGraph, ResidueGraph
 import glycosylator.utils as utils
 import glycosylator.utils.structural as structural
@@ -498,7 +499,12 @@ class Molecule:
                 atom.set_parent(residue)
             parent.add(residue)
 
-    def add_residues(self, *residues: bio.Residue.Residue, adjust_seqid: bool = True):
+    def add_residues(
+        self,
+        *residues: bio.Residue.Residue,
+        adjust_seqid: bool = True,
+        _copy: bool = False
+    ):
         """
         Add residues to the structure
 
@@ -506,19 +512,26 @@ class Molecule:
         ----------
         residues : bio.Residue.Residue
             The residues to add
-
         adjust_seqid : bool
             If True, the seqid of the residues is adjusted to
             match the current number of residues in the structure
             (i.e. a new residue can be given seqid 1, and it will be adjusted
             to the correct value of 3 if there are already two other residues in the molecule).
+        _copy : bool
+            If True, the residues are copied before adding them to the molecule.
+            This is useful if you want to add the same residue to multiple molecules, while leaving
+            them and their original parent structures intakt.
         """
         rdx = len(self.residues)
         adx = len(self.atoms)
         for residue in residues:
-            p = residue.get_parent()
-            if p:
-                p.detach_child(residue.id)
+            if _copy:
+                residue = residue.copy()
+                residue.detach_parent()
+            else:
+                p = residue.get_parent()
+                if p:
+                    p.detach_child(residue.id)
             if adjust_seqid:
                 rdx += 1
                 residue.id = (residue.id[0], rdx, *residue.id[2:])
@@ -544,7 +557,7 @@ class Molecule:
             self.remove_atoms(*residue.child_list)
             self._chain.detach_child(residue.id)
 
-    def add_atoms(self, *atoms: bio.Atom.Atom, residue=None):
+    def add_atoms(self, *atoms: bio.Atom.Atom, residue=None, _copy: bool = False):
         """
         Add atoms to the structure. This will automatically adjust the atom's serial number to
         fit into the structure.
@@ -560,6 +573,9 @@ class Molecule:
             Note, that if multiple identically named residues
             are present, the first one is chosen, so using the
             seqid is a safer option!
+        _copy : bool
+            If True, the atoms are copied and then added to the structure.
+            This will leave the original atoms (and their parent structures) untouched.
         """
         if residue is not None:
             if isinstance(residue, int):
@@ -572,6 +588,8 @@ class Molecule:
 
         _max_serial = len(self.atoms)
         for atom in atoms:
+            if _copy:
+                atom = deepcopy(atom)
             _max_serial += 1
             atom.serial_number = _max_serial
             target.add(atom)
