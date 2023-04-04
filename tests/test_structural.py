@@ -496,6 +496,15 @@ def test_infer_residue_connections():
     ), f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
 
 
+def test_infer_residue_connections_triplet():
+
+    _man9 = bio.PDBParser().get_structure("MANNOSE9", base.MANNOSE9)
+    bonds = gl.utils.structural.infer_residue_connections(_man9, triplet=True)
+    _no_triplets = gl.utils.structural.infer_residue_connections(_man9)
+    
+    assert len(bonds) == 2 * len(_no_triplets), "Not all triplets are found!"
+
+
 def test_atom_neighborhood_basic():
 
     mannose = gl.graphs.AtomGraph.from_biopython(MANNOSE)
@@ -746,3 +755,71 @@ def test_patcher_anchors():
     assert anchors[0] and anchors[1]
     assert anchors[0].id == "O2"
     assert anchors[1].id == "C1"
+
+
+def test_patcher_two_man():
+    man1 = gl.Molecule.from_pdb(base.MANNOSE)
+    man1.infer_bonds()
+    man2 = deepcopy(man1)
+
+    man1.lock_all()
+    man2.lock_all()
+
+    top = gl.get_default_topology()
+    patches = ("12aa", "12ab", "14bb")
+    p = gl.utils.structural.Patcher(copy_target=True, copy_source=True)
+    for patch in patches:
+        patch = top.get_patch(patch)
+
+        assert len(man1.atoms) == len(man2.atoms) == 24
+        assert len(man1.bonds) == len(man2.bonds) == 24
+
+        new = p.patch_molecules(patch, man1, man2)
+
+        assert new != man1 and new != man2
+        assert len(new.residues) == 2
+
+        # check that the right amount of atoms are available
+        # since the different patches remove different numbers of atoms
+        # we simply check that there are now more but not quite double the atoms
+        assert 1.5 * len(man1.atoms) < len(new.atoms) < 2 * len(man1.atoms)
+        assert 1.5 * len(man1.bonds) < len(new.bonds) < 2 * len(man1.bonds)
+        assert (
+            1.5 * len(man1._locked_bonds)
+            < len(new._locked_bonds)
+            < 2 * len(man1._locked_bonds)
+        )
+        assert len(new._locked_bonds) < 2 * len(
+            new.bonds
+        )  # there is a new connection that should not be locked
+        # however, we need x2 because the locked bonds are in "either way"
+        # mode which means we get twice the bonds once as A-B, and once as B-A
+
+        connection = new.infer_residue_connections()
+        assert len(connection) == 1
+        assert len(new.get_bonds(*connection[0])) == 1
+        assert new.bond_is_locked(*connection[0]) is False
+
+        # check that the atoms have been properly renumbered
+        _seen_serials = set()
+        for atom in new.atoms:
+            assert atom.serial_number not in _seen_serials
+            _seen_serials.add(atom.serial_number)
+
+        # check that there are no major clashes
+        # e.g. check that all atoms are at least 1Angstrom apart from each other
+        for atom in new.atoms:
+            for other in new.atoms:
+                if atom == other:
+                    continue
+                assert np.sum(np.abs(atom.coord - other.coord)) > 1
+
+        # check that there are now super weird angles
+        # e.g. angles that are less than 100 or more than 130 degrees
+        for angle in new.angles.values():
+            assert 100 < angle < 130
+
+        v = gl.utils.visual.MoleculeViewer3D(new)
+        v.draw_edges(new.bonds, color="blue", linewidth=1)
+        v.draw_edges(new._locked_bonds, color="red", linewidth=2)
+        v.show()
