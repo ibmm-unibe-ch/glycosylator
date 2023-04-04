@@ -2,6 +2,7 @@
 Tests to check the behaviour of the gl.Molecule object
 """
 
+from copy import deepcopy
 import numpy as np
 import glycosylator as gl
 import Bio.PDB as bio
@@ -136,22 +137,34 @@ def test_add_atoms():
 def test_add_residues():
     mol = gl.Molecule.from_pdb(base.MANNOSE)
     mol.apply_standard_bonds()
+    
+    other = deepcopy(mol)
 
-    pre = len(mol.residues)
+    residues_pre = len(mol.residues)
 
     new = bio.Residue.Residue((1, "H_NEW", " "), "NEW", " ")
     mol.add_residues(new)
 
-    assert len(mol.residues) == pre + 1
+    assert len(mol.residues) == residues_pre + 1
 
     _new = mol.get_residue(name="NEW")
     assert _new is not None
     assert _new.id[1] != 1
 
     mol.remove_residues(_new)
-    assert len(mol.residues) == pre
+    assert len(mol.residues) == residues_pre
 
     assert "NEW" not in [i.resname for i in mol.residues]
+
+    atoms_pre = len(mol.atoms)
+    mol.add_residues(*other.residues)
+    assert len(mol.residues) == residues_pre + len(other.residues)
+    assert len(mol.atoms) == atoms_pre + len(other.atoms)
+    
+    _seen_serials = set()
+    for atom in mol.atoms:
+        assert atom.serial_number not in _seen_serials
+        _seen_serials.add(atom.serial_number)
 
 
 def test_get_descendants():
