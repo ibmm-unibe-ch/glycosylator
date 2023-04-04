@@ -22,6 +22,7 @@ class BaseGraph(nx.Graph):
         self.id = id
         self._structure = None
         self._neighborhood = None
+        self._locked_edges = set()
 
     @property
     def structure(self):
@@ -136,7 +137,9 @@ class BaseGraph(nx.Graph):
         set() # because in this direction there are no other nodes
         """
         if node_1 == node_2:
-            raise ValueError("Cannot get descendants if only one node is given (no direction)!")
+            raise ValueError(
+                "Cannot get descendants if only one node is given (no direction)!"
+            )
 
         neighbors = self.get_neighbors(node_2)
         neighbors.remove(node_1)
@@ -161,7 +164,70 @@ class BaseGraph(nx.Graph):
 
         return neighbors
 
-    def rotate_around_edge(self, node_1, node_2, angle: float, descendants_only: bool = False):
+    def lock_edge(self, node_1, node_2):
+        """
+        Lock an edge, preventing it from being rotated.
+
+        Parameters
+        ----------
+        node_1, node_2
+            The nodes that define the edge
+        """
+        self._locked_edges.add((node_1, node_2))
+
+    def unlock_edge(self, node_1, node_2):
+        """
+        Unlock an edge, allowing it to be rotated.
+
+        Parameters
+        ----------
+        node_1, node_2
+            The nodes that define the edge
+        """
+        self._locked_edges.remove((node_1, node_2))
+
+    def is_locked(self, node_1, node_2):
+        """
+        Check if an edge is locked
+
+        Parameters
+        ----------
+        node_1, node_2
+            The nodes that define the edge
+
+        Returns
+        -------
+        bool
+            Whether the edge is locked
+        """
+        return (node_1, node_2) in self._locked_edges
+
+    def get_locked_edges(self):
+        """
+        Get all locked edges
+
+        Returns
+        -------
+        set
+            The locked edges
+        """
+        return self._locked_edges
+
+    def lock_all(self):
+        """
+        Lock all edges
+        """
+        self._locked_edges = set(self.edges)
+
+    def unlock_all(self):
+        """
+        Unlock all edges
+        """
+        self._locked_edges = set()
+
+    def rotate_around_edge(
+        self, node_1, node_2, angle: float, descendants_only: bool = False
+    ):
         """
         Rotate descending nodes around a specific edge by a given angle.
 
@@ -182,6 +248,10 @@ class BaseGraph(nx.Graph):
 
         if node_1 not in self.nodes or node_2 not in self.nodes:
             raise ValueError("One or more nodes not in graph!")
+        elif node_1 == node_2:
+            raise ValueError("Cannot rotate around an edge with only one node!")
+        elif self.is_locked(node_1, node_2):
+            raise ValueError("Cannot rotate around a locked edge!")
 
         # we need to get a reference node index to normalise the rotated
         # coordinates to the original coordinate system
@@ -200,7 +270,7 @@ class BaseGraph(nx.Graph):
             nodes = {i: i.coord for i in self.get_descendants(node_1, node_2)}
             nodes[node_2] = node_2.coord
         else:
-            nodes = nx.get_node_attributes(self, 'coord')
+            nodes = nx.get_node_attributes(self, "coord")
 
         node_coords = np.array(tuple(nodes.values()))
 
@@ -221,7 +291,7 @@ class BaseGraph(nx.Graph):
         new_coords = {i: i.coord for i in self.nodes}
 
         # set the node attributes in the graph
-        nx.set_node_attributes(self, new_coords, 'coord')
+        nx.set_node_attributes(self, new_coords, "coord")
 
     def _get_structure(self):
         """

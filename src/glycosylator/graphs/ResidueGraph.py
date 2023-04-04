@@ -21,7 +21,9 @@ class ResidueGraph(BaseGraph):
         self._residues = {i.id: i for i in self.nodes}
         for r in self.nodes:
             r.coord = r.center_of_mass()
-        nx.set_node_attributes(self, {i: i.center_of_mass() for i in self.nodes}, "coord")
+        nx.set_node_attributes(
+            self, {i: i.center_of_mass() for i in self.nodes}, "coord"
+        )
 
     @classmethod
     def from_AtomGraph(cls, atom_graph):
@@ -41,11 +43,19 @@ class ResidueGraph(BaseGraph):
         id = atom_graph.id
         # we first get all the atom-resolution bonds between different residues,
         # then we get the participating parents (e.g. residues) and make the edges from them.
-        bonds = struct.infer_residue_connections(atom_graph.structure)
-        _bonds = [(p1.get_parent(), p2.get_parent()) for p1, p2 in bonds]
+        main_connections = struct.infer_residue_connections(
+            atom_graph.structure, triplet=False
+        )
+        bonds = struct.infer_residue_connections(atom_graph.structure, triplet=True)
+        _bonds = [(p1.get_parent(), p2.get_parent()) for p1, p2 in main_connections]
         new = cls(id, _bonds)
         new._AtomGraph = atom_graph
-        new._atomic_bonds.update({_bond: bond for _bond, bond in zip(_bonds, bonds)})
+
+        for bond in bonds:
+            parent_1 = bond[0].get_parent()
+            parent_2 = bond[1].get_parent()
+            new._atomic_bonds.setdefault((parent_1, parent_2), []).append(bond)
+
         return new
 
     @classmethod
@@ -92,6 +102,34 @@ class ResidueGraph(BaseGraph):
 
         new = cls.from_AtomGraph(_atom_graph)
         return new
+
+    def make_detailed(self):
+        """
+        Use a detailed representation of the residues in the molecule by adding the specific atoms
+        that connect the residues together. This is useful for visualization and analysis.
+
+        Note
+        ----
+        This function is not reversible.
+        """
+
+        for residue_pair, bonds in self._atomic_bonds.items():
+            if residue_pair in self.edges:
+                self.remove_edge(*residue_pair)
+
+            for atom1, atom2 in bonds:
+
+                # add edges between the atoms
+                self.add_edge(atom1, atom2)
+
+                p1 = atom1.get_parent()
+                p2 = atom2.get_parent()
+
+                # and selectively connect either atom to their center of mass residue
+                if p1 != p2:
+                    self.add_edge(atom2, p2)
+                else:
+                    self.add_edge(atom1, p1)
 
     @property
     def residues(self):
@@ -154,7 +192,9 @@ class ResidueGraph(BaseGraph):
             bond = self._atomic_bonds.get((residue2, residue1))
         return bond
 
-    def get_neighbors(self, residue: Union[int, str, bio.Residue.Residue], n: int = 1, mode="upto"):
+    def get_neighbors(
+        self, residue: Union[int, str, bio.Residue.Residue], n: int = 1, mode="upto"
+    ):
         """
         Get the neighbors of a residue
 
@@ -190,7 +230,7 @@ class ResidueGraph(BaseGraph):
         return {residue.id: residue.center_of_mass() for residue in self.residues}
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
 
     _man = "support/examples/MAN9.pdb"
     _man = AtomGraph.from_pdb(_man)
@@ -199,6 +239,13 @@ if __name__ == '__main__':
     import matplotlib.pyplot as plt
     import networkx as nx
 
-    print(len(list(man.bonds)))
-    nx.draw(man, with_labels=True, font_weight='bold')
-    plt.show()
+    man.make_detailed()
+
+    import glycosylator.utils.visual as vis
+
+    v = vis.MoleculeViewer3D(man)
+    v.show()
+
+    # print(len(list(man.bonds)))
+    # nx.draw(man, with_labels=True, font_weight="bold")
+    # plt.show()
