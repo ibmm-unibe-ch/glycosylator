@@ -762,7 +762,9 @@ class Molecule:
         self._bonds.extend([b for b in bonds if b not in self._bonds])
         return bonds
 
-    def infer_residue_connections(self, max_bond_length: float = None) -> list:
+    def infer_residue_connections(
+        self, max_bond_length: float = None, triplet: bool = True
+    ) -> list:
         """
         Infer bonds between atoms that connect different residues in the structure
 
@@ -771,8 +773,45 @@ class Molecule:
         max_bond_length : float
             The maximum distance between atoms to consider them bonded.
             If None, the default value is 1.6 Angstroms.
+        triplet : bool
+            Whether to include bonds between atoms that are in the same residue
+            but neighboring a bond that connects different residues. This is useful
+            for residues that have a side chain that is connected to the main chain.
+            This is mostly useful if you intend to use the returned list for some purpose,
+            because the additionally returned bonds are already present in the structure 
+            from inference or standard-bond applying and therefore do not actually add any 
+            particular information to the Molecule object itself.
+            
+        Returns
+        -------
+        list
+            A list of tuples of atom pairs that are bonded and considered residue connections.
+
+        Examples
+        --------
+        For a molecule with the following structure:
+        ```     
+             connection -->  OA     OB --- H
+                            /  \\   /
+              (1)CA --- (2)CA   (1)CB 
+               /         \\        \\
+           (6)CA         (3)CA    (2)CB --- (3)CB
+               \\         /
+             (5)CA --- (4)CA
+        ``` 
+        The circular residue A and linear residue B are connected by a bond between
+        (1)CA and the oxygen OA and (1)CB. By default, because OA originally is associated
+        with residue A, only the bond OA --- (1)CB is returned. However, if `triplet=True`,
+        the bond OA --- (1)CA is also returned, because the entire connecting "bridge" between residues
+        A and B spans either bond around OA.
+        >>> mol.infer_residue_connections(triplet=False)
+        [("OA", "(1)CB")]
+        >>> mol.infer_residue_connections(triplet=True)
+        [("OA", "(1)CB"), ("OA", "(1)CA")]
         """
-        bonds = structural.infer_residue_connections(self._base_struct, max_bond_length)
+        bonds = structural.infer_residue_connections(
+            self._base_struct, max_bond_length, triplet
+        )
         self._bonds.extend([b for b in bonds if b not in self._bonds])
         return bonds
 
