@@ -406,14 +406,21 @@ if __name__ == "__main__":
     man2.lock_all()
 
     top = gl.get_default_topology()
-    _abstract = top.get_residue(man1.id)
 
     patcher = Patcher(True, True)
     for i in ("12ab", "14bb", "12ab"):
         patch = top.get_patch(i)
         new = patcher.patch_molecules(patch, man1, man2)
 
+        seen_atoms = set()
+        for atom in new.atoms:
+            assert atom.serial_number not in seen_atoms
+            seen_atoms.add(atom.serial_number)
+        
+        res_con = gl.utils.structural.infer_residue_connections(new.chain, triplet=True)
+
         v2 = gl.utils.visual.MoleculeViewer3D(new)
         v2.draw_edges(edges=list(new.bonds), color="blue", opacity=1)
         v2.draw_edges(edges=list(new._locked_bonds), color="red", linewidth=3)
+        v2.draw_edges(edges=res_con, color="limegreen", linewidth=4)
         v2.show()
