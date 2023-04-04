@@ -1,4 +1,4 @@
 """
 Additional data resources
 """
-from charmm import CHARMMTopology, CHARMMParameters
+from glycosylator.resources.charmm import CHARMMTopology, CHARMMParameters
