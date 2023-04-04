@@ -29,7 +29,7 @@ def test_missing_proper_1():
         _man.detach_child(to_delete)
         assert _man.child_dict.get(to_delete) is None, "Atom was not deleted!"
 
-        gl.utils.structural.fill_missing_atoms(_man)
+        gl.structural.fill_missing_atoms(_man)
 
         assert _man.child_dict.get(to_delete) is not None, "Atom was not added again!"
 
@@ -56,7 +56,7 @@ def test_missing_proper_4():
         _man.detach_child(to_delete)
         assert _man.child_dict.get(to_delete) is None, "Atom was not deleted!"
 
-        gl.utils.structural.fill_missing_atoms(_man)
+        gl.structural.fill_missing_atoms(_man)
 
         assert _man.child_dict.get(to_delete) is not None, "Atom was not added again!"
 
@@ -89,7 +89,7 @@ def test_missing_improper_1():
         _man.detach_child(to_delete)
         assert _man.child_dict.get(to_delete) is None, "Atom was not deleted!"
 
-        gl.utils.structural.fill_missing_atoms(_man, top)
+        gl.structural.fill_missing_atoms(_man, top)
 
         assert _man.child_dict.get(to_delete) is not None, "Atom was not added again!"
 
@@ -121,7 +121,7 @@ def test_missing_improper_4():
         _man.detach_child(to_delete)
         assert _man.child_dict.get(to_delete) is None, "Atom was not deleted!"
 
-        gl.utils.structural.fill_missing_atoms(_man, top)
+        gl.structural.fill_missing_atoms(_man, top)
 
         assert _man.child_dict.get(to_delete) is not None, "Atom was not added again!"
 
@@ -145,7 +145,7 @@ def test_missing_one_random_atom():
 
     _man.detach_child(to_delete)
 
-    gl.utils.structural.fill_missing_atoms(_man)
+    gl.structural.fill_missing_atoms(_man)
 
     assert (
         _man.child_dict.get(to_delete) is not None
@@ -168,7 +168,7 @@ def test_missing_multiple_random_atoms():
     for i in to_delete:
         _man.detach_child(i)
 
-    gl.utils.structural.fill_missing_atoms(_man)
+    gl.structural.fill_missing_atoms(_man)
 
     for i in to_delete:
         assert _man.child_dict.get(i) is not None, f"Atom {i} was not added again!"
@@ -192,7 +192,7 @@ def test_missing_multiple_random_atoms_galactose():
     for i in to_delete:
         _gal.detach_child(i)
 
-    gl.utils.structural.fill_missing_atoms(_gal)
+    gl.structural.fill_missing_atoms(_gal)
 
     for i in to_delete:
         assert _gal.child_dict.get(i) is not None, f"Atom {i} was not added again!"
@@ -217,7 +217,7 @@ def test_missing_multiple_random_atoms_mannose9():
         true_coords[idx] = i.coord
         parent.detach_child(i.id)
 
-    gl.utils.structural.fill_missing_atoms(_man)
+    gl.structural.fill_missing_atoms(_man)
 
     for i, true_coord, parent in zip(to_delete, true_coords, parents):
 
@@ -231,7 +231,7 @@ def test_missing_multiple_random_atoms_mannose9():
 
 def test_apply_standard_bonds():
 
-    bonds = gl.utils.structural.apply_standard_bonds(MANNOSE)
+    bonds = gl.structural.apply_standard_bonds(MANNOSE)
 
     _recieved = len(bonds)
     _expected = 24
@@ -320,7 +320,7 @@ def test_apply_standard_bonds_one_atom():
     atom = {i.id: i for i in MANNOSE.get_atoms()}
     atom = atom.get("C1")
 
-    bonds = gl.utils.structural.apply_standard_bonds(atom)
+    bonds = gl.structural.apply_standard_bonds(atom)
     bonds = [set((i.id, j.id)) for i, j in bonds]
 
     _recieved = len(bonds)
@@ -357,7 +357,7 @@ def test_apply_standard_bonds_one_atom():
 
 def test_infer_bonds():
 
-    bonds = gl.utils.structural.infer_bonds(MANNOSE)
+    bonds = gl.structural.infer_bonds(MANNOSE)
 
     _recieved = len(bonds)
     _expected = 24
@@ -444,7 +444,7 @@ def test_infer_bonds():
 def test_infer_residue_connections():
 
     _man9 = bio.PDBParser().get_structure("MANNOSE9", base.MANNOSE9)
-    bonds = gl.utils.structural.infer_residue_connections(_man9)
+    bonds = gl.structural.infer_residue_connections(_man9)
 
     connections = [
         set((i.get_parent()._id[1], j.get_parent()._id[1])) for i, j in bonds
@@ -499,8 +499,8 @@ def test_infer_residue_connections():
 def test_infer_residue_connections_triplet():
 
     _man9 = bio.PDBParser().get_structure("MANNOSE9", base.MANNOSE9)
-    bonds = gl.utils.structural.infer_residue_connections(_man9, triplet=True)
-    _no_triplets = gl.utils.structural.infer_residue_connections(_man9)
+    bonds = gl.structural.infer_residue_connections(_man9, triplet=True)
+    _no_triplets = gl.structural.infer_residue_connections(_man9)
 
     assert len(bonds) == 2 * len(_no_triplets), "Not all triplets are found!"
 
@@ -516,7 +516,7 @@ def test_atom_neighborhood_basic():
         _recieved == _expected
     ), f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
 
-    neighborhood = gl.utils.structural.AtomNeighborhood(mannose)
+    neighborhood = gl.structural.AtomNeighborhood(mannose)
     assert neighborhood is not None, "No neighborhood object is made..."
 
     _recieved = len(neighborhood.atoms)
@@ -537,7 +537,7 @@ def test_atom_neighborhood_basic():
 def test_atom_neighborhood_get():
 
     mannose = gl.graphs.AtomGraph.from_biopython(MANNOSE)
-    neighborhood = gl.utils.structural.AtomNeighborhood(mannose)
+    neighborhood = gl.structural.AtomNeighborhood(mannose)
 
     _recieved = set(i.id for i in neighborhood.get_neighbors("C1"))
     _expected = {"H1", "C2", "O1", "O5"}
@@ -566,7 +566,7 @@ def test_residue_neighborhood_basic():
 
     mannose = gl.graphs.ResidueGraph.from_pdb(base.MANNOSE9)
 
-    neighborhood = gl.utils.structural.ResidueNeighborhood(mannose)
+    neighborhood = gl.structural.ResidueNeighborhood(mannose)
     assert neighborhood is not None, "No neighborhood object is made..."
 
     _recieved = len(neighborhood.residues)
@@ -594,7 +594,7 @@ def test_residue_neighborhood_get():
 
     mannose = gl.graphs.ResidueGraph.from_pdb(base.MANNOSE9)
 
-    neighborhood = gl.utils.structural.ResidueNeighborhood(mannose)
+    neighborhood = gl.structural.ResidueNeighborhood(mannose)
     assert neighborhood is not None, "No neighborhood object is made..."
 
     neigs = neighborhood.get_neighbors("C1")
@@ -658,14 +658,14 @@ def test_compute_angle():
     assert len(refs) == 4, f"We got weird reference atoms: {refs}"
 
     _true_angle = ic.bond_angle_123
-    _recieved = gl.utils.structural.compute_angle(*refs[:-1])
+    _recieved = gl.structural.compute_angle(*refs[:-1])
     _what = "° between 1-2-3"
     assert _recieved == pytest.approx(
         _true_angle, 1e-3
     ), f"Recieved {_recieved} {_what}, expected {_true_angle} {_what}!"
 
     _true_angle = ic.bond_angle_234
-    _recieved = gl.utils.structural.compute_angle(*refs[1:])
+    _recieved = gl.structural.compute_angle(*refs[1:])
     _what = "° between 2-3-4"
     assert _recieved == pytest.approx(
         _true_angle, 1e-3
@@ -690,7 +690,7 @@ def test_compute_dihedral():
     assert len(refs) == 4, f"We got weird reference atoms: {refs}"
 
     _true_dihedral = ic.dihedral
-    _recieved = gl.utils.structural.compute_dihedral(*refs)
+    _recieved = gl.structural.compute_dihedral(*refs)
     _what = "° between 1-2-3-4"
     assert _recieved == pytest.approx(
         _true_dihedral, 1e-3
@@ -700,7 +700,7 @@ def test_compute_dihedral():
 def test_compute_triplets():
 
     bonds = [(1, 2), (1, 3), (2, 4), (3, 5)]
-    triplets = gl.utils.structural.compute_triplets(bonds)
+    triplets = gl.structural.compute_triplets(bonds)
     _expected = [(2, 1, 3), (1, 2, 4), (1, 3, 5)]
     assert (
         triplets == _expected
@@ -709,9 +709,9 @@ def test_compute_triplets():
 
 def test_quartet_class():
 
-    a = gl.utils.structural.neighbors.Quartet(1, 2, 3, 4, False)
-    b = gl.utils.structural.neighbors.Quartet(1, 2, 3, 4, False)
-    c = gl.utils.structural.neighbors.Quartet(5, 3, 4, 6, True)
+    a = gl.structural.neighbors.Quartet(1, 2, 3, 4, False)
+    b = gl.structural.neighbors.Quartet(1, 2, 3, 4, False)
+    c = gl.structural.neighbors.Quartet(5, 3, 4, 6, True)
 
     assert a == b, "Quartets are not equal!"
     assert a != c, "Quartets are equal!"
@@ -726,13 +726,13 @@ def test_quartet_class():
 def test_compute_quartets():
 
     bonds = [(1, 2), (2, 3), (2, 4), (3, 5), (4, 6), (5, 7)]
-    quartets = gl.utils.structural.compute_quartets(bonds)
+    quartets = gl.structural.compute_quartets(bonds)
 
     _received = len(quartets)
     _expected = 6
     assert _received == _expected, f"Expected {_expected} quartets, got {_received}"
 
-    Quartet = gl.utils.structural.neighbors.Quartet
+    Quartet = gl.structural.neighbors.Quartet
     assert Quartet(1, 2, 4, 6, False) in quartets
     assert Quartet(1, 4, 2, 3, True) in quartets
 
@@ -746,7 +746,7 @@ def test_patcher_anchors():
     top = gl.get_default_topology()
     patch = top.get_patch("12aa")
 
-    p = gl.utils.structural.Patcher()
+    p = gl.structural.Patcher()
     p.target = man1
     p.source = man2
     p.patch = patch
@@ -767,7 +767,7 @@ def test_patcher_two_man():
 
     top = gl.get_default_topology()
     patches = ("12aa", "12ab", "14bb")
-    p = gl.utils.structural.Patcher(copy_target=True, copy_source=True)
+    p = gl.structural.Patcher(copy_target=True, copy_source=True)
     for patch in patches:
         patch = top.get_patch(patch)
 
@@ -843,7 +843,7 @@ def test_patcher_multiple_man():
     orig_residues = len(man1.residues)
     orig_atoms = len(man1.atoms)
 
-    p = gl.utils.structural.Patcher()
+    p = gl.structural.Patcher()
 
     man_34 = p.patch_molecules(top.get_patch("14bb"), man3, man4)
 
