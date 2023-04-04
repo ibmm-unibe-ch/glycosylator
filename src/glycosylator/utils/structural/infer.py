@@ -13,7 +13,11 @@ import glycosylator.utils.structural.base as base
 import glycosylator.utils.structural.neighbors as neighbors
 
 
-def infer_residue_connections(structure, bond_length: float = None):
+def infer_residue_connections(
+    structure,
+    bond_length: float = None,
+    triplet: bool = False,
+):
     """
     Infer the connectivity graph of residues from the distances between atoms of residue pairs.
     This will establish only bonds between close-by atoms from non-identical residues.
@@ -27,37 +31,63 @@ def infer_residue_connections(structure, bond_length: float = None):
         - `Bio.PDB.Chain`
     bond_length : float
         The maximum distance between two atoms to be considered a bond.
+    triplet : bool
+        If True, bonds between atoms of the same residue are also added, if one
+        of the atoms is considered bonded to another residue. Like this residue connections
+        are described not by a single bond with a pair of atoms, but two bonds with a triplet of atoms.
 
     Returns
     -------
     bonds : list
         A list of tuples of Atoms from different Residues that are bonded.
     """
-    if bond_length is None:
-        bond_length = defaults.DEFAULT_BOND_LENGTH
+    if not triplet:
+        if bond_length is None:
+            bond_length = defaults.DEFAULT_BOND_LENGTH
 
-    bonds = []
-    _seen_residues = set()
-    for residue1 in structure.get_residues():
-        for residue2 in structure.get_residues():
-            if residue1 == residue2:
-                continue
-            elif residue2 in _seen_residues:
-                continue
+        bonds = []
+        _seen_residues = set()
+        for residue1 in structure.get_residues():
+            for residue2 in structure.get_residues():
+                if residue1 == residue2:
+                    continue
+                elif residue2 in _seen_residues:
+                    continue
 
-            atoms1 = list(residue1.get_atoms())
-            atoms2 = list(residue2.get_atoms())
+                atoms1 = list(residue1.get_atoms())
+                atoms2 = list(residue2.get_atoms())
 
-            _neighbors = NeighborSearch(atoms1 + atoms2)
-            _neighbors = _neighbors.search_all(radius=bond_length)
+                _neighbors = NeighborSearch(atoms1 + atoms2)
+                _neighbors = _neighbors.search_all(radius=bond_length)
 
-            bonds.extend(
-                [n for n in _neighbors if n[0].get_parent() != n[1].get_parent()],
-            )
+                _neighbors = (
+                    i for i in _neighbors if i[0].element != "H" and i[1].element != "H"
+                )
 
-        _seen_residues.add(residue1)
+                bonds.extend(
+                    [n for n in _neighbors if n[0].get_parent() != n[1].get_parent()],
+                )
 
-    # bonds = [Bond(i) for i in bonds]
+            _seen_residues.add(residue1)
+    else:
+        bonds = infer_residue_connections(
+            structure, bond_length=bond_length, triplet=False
+        )
+        triplets = neighbors.compute_triplets(bonds)
+        bonds = []
+        for triplet in triplets:
+            if (
+                triplet[0].get_parent() != triplet[1].get_parent()
+                and triplet[1].get_parent() == triplet[2].get_parent()
+            ):
+                bonds.append(triplet[:2])
+                bonds.append(triplet[1:])
+            elif (
+                triplet[0].get_parent() == triplet[1].get_parent()
+                and triplet[1].get_parent() != triplet[2].get_parent()
+            ):
+                bonds.append(triplet[:2])
+                bonds.append(triplet[1:])
 
     return bonds
 
