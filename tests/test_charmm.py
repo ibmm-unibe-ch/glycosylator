@@ -1,5 +1,5 @@
 """
-Test the behaviour of force fields and the abstract classes that store their behaviour
+Test the behaviour of CHARMM force fields and the abstract classes that store their behaviour
 """
 
 import glycosylator as gl
@@ -15,20 +15,20 @@ def test_default_settings():
 
 
 def test_make_charmm_topology():
-    top = gl.force_fields.charmm.CHARMMTopology()
+    top = gl.resources.charmm.CHARMMTopology()
     assert top is not None, "No topology is made"
 
-    top = gl.force_fields.charmm.CHARMMTopology.from_file(base.CHARMM_TOPOLOGY_FILE)
+    top = gl.resources.charmm.CHARMMTopology.from_file(base.CHARMM_TOPOLOGY_FILE)
     assert top is not None, "No topology is made"
 
     assert len(top.residues) == 6
 
 
 def test_make_charmm_parameters():
-    prm = gl.force_fields.charmm.CHARMMParameters()
+    prm = gl.resources.charmm.CHARMMParameters()
     assert prm is not None, "No parameters are made"
 
-    prm = gl.force_fields.charmm.CHARMMParameters.from_file(base.CHARMM_PARAMETERS_FILE)
+    prm = gl.resources.charmm.CHARMMParameters.from_file(base.CHARMM_PARAMETERS_FILE)
     assert prm is not None, "No parameters are made"
 
     assert len(prm.masses) == 57
@@ -50,8 +50,12 @@ def test_residue():
     assert len(man.get_internal_coordinates()) == 22
     assert len(man.get_internal_coordinates("C1", "C2", "C3", "O3")) == 1
     assert len(man.get_internal_coordinates("C1", "C2", "C3", None)) == 0
-    assert len(man.get_internal_coordinates("C1", "C2", None, "O3", mode="partial")) == 1
-    assert len(man.get_internal_coordinates("C1", None, None, "O3", mode="partial")) == 1
+    assert (
+        len(man.get_internal_coordinates("C1", "C2", None, "O3", mode="partial")) == 1
+    )
+    assert (
+        len(man.get_internal_coordinates("C1", None, None, "O3", mode="partial")) == 1
+    )
     assert len(man.get_internal_coordinates("C1", "O3", mode="anywhere_partial")) == 13
     assert len(man.get_internal_coordinates("C1", "O3", mode="anywhere")) == 1
 

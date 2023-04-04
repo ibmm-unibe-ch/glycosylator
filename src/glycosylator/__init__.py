@@ -6,7 +6,6 @@
 import glycosylator.utils as utils
 import glycosylator.resources as resources
 import glycosylator.graphs as graphs
-import glycosylator.force_fields as force_fields
 
 from glycosylator.core import *
 from glycosylator.utils import get_default_parameters, get_default_topology, set_default_topology, set_default_parameters
@@ -16,7 +15,6 @@ __all__ = [
     # Glycosylator,
     # MoleculeBuilder,
     # Sampler,
-    force_fields,
     utils,
     resources,
     graphs,
