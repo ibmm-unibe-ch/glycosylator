@@ -117,7 +117,9 @@ def test_atom_graph_rotate_descendants_only():
     new_others = np.array([i.coord for i in others])
 
     assert np.all(current_others == new_others), "Other atoms have also moved!"
-    assert not np.allclose(current_descendants, new_descendants), "Descendants have not moved"
+    assert not np.allclose(
+        current_descendants, new_descendants
+    ), "Descendants have not moved"
 
 
 def test_atom_graph_rotate_all():
@@ -142,13 +144,61 @@ def test_atom_graph_rotate_all():
     new_ref = np.array((c5.coord, c6.coord))
 
     assert not np.all(current_others == new_others), "Other atoms have not moved!"
-    assert not np.allclose(current_descendants, new_descendants), "Descendants have not moved"
+    assert not np.allclose(
+        current_descendants, new_descendants
+    ), "Descendants have not moved"
     assert np.allclose(current_ref, new_ref), "Reference atoms have moved"
+
+
+def test_atom_graph_from_molecule():
+
+    mol = gl.Molecule.from_pdb(base.MANNOSE)
+    mol.infer_bonds()
+    mol.lock_all()
+    graph = gl.graphs.AtomGraph.from_molecule(mol)
+
+    assert graph is not None, "No molecule is made"
+
+    _received = len(list(graph.bonds))
+    _expected = len(list(mol.bonds))
+    assert _received == _expected, f"Expected {_expected} bonds, got {_received}"
+
+    assert len(graph._locked_edges) == 0, "Molecule is not locked"
+
+    graph = gl.graphs.AtomGraph.from_molecule(mol, locked=True)
+
+    assert len(graph._locked_edges) == len(mol._locked_bonds), "Molecule is not locked"
 
 
 # =================================================================
 # ResidueGraph tests
 # =================================================================
+
+
+def test_residue_graph_from_molecule():
+
+    mol = gl.Molecule.from_pdb(base.MANNOSE9)
+    mol.infer_bonds()
+    mol.lock_all()
+    graph_simple = gl.graphs.ResidueGraph.from_molecule(mol, detailed=False)
+
+    assert graph_simple is not None, "No molecule is made"
+
+    _received = len(list(graph_simple.bonds))
+    _expected = 10
+    assert _received == _expected, f"Expected {_expected} bonds, got {_received}"
+
+    assert len(graph_simple._locked_edges) == 0, "Molecule is not locked"
+
+    graph_detailed = gl.graphs.ResidueGraph.from_molecule(mol, detailed=True)
+
+    assert graph_detailed is not None, "No molecule is made"
+
+    _received = len(list(graph_detailed.bonds))
+    _expected = 40
+    assert _received == _expected, f"Expected {_expected} bonds, got {_received}"
+
+    assert len(graph_detailed._locked_edges) != 0, "Molecule is not locked"
 
 
 def test_residue_graph_pdb_is_made():
@@ -273,7 +323,9 @@ def test_residue_graph_rotate_descendants_only():
     new_others = np.array([i.coord for i in others])
 
     assert np.all(current_others == new_others), "Other residues have also moved!"
-    assert not np.allclose(current_descendants, new_descendants), "Descendants have not moved"
+    assert not np.allclose(
+        current_descendants, new_descendants
+    ), "Descendants have not moved"
 
 
 def test_residue_graph_rotate_all():
@@ -298,5 +350,7 @@ def test_residue_graph_rotate_all():
     new_ref = np.array((nag3.coord, bma.coord))
 
     assert not np.all(current_others == new_others), "Other residues have not moved!"
-    assert not np.allclose(current_descendants, new_descendants), "Descendants have not moved"
+    assert not np.allclose(
+        current_descendants, new_descendants
+    ), "Descendants have not moved"
     assert np.allclose(current_ref, new_ref), "Reference residues have moved"

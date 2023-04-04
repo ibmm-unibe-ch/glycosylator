@@ -798,7 +798,7 @@ def test_patcher_two_man():
         connection = new.infer_residue_connections(triplet=False)
         assert len(connection) == 1
         assert len(new.get_bonds(*connection[0])) == 1
-        assert new.bond_is_locked(*connection[0]) is False
+        assert new.is_locked(*connection[0]) is False
 
         assert len(new.infer_residue_connections(triplet=True)) == 2
 
@@ -886,4 +886,3 @@ def test_patcher_multiple_man():
 
     v = gl.utils.visual.MoleculeViewer3D(man1.make_residue_graph())
     v.show()
-
