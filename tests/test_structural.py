@@ -501,7 +501,7 @@ def test_infer_residue_connections_triplet():
     _man9 = bio.PDBParser().get_structure("MANNOSE9", base.MANNOSE9)
     bonds = gl.utils.structural.infer_residue_connections(_man9, triplet=True)
     _no_triplets = gl.utils.structural.infer_residue_connections(_man9)
-    
+
     assert len(bonds) == 2 * len(_no_triplets), "Not all triplets are found!"
 
 
@@ -819,7 +819,69 @@ def test_patcher_two_man():
         for angle in new.angles.values():
             assert 100 < angle < 130
 
-        v = gl.utils.visual.MoleculeViewer3D(new)
-        v.draw_edges(new.bonds, color="blue", linewidth=1)
-        v.draw_edges(new._locked_bonds, color="red", linewidth=2)
-        v.show()
+
+def test_patcher_multiple_man():
+
+    man1 = gl.Molecule.from_pdb(base.MANNOSE)
+    man1.infer_bonds()
+
+    man2 = deepcopy(man1)
+    man3 = deepcopy(man1)
+    man4 = deepcopy(man1)
+
+    man1.lock_all()
+    man2.lock_all()
+    man3.lock_all()
+    man4.lock_all()
+
+    mols = (man2, man3, man4)
+
+    top = gl.get_default_topology()
+
+    orig_residues = len(man1.residues)
+    orig_atoms = len(man1.atoms)
+
+    p = gl.utils.structural.Patcher()
+
+    man_34 = p.patch_molecules(top.get_patch("14bb"), man3, man4)
+
+    man_23 = p.patch_molecules(top.get_patch("12ab"), man_34, man2)
+
+    man1 = p.patch_molecules(top.get_patch("12aa"), man1, man_23)
+
+    new = man1
+    v = gl.utils.visual.MoleculeViewer3D(new)
+    v.draw_edges(new.bonds, color="blue", linewidth=1)
+    v.draw_edges(new._locked_bonds, color="red", linewidth=2)
+    v.show()
+
+    assert len(man1.residues) == 4 * orig_residues
+    assert 3.5 * orig_atoms < len(man1.atoms) < 4 * orig_atoms
+
+    # check that the atoms have been properly renumbered
+    _seen_serials = set()
+    for atom in man1.atoms:
+        assert atom.serial_number not in _seen_serials
+        _seen_serials.add(atom.serial_number)
+
+    # check that there are no major clashes
+    # e.g. check that all atoms are at least 1Angstrom apart from each other
+    for atom in man1.atoms:
+        for other in man1.atoms:
+            if atom == other:
+                continue
+            assert np.sum(np.abs(atom.coord - other.coord)) > 1
+
+    # check that there are now super weird angles
+    # e.g. angles that are less than 100 or more than 130 degrees
+    for angle in man1.angles.values():
+        assert 100 < angle < 130
+
+    v = gl.utils.visual.MoleculeViewer3D(man1)
+    res_con = man1.infer_residue_connections(triplet=True)
+    v.draw_edges(res_con, color="limegreen", linewidth=3)
+    v.show()
+
+    v = gl.utils.visual.MoleculeViewer3D(man1.make_residue_graph())
+    v.show()
+

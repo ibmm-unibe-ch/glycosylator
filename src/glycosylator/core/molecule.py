@@ -451,15 +451,52 @@ class Molecule:
         to the molecule and want to be sure that there are no gaps in the
         atom and residue numbering.
         """
-        j = 1
-        for i, residue in enumerate(self._chain.child_list):
-            residue.id = (i + 1, *residue.id[1:])
+        j = 0
+        idx = 0
+
+        residues = list(self.residues)
+        parents = set([i.get_parent() for i in residues])
+        for residue, parent in zip(residues, parents):
+            parent.detach_child(residue.id)
+
+        for residue, parent in zip(residues, parents):
+            idx += 1
+            residue.id = (residue.id[0], idx, *residue.id[2:])
             for atom in residue.get_atoms():
-                atom.serial_number = j
                 j += 1
+                atom.serial_number = j
+                atom.set_parent(residue)
+            parent.add(residue)
 
         self._AtomGraph = None
         self._ResidueGraph = None
+
+    def adjust_indexing(self, other: "Molecule"):
+        """
+        Adjust another Molecule's residue and atom indexing to continue this Molecule's indexing.
+        E.g. any residue with seqid 1 in the other molecule will be adjusted to have seqid 3 if this molecule
+        already has two residues. And correspondingly, the atom numbering will be adjusted.
+
+        Parameters
+        ----------
+        other : Molecule
+            The other molecule to adjust
+        """
+        residues = other.residues
+        parents = [i.get_parent() for i in residues]
+        for residue, parent in zip(residues, parents):
+            parent.detach_child(residue.id)
+
+        rdx = len(self.residues)
+        adx = len(self.atoms)
+        for residue, parent in zip(residues, parents):
+            rdx += 1
+            residue.id = (residue.id[0], rdx, *residue.id[2:])
+            for atom in residue.get_atoms():
+                adx += 1
+                atom.serial_number = adx
+                atom.set_parent(residue)
+            parent.add(residue)
 
     def add_residues(self, *residues: bio.Residue.Residue, adjust_seqid: bool = True):
         """
@@ -479,6 +516,9 @@ class Molecule:
         rdx = len(self.residues)
         adx = len(self.atoms)
         for residue in residues:
+            p = residue.get_parent()
+            if p:
+                p.detach_child(residue.id)
             if adjust_seqid:
                 rdx += 1
                 residue.id = (residue.id[0], rdx, *residue.id[2:])
@@ -781,7 +821,7 @@ class Molecule:
             because the additionally returned bonds are already present in the structure 
             from inference or standard-bond applying and therefore do not actually add any 
             particular information to the Molecule object itself.
-            
+
         Returns
         -------
         list

@@ -380,6 +380,7 @@ class Patcher:
         """
         Merge the source molecule into the target molecule
         """
+        self.target.adjust_indexing(self.source)
         self.target.add_residues(*self.source.residues)
         self.target._bonds.extend(self.source._bonds)
         self.target._bonds.append(self._anchors)
@@ -416,7 +417,7 @@ if __name__ == "__main__":
         for atom in new.atoms:
             assert atom.serial_number not in seen_atoms
             seen_atoms.add(atom.serial_number)
-        
+
         res_con = gl.utils.structural.infer_residue_connections(new.chain, triplet=True)
 
         v2 = gl.utils.visual.MoleculeViewer3D(new)
