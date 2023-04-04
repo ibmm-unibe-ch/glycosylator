@@ -541,13 +541,10 @@ class Molecule:
         else:
             target = self._chain.child_list[-1]
 
-        _max_serial = max(self._idx_atoms.keys())
+        _max_serial = len(self.atoms)
         for atom in atoms:
-
-            if atom.serial_number in self._idx_atoms:
-                _max_serial += 1
-                atom.serial_number = _max_serial
-
+            _max_serial += 1
+            atom.serial_number = _max_serial
             target.add(atom)
 
             self._idx_atoms[atom.serial_number] = atom
@@ -794,7 +791,7 @@ class Molecule:
     def attach(
         self,
         other: "Molecule",
-        patch: Union[utils._abstract.AbstractPatch, str] = None,
+        patch: Union[utils.abstract.AbstractPatch, str] = None,
         at: Union[int, str, tuple, bio.Atom.Atom] = None,
         other_at: Union[int, str, tuple, bio.Atom.Atom] = None,
         _topology=None,
