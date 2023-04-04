@@ -884,5 +884,10 @@ def test_patcher_multiple_man():
     v.draw_edges(res_con, color="limegreen", linewidth=3)
     v.show()
 
-    v = gl.utils.visual.MoleculeViewer3D(man1.make_residue_graph())
+    g = man1.make_residue_graph()
+    g.unlock_all()
+    g.lock_centers()
+    v = gl.utils.visual.MoleculeViewer3D(g)
+    v.draw_edges(g.edges, color="limegreen", linewidth=2)
+    v.draw_edges(g._locked_edges, color="red", linewidth=2)
     v.show()
