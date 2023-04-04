@@ -354,3 +354,16 @@ def test_residue_graph_rotate_all():
         current_descendants, new_descendants
     ), "Descendants have not moved"
     assert np.allclose(current_ref, new_ref), "Reference residues have moved"
+
+
+def test_residue_graph_detailed():
+
+    mol = gl.graphs.ResidueGraph.from_pdb(base.MANNOSE9)
+
+    assert len(mol.nodes) == 11, "Wrong number of nodes"
+    assert len(mol.bonds) == 10, "Wrong number of bonds"
+
+    mol.make_detailed()
+
+    assert len(mol.edges) == 40, "Wrong number of edges"
+    assert len(mol.nodes) == 41, "Wrong number of nodes"
