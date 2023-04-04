@@ -421,9 +421,14 @@ class Molecule:
     def set_root(self, atom):
         self.root_atom = atom
 
-    def make_atom_graph(self):
+    def make_atom_graph(self, locked: bool = True):
         """
         Generate an AtomGraph for the Molecule
+
+        Parameters
+        ----------
+        locked : bool
+            If True, the graph will also migrate the information on any locked bonds into the graph.
         """
         if len(self._bonds) == 0:
             warnings.warn(
@@ -433,16 +438,26 @@ class Molecule:
         self._AtomGraph = AtomGraph(self._base_struct.id, self._bonds)
         return self._AtomGraph
 
-    def make_residue_graph(self):
+    def make_residue_graph(self, detailed: bool = True, locked: bool = True):
         """
         Generate a ResidueGraph for the Molecule
+
+        Parameters
+        ----------
+        detailed : bool
+            If True the graph will include the residues and all atoms that form bonds
+            connecting different residues. If False, the graph will only include the residues
+            and their connections without factual bonds between any existing atoms.
+        locked : bool
+            If True, the graph will also migrate the information on any locked bonds into the graph.
+            This is only relevant if detailed is True.
         """
         if len(self._bonds) == 0:
             warnings.warn(
                 "No bonds found (yet), be sure to first apply or infer bonds to generate a graph"
             )
             return
-        self._ResidueGraph = ResidueGraph.from_AtomGraph(self.make_atom_graph())
+        self._ResidueGraph = ResidueGraph.from_molecule(self, detailed, locked)
         return self._ResidueGraph
 
     def reindex(self):
@@ -738,7 +753,7 @@ class Molecule:
         if both_ways and bond[::-1] in self._locked_bonds:
             self._locked_bonds.remove(bond[::-1])
 
-    def bond_is_locked(
+    def is_locked(
         self,
         atom1: Union[int, str, tuple, bio.Atom.Atom],
         atom2: Union[int, str, tuple, bio.Atom.Atom],

@@ -26,6 +26,38 @@ class ResidueGraph(BaseGraph):
         )
 
     @classmethod
+    def from_molecule(cls, mol, detailed: bool = True, locked: bool = True):
+        """
+        Create a ResidueGraph from a molecule object.
+
+        Parameters
+        ----------
+        mol : Molecule
+            The molecule object
+        detailed : bool
+            Whether to make a "detailed" residue graph representation
+            including the atomic-scale bonds between residues. If True,
+            locked bonds can be directly migrated from the molecule.
+        locked : bool
+            Whether to migrate locked bonds from the molecule. This
+            is only possible if detailed is True.
+
+        Returns
+        -------
+        ResidueGraph
+            The ResidueGraph representation of the molecule
+        """
+        atomgraph = mol.make_atom_graph()
+        new = cls.from_AtomGraph(atomgraph)
+        if detailed:
+            new.make_detailed()
+            if locked:
+                new._locked_edges.update(
+                    (i for i in mol._locked_bonds if i in new.edges)
+                )
+        return new
+
+    @classmethod
     def from_AtomGraph(cls, atom_graph):
         """
         Create a ResidueGraph from an AtomGraph.
@@ -246,6 +278,6 @@ if __name__ == "__main__":
     v = vis.MoleculeViewer3D(man)
     v.show()
 
-    # print(len(list(man.bonds)))
-    # nx.draw(man, with_labels=True, font_weight="bold")
-    # plt.show()
+    print(len(list(man.bonds)))
+    nx.draw(man, with_labels=True, font_weight="bold", pos=nx.spectral_layout(man))
+    plt.show()
