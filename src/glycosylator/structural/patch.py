@@ -9,8 +9,8 @@ from copy import deepcopy
 
 
 import glycosylator.utils.abstract as abstract
-import glycosylator.utils.structural.base as base
-import glycosylator.utils.structural.infer as infer
+import glycosylator.structural.base as base
+import glycosylator.structural.infer as infer
 
 
 class PatchError(Exception):
@@ -418,7 +418,7 @@ if __name__ == "__main__":
             assert atom.serial_number not in seen_atoms
             seen_atoms.add(atom.serial_number)
 
-        res_con = gl.utils.structural.infer_residue_connections(new.chain, triplet=True)
+        res_con = gl.structural.infer_residue_connections(new.chain, triplet=True)
 
         v2 = gl.utils.visual.MoleculeViewer3D(new)
         v2.draw_edges(edges=list(new.bonds), color="blue", opacity=1)

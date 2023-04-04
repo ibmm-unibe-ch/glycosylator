@@ -10,7 +10,7 @@ from typing import Union
 import Bio.PDB as bio
 from glycosylator.graphs import AtomGraph, ResidueGraph
 import glycosylator.utils as utils
-import glycosylator.utils.structural as structural
+import glycosylator.structural as structural
 
 
 class Molecule:

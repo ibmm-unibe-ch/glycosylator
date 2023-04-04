@@ -4,7 +4,7 @@ import numpy as np
 import mdtraj as md
 import Bio.PDB as bio
 
-import glycosylator.utils.structural as struct
+import glycosylator.structural as struct
 from glycosylator.graphs.BaseGraph import BaseGraph
 import glycosylator.graphs.AtomGraph as AtomGraph
 
@@ -162,6 +162,17 @@ class ResidueGraph(BaseGraph):
                     self.add_edge(atom2, p2)
                 else:
                     self.add_edge(atom1, p1)
+
+    def lock_centers(self):
+        """
+        Lock any edges that connect residue centers of mass to their constituent atoms.
+        This only applies to detailed graphs.
+        """
+        for edge in self.edges:
+            if isinstance(edge[0], bio.Residue.Residue) and isinstance(edge[1],bio.Atom.Atom):
+                self._locked_edges.add(edge)
+            elif isinstance(edge[0], bio.Atom.Atom) and isinstance(edge[1], bio.Residue.Residue):
+                self._locked_edges.add(edge)
 
     @property
     def residues(self):

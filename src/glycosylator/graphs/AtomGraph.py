@@ -3,7 +3,7 @@ import networkx as nx
 import Bio.PDB as bio
 
 import glycosylator.utils as utils
-import glycosylator.utils.structural as struct
+import glycosylator.structural as struct
 from glycosylator.graphs.BaseGraph import BaseGraph
 
 

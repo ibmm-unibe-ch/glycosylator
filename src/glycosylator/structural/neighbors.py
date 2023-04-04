@@ -8,7 +8,7 @@ from typing import Union
 import warnings
 
 import Bio.PDB as bio
-import glycosylator.utils.structural.base as base
+import glycosylator.structural.base as base
 
 
 class Neighborhood:
