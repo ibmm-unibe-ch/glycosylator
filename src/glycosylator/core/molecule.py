@@ -55,9 +55,6 @@ class Molecule:
 
         self._bonds = []
         self._locked_bonds = set()
-        self._idx_atoms_cache = None
-        self._ids_atoms_cache = None
-        self._full_id_atoms_cache = None
 
     @classmethod
     def from_pdb(
@@ -461,16 +458,8 @@ class Molecule:
                 atom.serial_number = j
                 j += 1
 
-        self._idx_atoms_cache = None
-        self._ids_atoms_cache = None
-        self._full_id_atoms_cache = None
-
         self._AtomGraph = None
         self._ResidueGraph = None
-
-        self._idx_atoms
-        self._ids_atoms
-        self._full_id_atoms
 
     def add_residues(self, *residues: bio.Residue.Residue, adjust_seqid: bool = True):
         """
@@ -547,10 +536,6 @@ class Molecule:
             atom.serial_number = _max_serial
             target.add(atom)
 
-            self._idx_atoms[atom.serial_number] = atom
-            self._full_id_atoms[atom.full_id] = atom
-            self._ids_atoms.setdefault(atom.id, []).append(atom)
-
     def remove_atoms(self, *atoms: Union[int, str, tuple, bio.Atom.Atom]):
         """
         Remove one or more atoms from the structure
@@ -572,10 +557,13 @@ class Molecule:
             for bond in bonds:
                 self._locked_bonds.remove(bond)
 
-            del self._idx_atoms[atom.serial_number]
-            del self._full_id_atoms[atom.full_id]
-            self._ids_atoms[atom.id].remove(atom)
             atom.get_parent().detach_child(atom.id)
+
+        # reindex the atoms
+        adx = 0
+        for atom in self.atoms:
+            adx += 1
+            atom.serial_number = adx
 
     def add_bond(
         self,
@@ -1038,37 +1026,6 @@ class Molecule:
         atom3 = self.get_atom(atom3)
         atom4 = self.get_atom(atom4)
         return structural.compute_dihedral(atom1, atom2, atom3, atom4)
-
-    @property
-    def _idx_atoms(self):
-        """
-        Get a dictionary of atoms indexed by their serial number
-        """
-        if self._idx_atoms_cache is None:
-            self._idx_atoms_cache = {
-                a.serial_number: a for a in self._chain.get_atoms()
-            }
-        return self._idx_atoms_cache
-
-    @property
-    def _ids_atoms(self):
-        """
-        Get a dictionary of atoms indexed by their id
-        """
-        if self._ids_atoms_cache is None:
-            self._ids_atoms_cache = defaultdict(list)
-            for a in self._chain.get_atoms():
-                self._ids_atoms_cache[a.id].append(a)
-        return self._ids_atoms_cache
-
-    @property
-    def _full_id_atoms(self):
-        """
-        Get a dictionary of atoms indexed by their full id
-        """
-        if self._full_id_atoms_cache is None:
-            self._full_id_atoms_cache = {a.full_id: a for a in self._chain.get_atoms()}
-        return self._full_id_atoms_cache
 
     # def _get_atom(self, _atom):
     #     """
