@@ -865,7 +865,7 @@ class Molecule:
         >>> mol.infer_residue_connections(triplet=False)
         [("OA", "(1)CB")]
         >>> mol.infer_residue_connections(triplet=True)
-        [("OA", "(1)CB"), ("OA", "(1)CA")]
+        [("OA", "(1)CB"), ("OA", "(2)CA")]
         """
         bonds = structural.infer_residue_connections(
             self._base_struct, max_bond_length, triplet
