@@ -161,7 +161,7 @@ def test_add_residues():
     assert "NEW" not in [i.resname for i in mol.residues]
 
     atoms_pre = len(mol.atoms)
-    mol.add_residues(*other.residues)
+    mol.add_residues(*other.residues, _copy=True)
     assert len(mol.residues) == residues_pre + len(other.residues)
     assert len(mol.atoms) == atoms_pre + len(other.atoms)
 
