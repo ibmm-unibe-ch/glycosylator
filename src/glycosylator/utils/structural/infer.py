@@ -70,24 +70,17 @@ def infer_residue_connections(
 
             _seen_residues.add(residue1)
     else:
-        bonds = infer_residue_connections(
+        connections = infer_residue_connections(
             structure, bond_length=bond_length, triplet=False
         )
-        triplets = neighbors.compute_triplets(bonds)
-        bonds = []
-        for triplet in triplets:
-            if (
-                triplet[0].get_parent() != triplet[1].get_parent()
-                and triplet[1].get_parent() == triplet[2].get_parent()
-            ):
-                bonds.append(triplet[:2])
-                bonds.append(triplet[1:])
-            elif (
-                triplet[0].get_parent() == triplet[1].get_parent()
-                and triplet[1].get_parent() != triplet[2].get_parent()
-            ):
-                bonds.append(triplet[:2])
-                bonds.append(triplet[1:])
+        base_bonds = infer_bonds(
+            structure, bond_length=bond_length, restrict_residues=True
+        )
+        _additional_bonds = []
+        for atom1, atom2 in connections:
+            _new = [bond for bond in base_bonds if atom1 in bond]
+            _additional_bonds.extend(_new)
+        bonds = connections + _additional_bonds
 
     return bonds
 
