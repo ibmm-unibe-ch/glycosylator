@@ -8,6 +8,7 @@ import re
 
 import numpy as np
 
+
 def filename_to_id(filename):
     """
     Extract the id from a filename
@@ -24,6 +25,28 @@ def filename_to_id(filename):
     """
     base, suffix = os.path.splitext(os.path.basename(filename))
     return base
+
+
+def change_suffix(filename, suffix):
+    """
+    Change the suffix of a filename
+
+    Parameters
+    ----------
+    filename : str
+        The filename
+    suffix : str
+        The new suffix
+
+    Returns
+    -------
+    str
+        The filename with the new suffix
+    """
+    base, _ = os.path.splitext(os.path.basename(filename))
+    if suffix[0] != ".":
+        suffix = "." + suffix
+    return base + suffix
 
 
 # =================================================================
@@ -65,7 +88,9 @@ def topological_sort(unsorted_graph):
                 sorted_graph.append((node, edges))
 
         if not acyclic:
-            print("WARNING! Cyclique dependency occurred in ICs. Impossible to build residue")
+            print(
+                "WARNING! Cyclique dependency occurred in ICs. Impossible to build residue"
+            )
             print(unsorted_graph)
             print(sorted_graph)
             return ""

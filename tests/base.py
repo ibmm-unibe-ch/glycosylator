@@ -32,3 +32,8 @@ CHARMM_PARAMETERS_FILE = os.path.join(HOME, "support/toppar_charmm/carbohydrates
 """
 The path to the CHARMM parameters file
 """
+
+PDBE_TEST_FILE = os.path.join(HOME, "support/pdbe_compounds/test.cif")
+"""
+The path to the test file for the PDBe compounds
+"""

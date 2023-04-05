@@ -143,7 +143,9 @@ class AbstractEntity:
         if mode == "exact":
 
             if len(ids) != 4:
-                raise ValueError("Exact mode requires that four ids are given to match the internal coordinates")
+                raise ValueError(
+                    "Exact mode requires that four ids are given to match the internal coordinates"
+                )
 
             for ic in self.internal_coordinates:
                 if ids == ic.ids or ids[::-1] == ic.ids:
@@ -153,12 +155,18 @@ class AbstractEntity:
         elif mode == "partial":
 
             if len(ids) != 4:
-                raise ValueError("Partial mode requires that four ids or None are given to match the internal coordinates")
+                raise ValueError(
+                    "Partial mode requires that four ids or None are given to match the internal coordinates"
+                )
 
             ids = np.array(ids)
             mask = ids != None
 
-            ics = [ic for ic in self.internal_coordinates if np.all(ids[mask] == np.array(ic.ids)[mask])]
+            ics = [
+                ic
+                for ic in self.internal_coordinates
+                if np.all(ids[mask] == np.array(ic.ids)[mask])
+            ]
             return ics
 
         elif mode == "anywhere":
@@ -170,18 +178,28 @@ class AbstractEntity:
         elif mode == "anywhere_partial":
 
             ids = set(ids)
-            ics = [ic for ic in self.internal_coordinates if len(ids.intersection(set(ic.ids))) != 0]
+            ics = [
+                ic
+                for ic in self.internal_coordinates
+                if len(ids.intersection(set(ic.ids))) != 0
+            ]
             return ics
 
         elif mode == "multi_partial":
 
             if len(ids) != 4:
-                raise ValueError("Multi partial mode requires that four ids or None are given to match the internal coordinates")
+                raise ValueError(
+                    "Multi partial mode requires that four ids or None are given to match the internal coordinates"
+                )
 
             ids = np.array(ids)
             mask = ids != None
 
-            ics = [ic for ic in self.internal_coordinates if np.any(ids[mask] == np.array(ic.ids)[mask])]
+            ics = [
+                ic
+                for ic in self.internal_coordinates
+                if np.any(ids[mask] == np.array(ic.ids)[mask])
+            ]
             return ics
 
         else:
@@ -225,6 +243,27 @@ class AbstractResidue(AbstractEntity):
         self.PDB_id = None
         self.CHARMM_id = None
 
+    def to_biopython(self, seqid: int = 1):
+        """
+        Convert to a biopython residue.
+
+        Parameters
+        ----------
+        seqid: int
+            The sequence ID of the residue
+
+        Returns
+        -------
+        residue: bio.PDB.Residue
+            The biopython residue
+        """
+        residue = bio.PDB.Residue.Residue(("H_" + self.id, seqid, " "), self.id, " ")
+
+        for atom in self.atoms:
+            residue.add(atom.to_biopython())
+
+        return residue
+
 
 @attr.s(hash=True)
 class AbstractAtom:
@@ -239,6 +278,7 @@ class AbstractAtom:
     _element = attr.ib(default=None, type=str, repr=False)
     _parent = attr.ib(default=None, repr=False)
     is_wildcard = attr.ib(default=False, type=bool, repr=False)
+    coord = attr.ib(default=None, type=np.ndarray, repr=False)
 
     @property
     def element(self):
@@ -246,14 +286,23 @@ class AbstractAtom:
             return self.id[0]
         return self._element
 
-    def to_biopython(self):
+    def to_biopython(self, serial_number: int = 1):
         """
         Returns a Bio.PDB.Atom object
+
+        Parameters
+        ----------
+        serial_number: int
+            The serial number of the atom
         """
+        if self.coord:
+            coord = self.coord
+        else:
+            coord = np.full(3, np.nan)
         new = bio.Atom.Atom(
             self.id,
-            coord=np.full(3, np.nan),
-            serial_number=np.nan,
+            coord=coord,
+            serial_number=serial_number,
             bfactor=0.0,
             occupancy=0.0,
             altloc="",
@@ -421,7 +470,7 @@ class AbstractInternalCoordinates:
             return (self.atom1.id, self.atom2.id, self.atom3.id, self.atom4.id)
         else:
             return (self.atom1, self.atom2, self.atom3, self.atom4)
-        
+
     @property
     def is_improper(self):
         """
@@ -496,15 +545,16 @@ class AbstractPatch(AbstractEntity):
         contains the atom IDs to delete from the
         first structure and the second one from the second structure
         """
-        deletes = ([i[1:] for i in self._delete_ids if i[0] == "1"],
-                   [i[1:] for i in self._delete_ids if i[0] == "2"]
+        deletes = (
+            [i[1:] for i in self._delete_ids if i[0] == "1"],
+            [i[1:] for i in self._delete_ids if i[0] == "2"],
         )
         return deletes
 
     @property
     def IC_atom_ids(self):
         """
-        Returns a set of all atom IDs of all atoms for which the patch also stores 
+        Returns a set of all atom IDs of all atoms for which the patch also stores
         internal coordinates.
         """
         ids = set()
@@ -521,9 +571,8 @@ class AbstractPatch(AbstractEntity):
         """
         self._delete_ids.append(id)
 
-
     add_id_to_delete = add_delete
-    
+
 
 @attr.s
 class AbstractAngle:

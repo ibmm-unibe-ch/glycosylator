@@ -58,6 +58,37 @@ class Molecule:
         self._locked_bonds = set()
 
     @classmethod
+    def from_compound(
+        cls,
+        compound: str,
+        by: str = "id",
+        root_atom: Union[str, int] = None,
+    ):
+        """
+        Create a Molecule from a reference compound from the PDBECompounds database
+
+        Parameters
+        ----------
+        compound : str
+            The compound to search for
+        by : str
+            The field to search by. This can be
+            - "id" for the PDB id
+            - "name" for the name of the compound (must match any known synonym of the iupac name)
+            - "formula" for the chemical formula
+            - "smiles" for the SMILES string (also accepts InChI)
+        root_atom : str or int
+            The id or the serial number of the root atom (optional)
+        """
+        mol = utils.defaults.get_default_compounds().get(compound, by=by)
+        if isinstance(mol, list):
+            raise ValueError(
+                f"Multiple compounds found using '{by}={compound}', choose any of these ids specifically {[i.id for i in mol]}"
+            )
+        mol.set_root(root_atom)
+        return mol
+
+    @classmethod
     def from_pdb(
         cls,
         filename: str,
@@ -518,7 +549,7 @@ class Molecule:
         self,
         *residues: bio.Residue.Residue,
         adjust_seqid: bool = True,
-        _copy: bool = False
+        _copy: bool = False,
     ):
         """
         Add residues to the structure

@@ -57,6 +57,21 @@ def test_molecule_basic():
     assert a is b
 
 
+def test_molecule_from_compound():
+
+    glc = gl.Molecule.from_compound("GLC")
+    assert glc is not None
+    assert len(glc.atoms) == 24
+    assert len(glc.bonds) == 24
+
+    try:
+        glc2 = gl.Molecule.from_compound("D-glucose")
+    except ValueError:
+        pass
+    except Exception as e:
+        raise e
+
+
 def test_molecule_bonds():
     mol = gl.Molecule.from_pdb(base.MANNOSE)
 
