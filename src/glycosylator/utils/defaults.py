@@ -24,6 +24,11 @@ DEFAULT_CHARMM_PARAMETERS_FILE = os.path.join(constants.RESOURCES, "CHARMM.prm.p
 The path to the default CHARMM parameters file
 """
 
+DEFAULT_PDBE_COMPOUNDS_FILE = os.path.join(constants.RESOURCES, "PDBECompounds.pkl")
+"""
+The path to the default PDBe compounds file
+"""
+
 
 # =================================================================
 # Default instances of auxiliary classes
@@ -34,6 +39,7 @@ __default_instances__ = dict(
     bioPDBParser=bio.PDBParser(),
     Topology=charmm.CHARMMTopology.load(DEFAULT_CHARMM_TOPOLOGY_FILE),
     Parameters=charmm.CHARMMParameters.load(DEFAULT_CHARMM_PARAMETERS_FILE),
+    PDBECompounds=pickle.load(open(DEFAULT_PDBE_COMPOUNDS_FILE, "rb")),
 )
 """
 Default instance dictionary
@@ -142,3 +148,35 @@ def get_default_topology() -> charmm.CHARMMTopology:
         The default CHARMMTopology object
     """
     return __default_instances__["Topology"]
+
+
+def get_default_compounds() -> "PDBECompounds":
+    """
+    Get the default PDBECompounds object
+
+    Returns
+    -------
+    PDBECompounds
+        The default PDBECompounds object
+    """
+    return __default_instances__["PDBECompounds"]
+
+
+def set_default_compounds(obj, overwrite: bool = False):
+    """
+    Set a PDBECompounds object as the new default.
+
+    Parameters
+    ----------
+    obj : PDBECompounds
+        The PDBECompounds object to set as the new default
+    overwrite : bool
+        If set to `True`, the new object will be permanently saved as
+        the default. Otherwise, the new object will only be used for
+        the current session.
+    """
+    if not obj.__class__.__name__ == "PDBECompounds":
+        raise TypeError("The object must be a PDBECompounds instance.")
+    __default_instances__["PDBECompounds"] = obj
+    if overwrite:
+        obj.save(DEFAULT_PDBE_COMPOUNDS_FILE)
