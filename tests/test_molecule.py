@@ -57,6 +57,21 @@ def test_molecule_basic():
     assert a is b
 
 
+def test_can_write_pdb():
+
+    import os
+
+    glc = gl.Molecule.from_compound("GLC")
+    assert glc is not None
+
+    try:
+        glc.to_pdb("test.pdb")
+    except Exception as e:
+        raise e
+
+    os.remove("test.pdb")
+
+
 def test_molecule_from_compound():
 
     glc = gl.Molecule.from_compound("GLC")
@@ -68,8 +83,8 @@ def test_molecule_from_compound():
     assert a.full_id[0] == "GLC"
     assert a.full_id[1] == 0
     assert a.full_id[2] == "A"
-    assert a.full_id[3] == (" ", 1, " ")
-    assert a.full_id[4] == ("C1", "")
+    assert a.full_id[3] == ("H_GLC", 1, " ")
+    assert a.full_id[4] == ("C1", " ")
 
     try:
         glc2 = gl.Molecule.from_compound("D-glucose")
