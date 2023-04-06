@@ -824,40 +824,28 @@ def test_patcher_two_man():
 
 def test_patcher_multiple_man():
 
-    man1 = gl.Molecule.from_pdb(base.MANNOSE)
-    man1.infer_bonds()
+    man1 = gl.Molecule.from_compound("MAN")
+    man1.lock_all()
 
     man2 = deepcopy(man1)
     man3 = deepcopy(man1)
     man4 = deepcopy(man1)
-
-    man1.lock_all()
-    man2.lock_all()
-    man3.lock_all()
-    man4.lock_all()
-
-    mols = (man2, man3, man4)
 
     top = gl.get_default_topology()
 
     orig_residues = len(man1.residues)
     orig_atoms = len(man1.atoms)
 
-    p = gl.structural.Patcher()
+    p = gl.structural.Patcher(False, False)
 
     man_34 = p.patch_molecules(top.get_patch("14bb"), man3, man4)
 
-    man_23 = p.patch_molecules(top.get_patch("12ab"), man_34, man2)
+    man_23 = p.patch_molecules(top.get_patch("14bb"), man_34, man2)
 
-    man1 = p.patch_molecules(top.get_patch("12aa"), man1, man_23)
+    new = p.patch_molecules(top.get_patch("12aa"), man1, man_23)
 
-    new = man1
-    v = gl.utils.visual.MoleculeViewer3D(new)
-    v.draw_edges(new.bonds, color="blue", linewidth=1)
-    v.draw_edges(new._locked_bonds, color="red", linewidth=2)
-    v.show()
-
-    assert len(man1.residues) == 4 * orig_residues
+    assert new is man1
+    assert len(new.residues) == len(man1.residues) == 4 * orig_residues
     assert 3.5 * orig_atoms < len(man1.atoms) < 4 * orig_atoms
 
     # check that the atoms have been properly renumbered

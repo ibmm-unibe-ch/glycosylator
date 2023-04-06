@@ -8,7 +8,6 @@ import pickle
 
 import Bio.PDB as bio
 
-import glycosylator.utils.abstract as abstract
 import glycosylator.utils.auxiliary as aux
 import glycosylator.core.molecule as molecule
 
