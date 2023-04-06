@@ -179,9 +179,10 @@ def test_add_residues():
     mol = gl.Molecule.from_pdb(base.MANNOSE)
     mol.apply_standard_bonds()
 
-    other = deepcopy(mol)
+    other = gl.Molecule.from_compound("GLC")
 
     residues_pre = len(mol.residues)
+    atoms_pre = len(mol.atoms)
 
     new = bio.Residue.Residue((" ", 1, " "), "NEW", " ")
     mol.add_residues(new)
@@ -199,6 +200,7 @@ def test_add_residues():
 
     atoms_pre = len(mol.atoms)
     mol.add_residues(*other.residues, _copy=True)
+    assert len(other.residues) != 0
     assert len(mol.residues) == residues_pre + len(other.residues)
     assert len(mol.atoms) == atoms_pre + len(other.atoms)
 
@@ -206,6 +208,15 @@ def test_add_residues():
     for atom in mol.atoms:
         assert atom.serial_number not in _seen_serials
         _seen_serials.add(atom.serial_number)
+
+    mol.remove_residues(2)
+    assert len(mol.residues) == residues_pre
+    assert len(mol.atoms) == atoms_pre
+
+    new = gl.Molecule.from_compound("GLC")
+    new = new.residues[0]
+    mol.add_residues(new)
+    assert mol.residues[-1].resname == "GLC"
 
 
 def test_get_descendants():
@@ -319,9 +330,8 @@ def test_rotate_some_inverse():
 
 
 def test_adjust_indexing():
-    mol = gl.Molecule.from_pdb(base.MANNOSE)
-    mol.apply_standard_bonds()
 
+    mol = gl.Molecule.from_compound("MAN")
     other = deepcopy(mol)
 
     mol.adjust_indexing(other)
@@ -332,14 +342,13 @@ def test_adjust_indexing():
     assert mol.residues[0].id[1] == 1
     assert other.residues[0].id[1] == 2
 
-    assert mol.atoms[0].serial_number == 1
-    assert other.atoms[0].serial_number == len(mol.atoms) + 1
+    assert mol.atoms[0].get_serial_number() == 1
+    assert other.atoms[0].get_serial_number() == len(mol.atoms) + 1
 
 
 def test_adjust_indexing_with_add_residues():
-    mol = gl.Molecule.from_pdb(base.MANNOSE)
-    mol.apply_standard_bonds()
 
+    mol = gl.Molecule.from_compound("MAN")
     other = deepcopy(mol)
 
     mol.adjust_indexing(other)
@@ -348,8 +357,104 @@ def test_adjust_indexing_with_add_residues():
     mol.add_residues(*other.residues)
 
     assert len(mol.atoms) == before * 2
-    assert mol.atoms[0].serial_number == 1
-    assert mol.atoms[before].serial_number == before + 1
+
+    _seen_serials = set()
+    for atom in mol.atoms:
+        assert atom.get_serial_number() not in _seen_serials
+        _seen_serials.add(atom.get_serial_number())
 
     assert mol.residues[0].id[1] == 1
     assert len(mol.residues) == 2
+
+
+def test_set_patch():
+
+    mol = gl.Molecule.from_compound("GLC")
+    mol.set_patch("14bb")
+
+    assert mol._patch is not None
+    assert not isinstance(mol._patch, str)
+
+    mol.set_patch()
+    assert mol._patch is None
+
+    # set the patch with fancy dunder methods
+    mol % "14bb"
+
+    assert mol._patch is not None
+    assert not isinstance(mol._patch, str)
+
+    mol % None
+    assert mol._patch is None
+
+    mol %= "14bb"
+
+    assert mol is not None
+    assert mol._patch is not None
+    assert not isinstance(mol._patch, str)
+
+
+def test_attach():
+
+    glc = gl.Molecule.from_compound("GLC")
+    glc.set_patch("14bb")
+
+    glc2 = deepcopy(glc)
+
+    _current_residues = len(glc.residues)
+    glc.attach(glc2)
+
+    assert len(glc.residues) == _current_residues * 2
+
+    # glc2 should not have been affected since it was a copy
+    assert len(glc2.residues) == _current_residues
+
+    # attach with fancy dunder methods
+    glc = deepcopy(glc2)
+
+    new = glc + glc2
+    assert new is not glc
+    assert len(new.residues) == _current_residues * 2
+    assert len(glc.residues) == _current_residues
+    assert len(glc2.residues) == _current_residues
+
+    glc += glc2
+    assert len(glc.residues) == _current_residues * 2
+    assert len(glc2.residues) == _current_residues
+
+
+def test_multiply():
+
+    man = gl.Molecule.from_compound("GLC")
+    man.lock_all()
+
+    pre_residues = len(man.residues)
+    pre_atoms = len(man.atoms)
+    pre_bonds = len(man.bonds)
+    pre_locked = len(man._locked_bonds)
+
+    n = 10
+    man % "14bb"
+    man = man * n
+
+    new_residues = len(man.residues)
+    new_atoms = len(man.atoms)
+    new_bonds = len(man.bonds)
+    new_locked = len(man._locked_bonds)
+
+    assert new_residues == pre_residues * n
+    assert n * 0.75 * pre_atoms < new_atoms < pre_atoms * n
+    assert n * 0.75 * pre_bonds < new_bonds < pre_bonds * n
+    assert n * 0.75 * pre_locked < new_locked < pre_locked * n
+
+    # test that the new molecule has no weird bond lengths
+    for atom1, atom2 in man.bonds:
+        dist = np.linalg.norm(atom1.coord - atom2.coord)
+        assert 0.95 < dist < 1.8
+
+    # test that the new molecule has no weird bond angles
+    for angle in man.angles.values():
+        assert 100 < angle < 130
+
+    v = gl.utils.visual.MoleculeViewer3D(man)
+    v.show()

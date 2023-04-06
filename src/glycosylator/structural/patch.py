@@ -40,6 +40,8 @@ class Patcher:
         self.copy_source = copy_source
 
         self._anchors = (None, None)
+        self._target_residue = None
+        self._source_residue = None
 
     def set_target(self, target: "Molecule"):
         """
@@ -79,6 +81,8 @@ class Patcher:
         patch: "AbstractPatch" = None,
         target: "Molecule" = None,
         source: "Molecule" = None,
+        target_residue=None,
+        source_residue=None,
     ):
         """
         Patch two molecules together.
@@ -94,6 +98,14 @@ class Patcher:
             The target molecule
         source : Molecule
             The source molecule
+        target_residue : int or str or Residue
+            The residue in the target molecule to which the source molecule will be patched.
+            By default, the last residue in the target molecule will be used if it contains
+            appropriate anchor atoms.
+        source_residue : int or str or Residue
+            The residue in the source molecule that will be patched into the target molecule.
+            By default, the first residue in the source molecule will be used if it contains
+            appropriate anchor atoms.
 
         Returns
         -------
@@ -116,7 +128,7 @@ class Patcher:
         # molecule and their original coordinates
         self._source_computed_anchors = {}
 
-        self.get_anchor_atoms()
+        self.get_anchor_atoms(target_residue, source_residue)
 
         # compute internal coordinates to rebuild the source molecule
         _ics = infer.compute_internal_coordinates(self.source.bonds)
@@ -141,10 +153,22 @@ class Patcher:
 
         return self.target
 
-    def get_anchor_atoms(self):
+    def get_anchor_atoms(self, target_residue=None, source_residue=None):
         """
         Returns the two atoms that will be used for anchoring structure alignment.
         These atoms form a bond between the two molecules.
+
+        Parameters
+        ----------
+        target_residue : int or str or Residue
+            The residue in the target molecule to which the source molecule will be patched.
+            By default, the last residue in the target molecule will be used if it contains
+            appropriate anchor atoms.
+
+        source_residue : int or str or Residue
+            The residue in the source molecule that will be patched into the target molecule.
+            By default, the first residue in the source molecule will be used if it contains
+            appropriate anchor atoms.
 
         Returns
         -------
@@ -161,10 +185,34 @@ class Patcher:
 
         _ref_atoms = {int(i[0]) - 1: i[1:] for i in self.patch.bonds[0].atoms}
 
-        ref_atom_1 = self.target.get_atom(_ref_atoms[0])
-        ref_atom_2 = self.source.get_atom(_ref_atoms[1])
+        ref_atom_1 = self.target.get_atoms(_ref_atoms[0])
+        ref_atom_2 = self.source.get_atoms(_ref_atoms[1])
+
+        if target_residue:
+            if isinstance(target_residue, int):
+                target_residue = self.target.get_residue(id=target_residue)
+            elif isinstance(target_residue, str):
+                target_residue = self.target.get_residue(name=target_residue)
+            ref_atom_1 = [i for i in ref_atom_1 if i.get_parent() == target_residue]
+
+        if source_residue:
+            if isinstance(source_residue, int):
+                source_residue = self.source.get_residue(id=source_residue)
+            elif isinstance(source_residue, str):
+                source_residue = self.source.get_residue(name=source_residue)
+            ref_atom_2 = [i for i in ref_atom_2 if i.get_parent() == source_residue]
+
+        if len(ref_atom_1) == 0:
+            raise PatchError("No anchor atom found in target molecule")
+        if len(ref_atom_2) == 0:
+            raise PatchError("No anchor atom found in source molecule")
+
+        ref_atom_1 = ref_atom_1[-1]
+        ref_atom_2 = ref_atom_2[0]
 
         self._anchors = (ref_atom_1, ref_atom_2)
+        self._target_residue = ref_atom_1.get_parent()
+        self._source_residue = ref_atom_2.get_parent()
         return ref_atom_1, ref_atom_2
 
     def _align_anchors(self):
@@ -176,8 +224,21 @@ class Patcher:
             raise PatchError("No matching IC found")
         ic = ic_34[0]
 
-        atom1 = self.target.get_atom(ic.atom1[1:])
-        atom2 = self.target.get_atom(ic.atom2[1:])
+        atom1 = self._get_ref_atom(ic.atom1)
+        atom2 = self._get_ref_atom(ic.atom2)
+
+        # atom1 = self.target.get_atoms(ic.atom1[1:])
+        # atom2 = self.target.get_atoms(ic.atom2[1:])
+        # if self._target_residue:
+        #     atom1 = [i for i in atom1 if i.get_parent() == self._target_residue]
+        #     atom2 = [i for i in atom2 if i.get_parent() == self._target_residue]
+        # if len(atom1) == 0:
+        #     raise PatchError("No anchor atom found in target molecule")
+        # if len(atom2) == 0:
+        #     raise PatchError("No anchor atom found in target molecule")
+        # atom1 = atom1[-1]
+        # atom2 = atom2[-1]
+
         new_anchor_source = infer.compute_atom4_from_others(
             atom1.coord,
             atom2.coord,
@@ -185,32 +246,32 @@ class Patcher:
             ic,
         )
 
+        # self._v.draw_point("target ref1", atom1.coord, color="teal")
+        # self._v.draw_point("target ref2", atom2.coord, color="teal")
+
         # store the old coordinates and set the new coordinates
         self._source_computed_anchors[self._anchors[1]] = self._anchors[1].coord
         self._anchors[1].set_coord(new_anchor_source)
 
         # self._v.draw_point("anchor_source (new)", self._anchors[1].coord, color="green")
+        # self._v.draw_point("anchor_target", self._anchors[0].coord, color="green")
 
     def _infer_patch_IC_neighbors(self):
         """
         Infer the neighbors of the internal coordinates in the patch.
         This is required to rebuild the source molecule.
         """
-        _obj = {
-            "1": self.target,
-            "2": self.source,
-        }
         for ic in self.patch.internal_coordinates:
             if ic.atom4[0] == "1":
                 continue
 
-            atom4 = _obj[ic.atom4[0]].get_atom(ic.atom4[1:], by="id")
+            atom4 = self._get_ref_atom(ic.atom4)
             if atom4 in self._source_computed_anchors.keys():
                 continue
 
-            atom1 = _obj[ic.atom1[0]].get_atom(ic.atom1[1:], by="id")
-            atom2 = _obj[ic.atom2[0]].get_atom(ic.atom2[1:], by="id")
-            atom3 = _obj[ic.atom3[0]].get_atom(ic.atom3[1:], by="id")
+            atom3 = self._get_ref_atom(ic.atom3)
+            atom2 = self._get_ref_atom(ic.atom2)
+            atom1 = self._get_ref_atom(ic.atom1)
 
             _new_coords = infer.compute_atom4_from_others(
                 atom1.coord, atom2.coord, atom3.coord, ic
@@ -282,6 +343,7 @@ class Patcher:
             # )
 
             if atom in self._source_computed_anchors.keys():
+                continue
                 # vec = self._source_computed_anchors[atom] - old_centroid
                 # new_coord = (R @ vec) + old_centroid + translation_vector
 
@@ -291,18 +353,17 @@ class Patcher:
                 #     color="purple",
                 #     opacity=0.6,
                 # )
-                continue
 
             vec = atom.coord - old_centroid
             new_coord = (R @ vec) + old_centroid + translation_vector
             atom.set_coord(new_coord)
 
-        #     self._v.draw_point(
-        #         atom.id + " (new)",
-        #         atom.coord,
-        #         color="lightblue",
-        #         opacity=0.6,
-        #     )
+            # self._v.draw_point(
+            #     atom.id + " (new)",
+            #     atom.coord,
+            #     color="lightblue",
+            #     opacity=0.6,
+            # )
 
         # self._v.draw_edges(self.source.bonds, color="blue", opacity=0.6)
 
@@ -373,6 +434,14 @@ class Patcher:
         Delete all atoms that need to be deleted according to the patch
         """
         delete_from_target, delete_from_source = self.patch.deletes
+        if self._target_residue:
+            delete_from_target = [
+                i for i in self._target_residue.child_list if i.id in delete_from_target
+            ]
+        if self._source_residue:
+            delete_from_source = [
+                i for i in self._source_residue.child_list if i.id in delete_from_source
+            ]
         self.target.remove_atoms(*delete_from_target)
         self.source.remove_atoms(*delete_from_source)
 
@@ -380,11 +449,66 @@ class Patcher:
         """
         Merge the source molecule into the target molecule
         """
-        self.target.adjust_indexing(self.source)
+        # self.target.adjust_indexing(self.source)
         self.target.add_residues(*self.source.residues)
-        self.target._bonds.extend(self.source._bonds)
+        self.target._bonds.extend(
+            bond for bond in self.source._bonds if bond not in self.target._bonds
+        )
         self.target._bonds.append(self._anchors)
         self.target._locked_bonds.update(self.source._locked_bonds)
+
+        # # now finally vet that we have no remnant bonds that connect
+        # # to atoms that have been deleted
+        # for b in self.target._bonds:
+        #     if b[0] not in self.target.atoms or b[1] not in self.target.atoms:
+        #         self.target.remove_bond(b)
+
+    @property
+    def _objs(self):
+        return {
+            # target, object, specific residue, index policy if no residue
+            "1": (self.target, self._target_residue, -1),
+            "2": (self.source, self._source_residue, 0),
+        }
+
+    def _get_ref_atom(self, atom: str):
+        """
+        Get the atom that is used as a reference for the given atom
+        when computing the relative coordinates.
+
+        Parameters
+        ----------
+        atom : str
+            The atom for which to get the reference atom
+
+        Returns
+        -------
+        Atom
+            The reference atom
+        """
+        res, id = atom[0], atom[1:]
+        _obj, _res, _idx = self._objs[res]
+
+        atoms = _obj.get_atoms(id, by="id")
+        if _res:
+            atoms = [i for i in atoms if i.get_parent() == _res]
+        if len(atoms) == 0:
+            raise PatchError("No atom found with id {}".format(atom))
+        atom = atoms[_idx]
+        return atom
+
+
+__default_keep_copy_patcher__ = Patcher(copy_target=False, copy_source=True)
+"""
+Default instance of the Patcher that will modify the target molecule in place
+but use a copy of the source molecule to leave it intact.
+"""
+
+__default_copy_copy_patcher__ = Patcher(copy_target=True, copy_source=True)
+"""
+Default instance of the Patcher that will copy both the target and source molecules
+to leave the originals intact.
+"""
 
 
 if __name__ == "__main__":
@@ -408,20 +532,35 @@ if __name__ == "__main__":
 
     top = gl.get_default_topology()
 
-    patcher = Patcher(True, True)
-    for i in ("12ab", "14bb", "12ab"):
-        patch = top.get_patch(i)
-        new = patcher.patch_molecules(patch, man1, man2)
+    colors = ["red", "green", "blue", "orange", "purple", "pink", "black"]
 
+    patcher = Patcher(False, True)
+    for i in ("14bb", "14bb", "12ab"):
+
+        # v2 = gl.utils.visual.MoleculeViewer3D(man1)
+        # patcher._v = v2
+
+        patch = top.get_patch(i)
+        man1 = patcher.patch_molecules(patch, man1, man2)
+
+        new = man1
         seen_atoms = set()
         for atom in new.atoms:
             assert atom.serial_number not in seen_atoms
             seen_atoms.add(atom.serial_number)
 
         res_con = gl.structural.infer_residue_connections(new.chain, triplet=True)
+        
+        v2 = gl.utils.visual.MoleculeViewer3D(man1)
+        for idx, residue in enumerate(man1.residues):
+            bonds = [
+                i
+                for i in man1.bonds
+                if i[0] in residue.child_list and i[1] in residue.child_list
+            ]
+            v2.draw_edges(edges=bonds, color=colors[idx], linewidth=2)
 
-        v2 = gl.utils.visual.MoleculeViewer3D(new)
-        v2.draw_edges(edges=list(new.bonds), color="blue", opacity=1)
-        v2.draw_edges(edges=list(new._locked_bonds), color="red", linewidth=3)
-        v2.draw_edges(edges=res_con, color="limegreen", linewidth=4)
+        # v2.draw_edges(edges=list(new.bonds), color="blue", opacity=1)
+        # v2.draw_edges(edges=list(new._locked_bonds), color="red", linewidth=3)
+        # v2.draw_edges(edges=res_con, color="limegreen", linewidth=4)
         v2.show()

@@ -57,13 +57,17 @@ class Molecule:
         self._bonds = []
         self._locked_bonds = set()
 
+        # let the molecule store a patch to use for attaching other
+        # molecules to it
+        self._patch = None
+
     @classmethod
     def from_compound(
         cls,
         compound: str,
         by: str = "id",
         root_atom: Union[str, int] = None,
-    ):
+    ) -> "Molecule":
         """
         Create a Molecule from a reference compound from the PDBECompounds database
 
@@ -173,11 +177,12 @@ class Molecule:
 
     @property
     def residues(self):
-        return list(self._chain.get_residues())
+        return self._chain.child_list
 
     @property
     def atoms(self):
-        return list(self._chain.get_atoms())
+        _atoms = [atom for residue in self.residues for atom in residue]
+        return _atoms
 
     @property
     def bonds(self):
@@ -452,6 +457,31 @@ class Molecule:
     def set_root(self, atom):
         self.root_atom = atom
 
+    def set_patch(
+        self, patch: Union[str, utils.abstract.AbstractPatch] = None, _topology=None
+    ):
+        """
+        Set a patch to be used for attaching other molecules to this one
+
+        Parameters
+        ----------
+        patch : str or utils.abstract.AbstractPatch
+            The patch to be used. Can be either a string with the name of the patch or an instance of the patch
+            If None is given, the current patch is removed.
+        _topology
+            The topology to use for referencing the patch.
+        """
+        if not _topology:
+            _topology = utils.get_default_topology()
+        if patch is None:
+            self._patch = None
+        elif isinstance(patch, str):
+            self._patch = _topology.get_patch(patch)
+        elif isinstance(patch, utils.abstract.AbstractPatch):
+            self._patch = patch
+        else:
+            raise ValueError(f"Unknown patch type {type(patch)}")
+
     def make_atom_graph(self, locked: bool = True):
         """
         Generate an AtomGraph for the Molecule
@@ -529,7 +559,7 @@ class Molecule:
         other : Molecule
             The other molecule to adjust
         """
-        residues = other.residues
+        residues = list(other.residues)
         parents = [i.get_parent() for i in residues]
         for residue, parent in zip(residues, parents):
             parent.detach_child(residue.id)
@@ -539,11 +569,11 @@ class Molecule:
         for residue, parent in zip(residues, parents):
             rdx += 1
             residue.id = (residue.id[0], rdx, *residue.id[2:])
-            for atom in residue.get_atoms():
-                adx += 1
-                atom.serial_number = adx
-                atom.set_parent(residue)
             parent.add(residue)
+            for atom in residue.child_list:
+                adx += 1
+                atom.set_serial_number(adx)
+                atom.set_parent(residue)
 
     def add_residues(
         self,
@@ -571,30 +601,25 @@ class Molecule:
         rdx = len(self.residues)
         adx = len(self.atoms)
         for residue in residues:
-            if _copy:
-                p = residue.get_parent()
-                if p:
-                    p.detach_child(residue.id)
-                    _residue = residue.copy()
-                    p.add(residue)
-                    residue = _residue
-                else:
-                    residue = residue.copy()
-            else:
-                p = residue.get_parent()
-                if p:
-                    p.detach_child(residue.id)
-            if adjust_seqid:
-                rdx += 1
-                residue.id = (residue.id[0], rdx, *residue.id[2:])
-            for atom in residue.get_atoms():
-                adx += 1
-                atom.serial_number = adx
-                residue.add(atom)
-                
-            self._chain.add(residue)
+            p = residue.get_parent()
+            if p:
+                p.detach_child(residue.id)
+            if _copy and p is not None:
+                p.add(deepcopy(residue))
 
-    def remove_residues(self, *residues: Union[int, bio.Residue.Residue]):
+            rdx += 1
+            if adjust_seqid and residue.id[1] != rdx:
+                residue.id = (residue.id[0], rdx, *residue.id[2:])
+
+            self._chain.add(residue)
+            residue._generate_full_id()
+
+            for atom in residue.child_list:
+                adx += 1
+                atom.set_serial_number(adx)
+                atom.set_parent(residue)
+
+    def remove_residues(self, *residues: Union[int, bio.Residue.Residue]) -> list:
         """
         Remove residues from the structure
 
@@ -602,12 +627,21 @@ class Molecule:
         ----------
         residues : int or bio.Residue.Residue
             The residues to remove, either the object itself or its seqid
+
+        Returns
+        -------
+        list
+            The removed residues
         """
+        _residues = []
         for residue in residues:
             if isinstance(residue, int):
                 residue = self._chain.child_list[residue - 1]
-            self.remove_atoms(*residue.child_list)
+            for atom in residue.child_list:
+                self.purge_bonds(atom)
             self._chain.detach_child(residue.id)
+            _residues.append(residue)
+        return _residues
 
     def add_atoms(self, *atoms: bio.Atom.Atom, residue=None, _copy: bool = False):
         """
@@ -643,10 +677,10 @@ class Molecule:
             if _copy:
                 atom = deepcopy(atom)
             _max_serial += 1
-            atom.serial_number = _max_serial
+            atom.set_serial_number(_max_serial)
             target.add(atom)
 
-    def remove_atoms(self, *atoms: Union[int, str, tuple, bio.Atom.Atom]):
+    def remove_atoms(self, *atoms: Union[int, str, tuple, bio.Atom.Atom]) -> list:
         """
         Remove one or more atoms from the structure
 
@@ -655,25 +689,27 @@ class Molecule:
         atoms
             The atoms to remove, which can either be directly provided (biopython object)
             or by providing the serial number, the full_id or the id of the atoms.
+
+        Returns
+        -------
+        list
+            The removed atoms
         """
+        _atoms = []
         for atom in atoms:
+
             atom = self.get_atom(atom)
-
-            bonds = [i for i in self._bonds if atom in i]
-            for bond in bonds:
-                self._bonds.remove(bond)
-
-            bonds = [i for i in self._locked_bonds if atom in i]
-            for bond in bonds:
-                self._locked_bonds.remove(bond)
-
+            self.purge_bonds(atom)
             atom.get_parent().detach_child(atom.id)
+            _atoms.append(atom)
 
         # reindex the atoms
         adx = 0
         for atom in self.atoms:
             adx += 1
             atom.serial_number = adx
+
+        return _atoms
 
     def add_bond(
         self,
@@ -699,6 +735,7 @@ class Molecule:
         self,
         atom1: Union[int, str, tuple, bio.Atom.Atom],
         atom2: Union[int, str, tuple, bio.Atom.Atom],
+        either_way: bool = True,
     ):
         """
         Remove a bond between two atoms
@@ -708,14 +745,50 @@ class Molecule:
         atom1, atom2
             The atoms to bond, which can either be directly provided (biopython object)
             or by providing the serial number, the full_id or the id of the atoms.
+        either_way : bool
+            If True, the bond will be removed in both directions, i.e. if the bond is (1, 2)
+            it will be removed if either (1, 2) or (2, 1) is provided.
         """
         atom1 = self.get_atom(atom1)
         atom2 = self.get_atom(atom2)
 
         bond = (atom1, atom2)
-        self._bonds.remove(bond)
+        if either_way:
+            if bond in self._bonds:
+                self._bonds.remove(bond)
+            if bond[::-1] in self._bonds:
+                self._bonds.remove(bond[::-1])
+        else:
+            self._bonds.remove(bond)
         if bond in self._locked_bonds:
             self._locked_bonds.remove(bond)
+        if either_way and bond[::-1] in self._locked_bonds:
+            self._locked_bonds.remove(bond[::-1])
+
+    def purge_bonds(self, atom: Union[int, str, bio.Atom.Atom]):
+        """
+        Remove all bonds connected to an atom
+
+        Parameters
+        ----------
+        atom
+            The atom to remove the bonds from, which can either be directly provided (biopython object)
+            or by providing the serial number, the full_id or the id of the atoms.
+        """
+        atom = self.get_atom(atom)
+        bonds = [i for i in self._bonds if atom in i]
+        for bond in bonds:
+            if bond in self._bonds:
+                self._bonds.remove(bond)
+            elif bond[::-1] in self._bonds:
+                self._bonds.remove(bond[::-1])
+
+        bonds = [i for i in self._locked_bonds if atom in i]
+        for bond in bonds:
+            if bond in self._locked_bonds:
+                self._locked_bonds.remove(bond)
+            elif bond[::-1] in self._locked_bonds:
+                self._locked_bonds.remove(bond[::-1])
 
     def lock_all(self, both_ways: bool = True):
         """
@@ -929,8 +1002,6 @@ class Molecule:
         self,
         other: "Molecule",
         patch: Union[utils.abstract.AbstractPatch, str] = None,
-        at: Union[int, str, tuple, bio.Atom.Atom] = None,
-        other_at: Union[int, str, tuple, bio.Atom.Atom] = None,
         _topology=None,
     ):
         """
@@ -941,36 +1012,32 @@ class Molecule:
         other : Molecule
             The other molecule to attach to this one
         patch : str or AbstractResidue
-            A patch to apply when attaching. If none is given, an appropriate patch
-            is searched based on the provided bonds at which to attach. However,
-            if the patch is not found, an error is raised. Hence, it is safer to provide this parameter,
-            in which case no `at`-bonds need to be specified as the patch holds this information. Either a
-            patch object can be supplied or its id by which it can be retrieved from the used topology.
-        at : tuple
-            This molecule's bond that should be replaced by the bond attaching this and the other molecule.
-        other_at : tuple
-            The other molecule's bond that should be replaced by the bond attaching this and the other molecule.
+            A patch to apply when attaching. If none is given, the default patch that was set earlier
+            on the molecule is used. If no patch was set, an AttributeError is raised. If a string is
+            given, it is interpreted as the name of a patch in the topology.
         _topology
             A specific topology to use for referencing.
             If None, the default CHARMM topology is used.
         """
-        if at is None and patch is None:
-            at = other.root_atom
-        if other_at is None and patch is None:
-            other_at = self.root_atom
+        if not _topology:
+            _topology = utils.get_default_topology()
 
-        if not at or not other_at:
-            raise ValueError("Cannot attach: no atoms or patch specified")
+        if not patch:
+            patch = self._patch
+        if not patch:
+            raise AttributeError(
+                "No patch was set for this molecule. Either set a default patch or provide a patch when attaching."
+            )
+        if isinstance(patch, str):
+            patch = _topology.get_patch(patch)
+        if not patch:
+            raise ValueError(
+                "No patch was found with the given name. Either set a default patch or provide a patch when attaching."
+            )
 
-        if patch is not None:
-            if isinstance(patch, str):
-                if not _topology:
-                    _topology = utils.get_default_topology()
-                patch = _topology.get_patch(patch)
-
-        structural.apply_patch(
-            self._base_struct, other._base_struct, at, other_at, patch, _topology
-        )
+        p = structural.__default_keep_copy_patcher__
+        p.patch_molecules(patch, self, other)
+        return self
 
     def rotate_around_bond(
         self,
@@ -1176,6 +1243,88 @@ class Molecule:
         atom4 = self.get_atom(atom4)
         return structural.compute_dihedral(atom1, atom2, atom3, atom4)
 
+    def __add__(self, other):
+        """
+        Add two molecules together. This will return a new molecule.
+        """
+        if not isinstance(other, Molecule):
+            raise TypeError("Can only add two molecules together")
+
+        patch = self._patch
+        if not patch:
+            patch = other._patch_to_use
+        if not patch:
+            raise RuntimeError(
+                "Cannot add two molecules together without a patch, set a default patch on either of them (preferably on the one you are adding to, i.e. mol1 in mol1 + mol2)"
+            )
+
+        p = structural.__default_copy_copy_patcher__
+        new = p.patch_molecules(patch, self, other)
+        return new
+
+    def __iadd__(self, other):
+        """
+        Attach another molecule to this one
+        """
+        if not isinstance(other, Molecule):
+            raise TypeError("Can only add two molecules together")
+
+        patch = self._patch
+        if not patch:
+            patch = other._patch_to_use
+        if not patch:
+            raise RuntimeError(
+                "Cannot add two molecules together without a patch, set a default patch on either of them (preferably on the one you are adding to, i.e. mol1 in mol1 += mol2)"
+            )
+
+        self.attach(other, patch)
+        return self
+
+    def __mul__(self, n):
+        """
+        Add multiple identical molecules together using the * operator (i.e. mol * 3)
+        This requires that the molecule has a patch defined
+        """
+        if not isinstance(n, int):
+            raise TypeError("Can only multiply a molecule by an integer")
+        if n <= 0:
+            raise ValueError("Can only multiply a molecule by a positive integer")
+        if not self._patch:
+            raise RuntimeError("Cannot multiply a molecule without a patch defined")
+
+        new = self + self
+        for i in range(n - 2):
+            new += self
+
+        return new
+
+    def __imul__(self, n):
+        """
+        Add multiple identical molecules together using the *= operator (i.e. mol *= 3)
+        This requires that the molecule has a patch defined
+        """
+        if not isinstance(n, int):
+            raise TypeError("Can only multiply a molecule by an integer")
+        if n <= 0:
+            raise ValueError("Can only multiply a molecule by a positive integer")
+        if not self._patch:
+            raise RuntimeError("Cannot multiply a molecule without a patch defined")
+
+        for i in range(n - 1):
+            self += self
+
+        return self
+
+    def __mod__(self, patch):
+        """
+        Add a patch to the molecule using the % operator (i.e. mol % patch)
+        """
+        self.set_patch(patch)
+        return self
+
+    def __repr__(self):
+        return f"Molecule({self.id})"
+
     # def _get_atom(self, _atom):
     #     """
     #     Get an atom based on its id, serial number or check if it is available...
@@ -1376,22 +1525,8 @@ class Molecule:
 
 if __name__ == "__main__":
 
-    mol = Molecule.from_pdb("support/examples/MAN.pdb")
-    mol.infer_bonds()
+    man = Molecule.from_compound("MAN")
+    glc = Molecule.from_compound("MAN")
 
-    # d = mol._get_descendents(mol.get_atoms(id="HO3"), mol.get_atoms(id="O3"))
-    # assert len(d) == 22
-
-    # d = mol._get_descendents(mol.get_atoms(id="C5"), mol.get_atoms(id="C6"))
-    # assert len(d) == 4
-
-    # d = mol._get_descendents(mol.get_atoms(id="C4"), mol.get_atoms(id="C5"))
-
-    # # mol.rotate_around_bond("C5", "C6", np.radians(25), True)
-
-    mol.remove_atoms("C5", "HO4", "C1", "H61")
-
-    r = bio.Residue.Residue((" ", 1, " "), "ALA", "")
-    
-    mol.add_residues(r)
-    pass
+    man.adjust_indexing(glc)
+    assert glc.atoms[0].serial_number == len(man.atoms) + 1
