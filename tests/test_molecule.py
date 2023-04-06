@@ -64,6 +64,13 @@ def test_molecule_from_compound():
     assert len(glc.atoms) == 24
     assert len(glc.bonds) == 24
 
+    a = glc.atoms[0]
+    assert a.full_id[0] == "GLC"
+    assert a.full_id[1] == 0
+    assert a.full_id[2] == "A"
+    assert a.full_id[3] == (" ", 1, " ")
+    assert a.full_id[4] == ("C1", "")
+
     try:
         glc2 = gl.Molecule.from_compound("D-glucose")
     except ValueError:
@@ -161,7 +168,7 @@ def test_add_residues():
 
     residues_pre = len(mol.residues)
 
-    new = bio.Residue.Residue((1, "H_NEW", " "), "NEW", " ")
+    new = bio.Residue.Residue((" ", 1, " "), "NEW", " ")
     mol.add_residues(new)
 
     assert len(mol.residues) == residues_pre + 1
