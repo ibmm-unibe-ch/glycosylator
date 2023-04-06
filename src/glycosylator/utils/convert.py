@@ -61,7 +61,7 @@ class PybelBioPythonConverter:
             atom = self.pybel_atom_to_biopython(obj)
             if full_structure:
                 struct = self._new_biopython_structure()
-                residue = bio.Residue.Residue(("H_UNL", 1, " "), "UNL", " ")
+                residue = bio.Residue.Residue((" ", 1, " "), "UNL", " ")
                 residue.add(atom)
                 struct[0]["A"].add(atom.get_parent())
                 return struct
@@ -215,7 +215,7 @@ class PybelBioPythonConverter:
             serial_number=obj.idx,
             bfactor=0.0,
             occupancy=0.0,
-            altloc=None,
+            altloc=" ",
             fullname=name,
             element=element,
         )
@@ -236,7 +236,9 @@ class PybelBioPythonConverter:
             The converted biopython `Residue`
         """
         self._current_residue = (obj.idx, obj.name)
-        new = bio.Residue.Residue(id=(f"H_{obj.name}", obj.idx + 1, " "), resname=obj.name, segid=" ")
+        new = bio.Residue.Residue(
+            id=(f"H_{obj.name}", obj.idx + 1, " "), resname=obj.name, segid=" "
+        )
         for atom in obj.atoms:
             atom = self.pybel_atom_to_biopython(atom)
             new.add(atom)

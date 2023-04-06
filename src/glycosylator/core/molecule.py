@@ -502,7 +502,7 @@ class Molecule:
         idx = 0
 
         residues = list(self.residues)
-        parents = set([i.get_parent() for i in residues])
+        parents = [i.get_parent() for i in residues]
         for residue, parent in zip(residues, parents):
             parent.detach_child(residue.id)
 
@@ -572,8 +572,14 @@ class Molecule:
         adx = len(self.atoms)
         for residue in residues:
             if _copy:
-                residue = residue.copy()
-                residue.detach_parent()
+                p = residue.get_parent()
+                if p:
+                    p.detach_child(residue.id)
+                    _residue = residue.copy()
+                    p.add(residue)
+                    residue = _residue
+                else:
+                    residue = residue.copy()
             else:
                 p = residue.get_parent()
                 if p:
@@ -584,8 +590,8 @@ class Molecule:
             for atom in residue.get_atoms():
                 adx += 1
                 atom.serial_number = adx
-                atom.set_parent(residue)
-
+                residue.add(atom)
+                
             self._chain.add(residue)
 
     def remove_residues(self, *residues: Union[int, bio.Residue.Residue]):
@@ -1384,3 +1390,8 @@ if __name__ == "__main__":
     # # mol.rotate_around_bond("C5", "C6", np.radians(25), True)
 
     mol.remove_atoms("C5", "HO4", "C1", "H61")
+
+    r = bio.Residue.Residue((" ", 1, " "), "ALA", "")
+    
+    mol.add_residues(r)
+    pass

@@ -257,7 +257,7 @@ class AbstractResidue(AbstractEntity):
         residue: bio.PDB.Residue
             The biopython residue
         """
-        residue = bio.PDB.Residue.Residue(("H_" + self.id, seqid, " "), self.id, " ")
+        residue = bio.PDB.Residue.Residue((" ", seqid, self.id), self.id, " ")
 
         for atom in self.atoms:
             residue.add(atom.to_biopython())

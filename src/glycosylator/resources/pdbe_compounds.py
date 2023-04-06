@@ -353,7 +353,30 @@ class PDBECompounds:
         model.add(chain)
         res = self._make_residue(compound)
         chain.add(res)
+        # add atoms to residue (at the end to ensure that the residue's full id is propagated)
+        self._fill_residue(res, compound)
         return struct
+
+    def _fill_residue(self, residue, compound: dict):
+        """
+        Fill a residue with atoms from a compound.
+
+        Parameters
+        ----------
+        residue : bio.PDB.Residue
+            A residue.
+        compound : dict
+            A dictionary of a compound.
+        """
+        pdb = self._pdb.get(compound["id"], None)
+        if pdb is None:
+            raise ValueError("No pdb data for compound.")
+      
+        atoms = pdb["atoms"]
+        for i in range(len(atoms["ids"])):
+            atom = self._make_atom(atoms["ids"][i], atoms["serials"][i], atoms["coords"][i], atoms["elements"][i], atoms["charges"][i],)
+            residue.add(atom)
+
 
     def _make_residue(self, compound: dict) -> "bio.PDB.Residue":
         """
@@ -373,17 +396,9 @@ class PDBECompounds:
             return None
         
         res = bio.Residue.Residue(
-            ("H_" + compound["id"], 1, " "), compound["id"], " "
+            (" ", 1, compound["id"]), compound["id"], " "
         )
-        pdb = self._pdb.get(compound["id"], None)
-        if pdb is None:
-            raise ValueError("No pdb data for compound.")
-      
-        atoms = pdb["atoms"]
-        for i in range(len(atoms["ids"])):
-            atom = self._make_atom(atoms["ids"][i], atoms["serials"][i], atoms["coords"][i], atoms["elements"][i], atoms["charges"][i],)
-            res.add(atom)
-
+        
         return res
 
     def _make_atom(self, id: str, serial: int, coords: np.ndarray, element: str, charge: float) -> "bio.PDB.Atom":
@@ -414,7 +429,7 @@ class PDBECompounds:
             occupancy=0.0, 
             element=element, 
             fullname=id, 
-            altloc="", 
+            altloc=" ", 
             pqr_charge=charge,
         )
         return atom
@@ -433,7 +448,6 @@ if __name__ == "__main__":
 
     glc = compounds.get("glucose", "name", "dict")
     print(glc)
-    compounds.save(defaults.DEFAULT_PDBE_COMPOUNDS_FILE)
 
 
         
