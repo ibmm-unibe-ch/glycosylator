@@ -54,6 +54,9 @@ class PybelBioPythonConverter:
             if full_structure:
                 struct = self._new_biopython_structure()
                 struct[0]["A"].add(residue)
+                for a in residue.get_atoms():
+                    residue.detach_child(a.id)
+                    residue.add(a)
                 return struct
             return residue
 
@@ -61,7 +64,7 @@ class PybelBioPythonConverter:
             atom = self.pybel_atom_to_biopython(obj)
             if full_structure:
                 struct = self._new_biopython_structure()
-                residue = bio.Residue.Residue((" ", 1, " "), "UNL", " ")
+                residue = bio.Residue.Residue(("H_UNL", 1, " "), "UNL", " ")
                 residue.add(atom)
                 struct[0]["A"].add(atom.get_parent())
                 return struct
@@ -79,98 +82,6 @@ class PybelBioPythonConverter:
         struct.add(bio.Model.Model(0))
         struct[0].add(bio.Chain.Chain("A"))
         return struct
-
-    # @staticmethod
-    # def write_tmp_pdb(obj):
-    #     """
-    #     Write a temporary pdb file from a source object
-
-    #     Parameters
-    #     ----------
-    #     obj : object
-    #         The object to convert.
-
-    #     Returns
-    #     -------
-    #     str
-    #         The path to the temporary pdb file
-    #     """
-    #     tmpfile = mktemp(suffix="glyco.tmp.pdb")
-    #     if is_biopython(obj):
-    #         PybelBioPythonConverter._write_pdb_from_biopython(obj, tmpfile)
-    #     elif is_pybel(obj):
-    #         PybelBioPythonConverter._write_pdb_from_pybel(obj, tmpfile)
-    #     else:
-    #         raise ValueError(f"Cannot convert object of type {type(obj)} to pdb")
-    #     return tmpfile
-
-    # @staticmethod
-    # def _write_pdb_from_biopython(obj, filename):
-    #     """
-    #     Write a temporary pdb file from a biopython object
-    #     """
-
-    #     io = bio.PDBIO()
-
-    #     if not isinstance(obj, bio.Structure.Structure):
-    #         _obj = bio.Structure.Structure()
-
-    #         if not isinstance(obj, bio.Model.Model):
-    #             _obj.add(bio.Model.Model(0))
-
-    #             if not isinstance(obj, bio.Chain.Chain):
-    #                 _obj[0].add(bio.Chain.Chain("A"))
-
-    #                 if isinstance(obj, bio.Residue.Residue):
-    #                     _obj[0]["A"].add(obj)
-
-    #                 elif isinstance(obj, bio.Atom.Atom):
-    #                     _obj[0]["A"].add(bio.Residue.Residue())
-    #                     _obj[0]["A"][0].add(obj)
-
-    #                 else:
-    #                     raise ValueError(f"Cannot convert object of type {type(obj)} to pdb")
-
-    #             else:
-    #                 _obj[0].add(obj)
-
-    #         else:
-    #             _obj.add(obj)
-
-    #     else:
-    #         _obj = obj
-
-    #     io.set_structure(_obj)
-    #     io.save(filename)
-
-    # @staticmethod
-    # def _write_pdb_from_pybel(obj, filename):
-    #     """
-    #     Write a temporary pdb file from a pybel object
-    #     """
-
-    #     io = bio.PDBIO()
-
-    #     if not isinstance(obj, pybel.Molecule):
-    #         _obj = pybel.Molecule()
-
-    #         if not isinstance(obj, pybel.Residue):
-    #             _obj.add(pybel.Residue())
-
-    #             if isinstance(obj, pybel.Atom):
-    #                 _obj[0].add(obj)
-
-    #             else:
-    #                 raise ValueError(f"Cannot convert object of type {type(obj)} to pdb")
-
-    #         else:
-    #             _obj.add(obj)
-
-    #     else:
-    #         _obj = obj
-
-    #     io.set_structure(_obj)
-    #     io.save(filename)
 
     def pybel_atom_to_biopython(self, obj):
         """

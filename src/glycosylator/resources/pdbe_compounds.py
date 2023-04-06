@@ -396,7 +396,7 @@ class PDBECompounds:
             return None
         
         res = bio.Residue.Residue(
-            (" ", 1, compound["id"]), compound["id"], " "
+            ("H_"+compound["id"], 1, " "), compound["id"], " "
         )
         
         return res
