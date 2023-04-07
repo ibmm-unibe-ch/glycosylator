@@ -128,6 +128,10 @@ class Patcher:
         # molecule and their original coordinates
         self._source_computed_anchors = {}
 
+        if not target_residue:
+            target_residue = self.target.attach_residue
+        if not source_residue:
+            source_residue = self.source.attach_residue
         self.get_anchor_atoms(target_residue, source_residue)
 
         # compute internal coordinates to rebuild the source molecule

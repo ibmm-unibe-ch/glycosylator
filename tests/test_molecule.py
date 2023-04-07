@@ -2,6 +2,7 @@
 Tests to check the behaviour of the gl.Molecule object
 """
 
+import os
 from copy import deepcopy
 import numpy as np
 import glycosylator as gl
@@ -458,3 +459,246 @@ def test_multiply():
 
     v = gl.utils.visual.MoleculeViewer3D(man)
     v.show()
+
+
+def test_make_mannose8():
+
+    """
+    Structure to build:
+
+    ```
+                               MAN
+                                |
+                              (16ab)
+                                |
+    ~ --- NAG                  MAN -(13ab)- MAN -(12aa)- MAN
+            \\                  /
+            (14bb)          (16ab)
+              \\              /
+              NAG -(14bb)- BMA
+                            \\
+                            (13ab)
+                               \\
+                               MAN
+
+    """
+    bma = gl.Molecule.from_compound("BMA")
+    nag = gl.Molecule.from_compound("NAG")
+    man = gl.Molecule.from_compound("MAN")
+
+    # make the NAG-NAG--BMA (we can always use the 14bb patch)
+    nag % "14bb"
+    man8 = nag * 2 + bma
+
+    # now we attach the 13ab MAN to the BMA
+    man8 % "13ab"
+    man8 += man
+
+    # now we make the mannose branch
+    # MAN --- MAN
+    #  \
+    #  MAN --- MAN
+    man % "16ab"
+    man_branch = man * 2
+
+    man_branch % "13ab"
+    man_branch @ 1  # attach to residue 1 (not the default last one)
+    man_branch += man
+
+    man_branch @ None  # reset the attachment point
+    man_branch % "12aa"
+    man_branch += man
+
+    # and now we attach the man branch to the NAG-NAG--BMA---MAN
+    # but at the second last residue (BMA), not the last one
+    man8 @ -2
+    man_branch @ 1
+
+    man8 % "16ab"
+    man8 += man_branch
+
+    man8._bonds = []
+    man8._locked_bonds = set()
+
+    man8.infer_bonds(restrict_residues=False)
+
+    v = gl.utils.visual.MoleculeViewer3D(man8)
+    for bond in man8.bonds:
+        assert bond[0] in man8.atoms
+        assert bond[1] in man8.atoms
+        length = 0.95 < np.linalg.norm(bond[1].coord - bond[0].coord) < 1.8
+        if not length:
+            v.draw_edges([bond], color="magenta", linewidth=3)
+
+    for angle in man8.angles.values():
+        assert 100 < angle < 130
+
+    _seen_serials = set()
+    for atom in man8.atoms:
+        assert atom.get_serial_number() not in _seen_serials
+        _seen_serials.add(atom.get_serial_number())
+
+    v.show()
+
+    v = gl.utils.visual.MoleculeViewer3D(man8.make_residue_graph(detailed=False))
+    v.show()
+
+    v = gl.utils.visual.MoleculeViewer3D(man8.make_residue_graph(detailed=True))
+    v.show()
+
+    try:
+        man8.to_pdb("man8.pdb")
+    except Exception as e:
+        raise e
+    else:
+        os.remove("man8.pdb")
+
+
+def test_make_mannose8_2():
+    """
+    Structure to build:
+
+    ```
+                               MAN
+                                |
+                              (16ab)
+                                |
+    ~ --- NAG                  MAN -(13ab)- MAN -(12aa)- MAN
+            \\                  /
+            (14bb)          (16ab)
+              \\              /
+              NAG -(14bb)- BMA
+                            \\
+                            (13ab)
+                               \\
+                               MAN
+
+    """
+
+    bma = gl.Molecule.from_compound("BMA")
+    nag = gl.Molecule.from_compound("NAG")
+    man = gl.Molecule.from_compound("MAN")
+
+    # make the NAG-NAG--BMA (we can always use the 14bb patch)
+    man8 = nag % "14bb" * 2 + bma
+
+    # now we attach the 13ab MAN to the BMA
+    man8 % "13ab"
+    man8 += man
+
+    # now we make the mannose branch
+    # MAN --- MAN
+    #  \
+    #  MAN --- MAN
+    man_branch = man % "16ab" * 2
+
+    man_branch
+    man_branch @ 1 % "13ab"  # attach to residue 1 (not the default last one)
+    man_branch += man
+
+    man_branch % "12aa" @ None  # reset the attachment point
+    man_branch += man
+
+    # and now we attach the man branch to the NAG-NAG--BMA---MAN
+    # but at the second last residue (BMA), not the last one
+    man8 @ -2 % "16ab"
+    man_branch @ 1
+
+    man8 += man_branch
+
+    for bond in man8.bonds:
+        assert bond[0] in man8.atoms
+        assert bond[1] in man8.atoms
+        length = 0.95 < np.linalg.norm(bond[1].coord - bond[0].coord) < 1.8
+        assert length, "Bond length is not in range 0.95 - 1.8"
+
+    for angle in man8.angles.values():
+        assert 100 < angle < 130
+
+    _seen_serials = set()
+    for atom in man8.atoms:
+        assert atom.get_serial_number() not in _seen_serials
+        _seen_serials.add(atom.get_serial_number())
+
+    v = gl.utils.visual.MoleculeViewer3D(man8.make_residue_graph(detailed=False))
+    v.show()
+
+
+
+def test_make_mannose8_3():
+    """
+    Structure to build:
+
+    ```
+                               MAN
+                                |
+                              (16ab)
+                                |
+    ~ --- NAG                  MAN -(13ab)- MAN -(12aa)- MAN
+            \\                  /
+            (14bb)          (16ab)
+              \\              /
+              NAG -(14bb)- BMA
+                            \\
+                            (13ab)
+                               \\
+                               MAN
+
+    """
+
+    bma = gl.Molecule.from_compound("BMA")
+    nag = gl.Molecule.from_compound("NAG")
+    man = gl.Molecule.from_compound("MAN")
+
+    # make the NAG-NAG--BMA (we can always use the 14bb patch)
+    man8 = nag % "14bb" * 2 + bma
+
+    nag.set_patch("14bb")
+    nag2 = nag + nag
+
+    man8 = nag2.attach(bma)
+
+
+    # now we attach the 13ab MAN to the BMA
+    man8.set_patch("13ab")
+    man8.attach(man)
+
+    # now we make the mannose branch
+    # MAN --- MAN
+    #  \
+    #  MAN --- MAN
+    man.set_patch("16ab")
+    man_branch = man * 2
+
+    man_branch.set_attach_residue(1)
+    man_branch.set_patch("13ab")
+    man_branch.attach(man)
+   
+    man_branch.set_patch("12aa")
+    man_branch.set_attach_residue()
+    man_branch += man
+
+    # and now we attach the man branch to the NAG-NAG--BMA---MAN
+    # but at the second last residue (BMA), not the last one
+    man8.set_attach_residue(-2)
+    man8.set_patch("16ab")
+    man_branch.set_attach_residue(1)
+    man8.attach(man_branch)
+
+    for bond in man8.bonds:
+        assert bond[0] in man8.atoms
+        assert bond[1] in man8.atoms
+        length = 0.95 < np.linalg.norm(bond[1].coord - bond[0].coord) < 1.8
+        assert length, "Bond length is not in range 0.95 - 1.8"
+
+    for angle in man8.angles.values():
+        assert 100 < angle < 130
+
+    _seen_serials = set()
+    for atom in man8.atoms:
+        assert atom.get_serial_number() not in _seen_serials
+        _seen_serials.add(atom.get_serial_number())
+
+    v = gl.utils.visual.MoleculeViewer3D(man8)
+    v.show()
+    
