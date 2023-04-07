@@ -592,7 +592,6 @@ def test_make_mannose8_2():
     #  MAN --- MAN
     man_branch = man % "16ab" * 2
 
-    man_branch
     man_branch @ 1 % "13ab"  # attach to residue 1 (not the default last one)
     man_branch += man
 
@@ -604,7 +603,12 @@ def test_make_mannose8_2():
     man8 @ -2 % "16ab"
     man_branch @ 1
 
+    _man8 = deepcopy(man8)
     man8 += man_branch
+
+    # just checkin if the one line syntax is the same as the two line syntax
+    _man8 = _man8 @ -2 % "16ab" + man_branch @ 1 
+    assert len(man8.atoms) == len(_man8.atoms)
 
     for bond in man8.bonds:
         assert bond[0] in man8.atoms
@@ -643,7 +647,7 @@ def test_make_mannose8_3():
                             (13ab)
                                \\
                                MAN
-
+    ```
     """
 
     bma = gl.Molecule.from_compound("BMA")
@@ -651,8 +655,6 @@ def test_make_mannose8_3():
     man = gl.Molecule.from_compound("MAN")
 
     # make the NAG-NAG--BMA (we can always use the 14bb patch)
-    man8 = nag % "14bb" * 2 + bma
-
     nag.set_patch("14bb")
     nag2 = nag + nag
 
@@ -700,5 +702,14 @@ def test_make_mannose8_3():
         _seen_serials.add(atom.get_serial_number())
 
     v = gl.utils.visual.MoleculeViewer3D(man8)
+    colors= ["red", "green", "blue", "magenta", "cyan", "orange", "purple", "pink", "brown", "grey", "black"]
+    idx = 0
+    for residue in man8.residues:
+
+        for bond in man8.bonds:
+            if bond[0].get_parent() == residue and bond[1].get_parent() == residue:
+                v.draw_edges([bond], color=colors[idx], linewidth=3)
+        idx += 1
+
     v.show()
     
