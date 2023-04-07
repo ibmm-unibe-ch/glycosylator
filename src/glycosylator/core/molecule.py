@@ -61,6 +61,10 @@ class Molecule:
         # molecules to it
         self._patch = None
 
+        # let the molecule also store the residue at which it should be attached to
+        # another molecule
+        self._attach_residue = None
+
     @classmethod
     def from_compound(
         cls,
@@ -166,6 +170,28 @@ class Molecule:
     def root_residue(self):
         if self._root_atom:
             return self.root_atom.get_parent()
+
+    @property
+    def patch(self):
+        return self._patch
+
+    @patch.setter
+    def patch(self, value):
+        if value is None:
+            self._patch = None
+        else:
+            self._patch = self.get_residue(value)
+
+    @property
+    def attach_residue(self):
+        return self._attach_residue
+
+    @attach_residue.setter
+    def attach_residue(self, value):
+        if value is None:
+            self._attach_residue = None
+        else:
+            self._attach_residue = self.get_residue(value)
 
     @property
     def structure(self):
@@ -283,7 +309,15 @@ class Molecule:
             The residue(s)
         """
         if seqid:
-            return self._chain.child_list[seqid - 1]
+            if seqid > len(self._chain.child_list):
+                raise ValueError("Seqid is out of range")
+            elif seqid >= 1:
+                seqid -= 1
+            elif seqid == 0:
+                raise ValueError(
+                    "Seqid must start at 1 (not 0), use negative numbers for counting from the end"
+                )
+            return self._chain.child_list[seqid]
         elif name:
             res = [i for i in self._base_struct.get_residues() if i.resname == name]
             if len(res) == 1:
@@ -456,6 +490,25 @@ class Molecule:
 
     def set_root(self, atom):
         self.root_atom = atom
+
+    def get_attach_residue(self):
+        return self._attach_residue
+
+    def set_attach_residue(self, residue: Union[int, bio.Residue.Residue] = None):
+        """
+        Set the residue that is used for attaching other molecules to this one.
+
+        Parameters
+        ----------
+        residue
+            The residue to be used for attaching other molecules to this one
+        """
+        if isinstance(residue, int):
+            residue = self.get_residue(residue)
+        self._attach_residue = residue
+
+    def get_patch(self):
+        return self._patch
 
     def set_patch(
         self, patch: Union[str, utils.abstract.AbstractPatch] = None, _topology=None
@@ -1002,6 +1055,8 @@ class Molecule:
         self,
         other: "Molecule",
         patch: Union[utils.abstract.AbstractPatch, str] = None,
+        at_residue: Union[int, bio.Residue.Residue] = None,
+        other_residue: Union[int, bio.Residue.Residue] = None,
         _topology=None,
     ):
         """
@@ -1015,6 +1070,10 @@ class Molecule:
             A patch to apply when attaching. If none is given, the default patch that was set earlier
             on the molecule is used. If no patch was set, an AttributeError is raised. If a string is
             given, it is interpreted as the name of a patch in the topology.
+        at_residue : int or Residue
+            The residue to attach the other molecule to. If None, the last residue of the molecule.
+        other_residue : int or Residue
+            The residue of the other molecule to attach. If None, the first residue of the other molecule.
         _topology
             A specific topology to use for referencing.
             If None, the default CHARMM topology is used.
@@ -1036,7 +1095,7 @@ class Molecule:
             )
 
         p = structural.__default_keep_copy_patcher__
-        p.patch_molecules(patch, self, other)
+        p.patch_molecules(patch, self, other, at_residue, other_residue)
         return self
 
     def rotate_around_bond(
@@ -1243,7 +1302,7 @@ class Molecule:
         atom4 = self.get_atom(atom4)
         return structural.compute_dihedral(atom1, atom2, atom3, atom4)
 
-    def __add__(self, other):
+    def __add__(self, other) -> "Molecule":
         """
         Add two molecules together. This will return a new molecule.
         """
@@ -1262,7 +1321,7 @@ class Molecule:
         new = p.patch_molecules(patch, self, other)
         return new
 
-    def __iadd__(self, other):
+    def __iadd__(self, other) -> "Molecule":
         """
         Attach another molecule to this one
         """
@@ -1280,7 +1339,7 @@ class Molecule:
         self.attach(other, patch)
         return self
 
-    def __mul__(self, n):
+    def __mul__(self, n) -> "Molecule":
         """
         Add multiple identical molecules together using the * operator (i.e. mol * 3)
         This requires that the molecule has a patch defined
@@ -1298,7 +1357,7 @@ class Molecule:
 
         return new
 
-    def __imul__(self, n):
+    def __imul__(self, n) -> "Molecule":
         """
         Add multiple identical molecules together using the *= operator (i.e. mol *= 3)
         This requires that the molecule has a patch defined
@@ -1315,11 +1374,19 @@ class Molecule:
 
         return self
 
-    def __mod__(self, patch):
+    def __mod__(self, patch) -> "Molecule":
         """
         Add a patch to the molecule using the % operator (i.e. mol % patch)
         """
         self.set_patch(patch)
+        return self
+
+    def __matmul__(self, residue) -> "Molecule":
+        """
+        Set the residue at which the molecule should be attached to another molecule
+        using the @ operator (i.e. mol @ 1, for residue 1)
+        """
+        self.set_attach_residue(residue)
         return self
 
     def __repr__(self):
