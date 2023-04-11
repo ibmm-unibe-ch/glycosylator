@@ -119,25 +119,33 @@ class Molecule(entity.BaseEntity):
         The id or the serial number of the root atom
         at which the molecule would be attached to a another
         structure such as protein scaffold or another Molecule.
+    model : int
+        The model to use from the structure. Defaults to 0. This may be any
+        valid identifier for a model in the structure, such as an integer or string.
+    chain : str
+        The chain to use from the structure. Defaults to the first chain in the structure.
     """
 
     def __init__(
         self,
         structure,
         root_atom: Union[str, int, bio.Atom.Atom] = None,
+        model: int = 0,
+        chain: str = None,
     ):
         super().__init__(structure)
 
-        if len(structure.child_list) == 1:
-            self._chain = structure.child_list[0]
+        model = structure.child_dict[model]
+
+        if len(model.child_list) == 0:
+            raise ValueError("The model is empty")
+        elif len(model.child_list) == 1:
+            self._chain = model.child_list[0]
         else:
-            raise ValueError("Molecule class only supports structures with one model")
-        if len(self._chain.child_list) == 1:
-            self._chain = self._chain.child_list[0]
-        else:
-            raise ValueError(
-                "Molecule class only supports structures with one chain/segment"
-            )
+            if chain:
+                self._chain = model.child_dict[chain]
+            else:
+                self._chain = model.child_list[0]
 
         if root_atom:
             if not root_atom in self._chain.get_atoms():
@@ -151,6 +159,37 @@ class Molecule(entity.BaseEntity):
         # let the molecule also store the residue at which it should be attached to
         # another molecule
         self._attach_residue = None
+
+    @classmethod
+    def from_pdb(
+        cls,
+        filename: str,
+        root_atom: Union[str, int] = None,
+        id: str = None,
+        model: int = 0,
+        chain: str = None,
+    ):
+        """
+        Read a Molecule from a PDB file
+
+        Parameters
+        ----------
+        filename : str
+            Path to the PDB file
+        root_atom : str or int
+            The id or the serial number of the root atom (optional)
+        id : str
+            The id of the Molecule. By default an id is inferred from the filename.
+        model : int
+            The model to use from the structure. Defaults to 0. This may be any
+            valid identifier for a model in the structure, such as an integer or string.
+        chain : str
+            The chain to use from the structure. Defaults to the first chain in the structure.
+        """
+        if id is None:
+            id = utils.filename_to_id(filename)
+        struct = utils.defaults.__bioPDBParser__.get_structure(id, filename)
+        return cls(struct, root_atom, model=model, chain=chain)
 
     @classmethod
     def from_compound(
@@ -892,25 +931,31 @@ class Molecule(entity.BaseEntity):
 
 if __name__ == "__main__":
 
-    from timeit import timeit
+    # from timeit import timeit
 
-    # man = Molecule.from_compound("MAN")
-    glc = Molecule.from_compound("GLC")
+    # # man = Molecule.from_compound("MAN")
+    # glc = Molecule.from_compound("GLC")
 
-    # man.adjust_indexing(glc)
-    # assert glc.atoms[0].serial_number == len(man.atoms) + 1
+    # # man.adjust_indexing(glc)
+    # # assert glc.atoms[0].serial_number == len(man.atoms) + 1
 
-    t1 = timeit()
+    # t1 = timeit()
 
-    glc.repeat(5, "14bb")
-    # glc % "14bb"
-    # glc *= 10
+    # glc.repeat(5, "14bb")
+    # # glc % "14bb"
+    # # glc *= 10
 
-    t2 = timeit()
+    # t2 = timeit()
 
-    print(t2 - t1)
+    # print(t2 - t1)
 
     from glycosylator.utils import visual
 
-    v = visual.MoleculeViewer3D(glc)
+    # v = visual.MoleculeViewer3D(glc)
+    # v.show()
+
+    man = Molecule.from_pdb("support/examples/membrane.pdb", model=4)
+    man.infer_bonds()
+
+    v = visual.MoleculeViewer3D(man.make_atom_graph())
     v.show()
