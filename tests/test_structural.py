@@ -774,7 +774,8 @@ def test_patcher_two_man():
         assert len(man1.atoms) == len(man2.atoms) == 24
         assert len(man1.bonds) == len(man2.bonds) == 24
 
-        new = p.patch_molecules(patch, man1, man2)
+        p.patch_molecules(patch, man1, man2)
+        new = patch.merge()
 
         assert new != man1 and new != man2
         assert len(new.residues) == 2
@@ -838,11 +839,14 @@ def test_patcher_multiple_man():
 
     p = gl.structural.Patcher(False, False)
 
-    man_34 = p.patch_molecules(top.get_patch("14bb"), man3, man4)
+    p.patch_molecules(top.get_patch("14bb"), man3, man4)
+    man_34 = p.merge()
 
-    man_23 = p.patch_molecules(top.get_patch("14bb"), man_34, man2)
+    p.patch_molecules(top.get_patch("14bb"), man_34, man2)
+    man_23 = p.merge()
 
-    new = p.patch_molecules(top.get_patch("12aa"), man1, man_23)
+    p.patch_molecules(top.get_patch("12aa"), man1, man_23)
+    new = p.merge()
 
     assert new is man1
     assert len(new.residues) == len(man1.residues) == 4 * orig_residues
