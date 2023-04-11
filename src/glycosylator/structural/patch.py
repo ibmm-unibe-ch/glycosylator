@@ -153,7 +153,7 @@ class Patcher:
         self._transpose_source()
 
         self._delete_atoms()
-        self._merge()
+        # self.merge()
 
         return self.target
 
@@ -449,9 +449,14 @@ class Patcher:
         self.target.remove_atoms(*delete_from_target)
         self.source.remove_atoms(*delete_from_source)
 
-    def _merge(self):
+    def merge(self):
         """
         Merge the source molecule into the target molecule
+
+        Returns
+        -------
+        Molecule
+            The target molecule with the source molecule merged into it
         """
         # self.target.adjust_indexing(self.source)
         self.target.add_residues(*self.source.residues)
@@ -466,6 +471,8 @@ class Patcher:
         # for b in self.target._bonds:
         #     if b[0] not in self.target.atoms or b[1] not in self.target.atoms:
         #         self.target.remove_bond(b)
+
+        return self.target
 
     @property
     def _objs(self):
@@ -545,7 +552,8 @@ if __name__ == "__main__":
         # patcher._v = v2
 
         patch = top.get_patch(i)
-        man1 = patcher.patch_molecules(patch, man1, man2)
+        patcher.patch_molecules(patch, man1, man2)
+        man1 = patcher.merge()
 
         new = man1
         seen_atoms = set()
@@ -554,7 +562,7 @@ if __name__ == "__main__":
             seen_atoms.add(atom.serial_number)
 
         res_con = gl.structural.infer_residue_connections(new.chain, triplet=True)
-        
+
         v2 = gl.utils.visual.MoleculeViewer3D(man1)
         for idx, residue in enumerate(man1.residues):
             bonds = [
