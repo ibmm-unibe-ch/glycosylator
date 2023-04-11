@@ -473,7 +473,7 @@ def test_repeat():
 
     n = 10
     man = man.repeat(n, "14bb")
-   
+
     new_residues = len(man.residues)
     new_atoms = len(man.atoms)
     new_bonds = len(man.bonds)
@@ -495,7 +495,6 @@ def test_repeat():
 
     v = gl.utils.visual.MoleculeViewer3D(man)
     v.show()
-
 
 
 def test_make_mannose8():
@@ -644,7 +643,7 @@ def test_make_mannose8_2():
     man8 += man_branch
 
     # just checkin if the one line syntax is the same as the two line syntax
-    _man8 = _man8 @ -2 % "16ab" + man_branch @ 1 
+    _man8 = _man8 @ -2 % "16ab" + man_branch @ 1
     assert len(man8.atoms) == len(_man8.atoms)
 
     for bond in man8.bonds:
@@ -663,7 +662,6 @@ def test_make_mannose8_2():
 
     v = gl.utils.visual.MoleculeViewer3D(man8.make_residue_graph(detailed=False))
     v.show()
-
 
 
 def test_make_mannose8_3():
@@ -697,7 +695,6 @@ def test_make_mannose8_3():
 
     man8 = nag2.attach(bma)
 
-
     # now we attach the 13ab MAN to the BMA
     man8.set_patch("13ab")
     man8.attach(man)
@@ -712,7 +709,7 @@ def test_make_mannose8_3():
     man_branch.set_attach_residue(1)
     man_branch.set_patch("13ab")
     man_branch.attach(man)
-   
+
     man_branch.set_patch("12aa")
     man_branch.set_attach_residue()
     man_branch += man
@@ -739,7 +736,19 @@ def test_make_mannose8_3():
         _seen_serials.add(atom.get_serial_number())
 
     v = gl.utils.visual.MoleculeViewer3D(man8)
-    colors= ["red", "green", "blue", "magenta", "cyan", "orange", "purple", "pink", "brown", "grey", "black"]
+    colors = [
+        "red",
+        "green",
+        "blue",
+        "magenta",
+        "cyan",
+        "orange",
+        "purple",
+        "pink",
+        "brown",
+        "grey",
+        "black",
+    ]
     idx = 0
     for residue in man8.residues:
 
@@ -749,4 +758,43 @@ def test_make_mannose8_3():
         idx += 1
 
     v.show()
-    
+
+
+def test_relabel():
+
+    scrambled = gl.Molecule.from_compound("BMA")
+
+    # relabel to elementwise order without specific connectivity
+    counts = {"C": 0, "H": 0, "O": 0, "N": 0, "S": 0, "P": 0}
+
+    for atom in scrambled.atoms:
+        counts[atom.element] += 1
+        atom.id = atom.element + str(counts[atom.element])
+
+    # randomly rotate the molecule
+    random_vector = np.random.rand(3) * 10
+
+    # choose some rotation axis
+    axis = np.random.randint(0, len(scrambled.bonds) - 1)
+    axis = scrambled.bonds[axis]
+
+    for atom in scrambled.atoms:
+        atom.coord += random_vector
+
+    scrambled.rotate_around_bond(*axis, np.random.randint(0, 180))
+
+    old_scrambled = set(i.id for i in scrambled.atoms)
+    old_scrambled_coords = np.array([i.coord for i in scrambled.atoms])
+
+    # now we relabel the atoms
+    scrambled.autolabel()
+
+    new_scrambled = set(i.id for i in scrambled.atoms)
+    new_scrambled_coords = np.array([i.coord for i in scrambled.atoms])
+
+    # now we check if the relabeling worked
+
+    assert scrambled.get_bonds("C1", "C2") != []
+    assert scrambled.get_bonds("C6", "H61") != []
+    assert old_scrambled.difference(new_scrambled) != set()
+    assert np.allclose(old_scrambled_coords, new_scrambled_coords)
