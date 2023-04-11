@@ -274,7 +274,7 @@ def compute_internal_coordinates(bonds: list):
         angle_234 = base.compute_angle(quartet[1], quartet[2], quartet[3])
         dihedral = base.compute_dihedral(quartet[0], quartet[1], quartet[2], quartet[3])
         l_12 = base.compute_distance(quartet[0], quartet[1])
-        l_23 = base.compute_distance(quartet[1], quartet[2])
+        # l_23 = base.compute_distance(quartet[1], quartet[2])
         l_34 = base.compute_distance(quartet[2], quartet[3])
 
         ic = _abstract.AbstractInternalCoordinates(
