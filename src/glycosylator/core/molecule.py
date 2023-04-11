@@ -1,8 +1,102 @@
-from collections import defaultdict
-import warnings
-import networkx as nx
-import numpy as np
+"""
+The `Molecule` class is a wrapper around a biopython structure and a core part 
+of glycosylator functionality. It provides a convenient interface to available
+structures in PDB format, as well as an easy way to create new molecules from
+SMILES strings or reference compounds from the PDBECompounds database.
 
+To make a new molecule, the easiest way is to use the `Molecule.from_compound` classmethod.
+This method is linked to the PDBECompounds database, which contains a large number of reference
+compounds (currently restricted to sugars, due to the nature of "glycosylator", however). The database
+is queried using the `by` parameter, which can be one of the following:
+- "id" for the PDB id
+- "name" for the name of the compound (must match any known synonym of the iupac name)
+- "formula" for the chemical formula (usually ambiguous and will therefore often raise an error)
+- "smiles" for the SMILES string (also accepts InChI)
+
+.. code-block:: python
+
+    from glycosylator import Molecule
+
+    # create a new galactose molecule
+    gal = Molecule.from_compound("GAL") # use the PDB id
+
+Alternatively, a molecule can be created from a PDB file using the `Molecule.from_pdb` classmethod. 
+In this case the molecule may be as large as the PDB format supports (currently 99999 atoms).
+
+.. code-block:: python
+
+    my_glycan = Molecule.from_pdb("my_glycan.pdb")
+
+However, unless loaded from a PDB file, each `Molecule` starts of with a single chain and residue,
+specifying a single compound, such as Galactose or Glucose. Starting from there, multiple molecules
+can be patched together to form complex structures. 
+
+.. code-block:: python
+
+    # create a glucose molecule
+    glc = Molecule.from_compound("GLC")
+
+    # create a galactose molecule
+    gal = Molecule.from_compound("GAL")
+
+    # now attach the galactose to the glucose
+    # using a 1-4 beta linkage
+    glc.attach(gal, "14bb")
+
+    # Now the glc object is a disaccharide holding two residues, one glucose and one galactose
+
+In the above example, the `attach` method is used to attach the galactose molecule to the glucose, but for those
+among us who prefer a more shorty syntax, the `+` operator will do the same thing. In this case we need
+to specify the linkage type (known as `patch`) as an attribute to the receiving molecule using `set_patch` first.
+
+.. code-block:: python
+
+    # specify that incoming molecules shall be
+    # attached using a 1-4 beta linkage
+    glc.set_patch("14bb")
+
+    # now attach the galactose to the glucose
+    glc += gal
+
+For those who still want a shorter syntax, `set_patch` is represeted by the `%` opreator, so the above example
+can be written as
+
+.. code-block:: python
+
+    glc = glc % "14bb" + gal
+
+    # or (equivalently)
+    # glc % "14bb" 
+    # glc += gal 
+
+.. note::
+
+    The `attach` method and the `+` operator are not commutative, i.e. `glc + gal` is not the same as `gal + glc`!
+    Also, the `attach` method (and `+=` operator) will modify the accepting molecule object inplace, while the `+` operator will
+    return a new object containing both molecules.
+    Hence, if you are working with very large structures, it is recommended to use the `attach` method instead of the `+` operator,
+    to avoid copying the structures again and again. 
+    
+Naturally, if we can _add_  different molecules, we may also add the _same_ molecule multiple times. Which is exactly what
+what the `repeat` method does, or its shorthand-form, the `*` operator.
+
+.. code-block:: python
+
+    # create cellulose from glucose
+    cel = glc.repeat(10, "14bb")
+
+    # or (equivalently)
+    cel = glc % "14bb" * 10
+
+Molecules are mutable objects that allow not only easy incorporation of new `biopython` atoms and residues,
+or removal of old ones, but also spacial transfomations such as selective rotations around specific bonds.
+
+The Molecule class is also the main interface to the `AtomGraph` and `ResidueGraph` classes, which
+provide a convenient way to access the underlying structure as a graph. Especially, the ResidueGraph
+class provides a convenient way to access the overall structure of larger molecules such as glycans.
+"""
+
+import warnings
 from copy import deepcopy
 
 from typing import Union
@@ -15,7 +109,7 @@ import glycosylator.structural as structural
 
 class Molecule:
     """
-    A molecule to add onto a protein.
+    A molecule to add onto a scaffold.
 
     Parameters
     ----------
@@ -1098,6 +1192,48 @@ class Molecule:
         p.patch_molecules(patch, self, other, at_residue, other_residue)
         return self
 
+    def repeat(self, n: int, patch=None, inplace: bool = True):
+        """
+        Repeat the molecule n times into a homo-polymer.
+
+        Parameters
+        ----------
+        n : int
+            The number or units of the final polymer.
+        patch : str or AbstractPatch
+            The patch to use when patching individual units together.
+        inplace : bool
+            If True the molecule is directly modified, otherwise a copy of the molecule is returned.
+
+        Returns
+        -------
+        molecule
+            The modified molecule (either the original object or a copy)
+        """
+        if not isinstance(n, int):
+            raise TypeError("Can only multiply a molecule by an integer")
+        if n <= 0:
+            raise ValueError("Can only multiply a molecule by a positive integer")
+        if not patch and not self._patch:
+            raise RuntimeError("Cannot multiply a molecule without a patch defined")
+
+        if inplace:
+            obj = deepcopy(self)
+        else:
+            obj = self
+
+        _patch = obj._patch
+        if patch:
+            obj % patch
+
+        for i in range(n - 1):
+            obj += obj
+
+        if _patch:
+            obj % _patch
+
+        return obj
+
     def rotate_around_bond(
         self,
         atom1: Union[str, int, bio.Atom.Atom],
@@ -1362,15 +1498,10 @@ class Molecule:
         Add multiple identical molecules together using the *= operator (i.e. mol *= 3)
         This requires that the molecule has a patch defined
         """
-        if not isinstance(n, int):
-            raise TypeError("Can only multiply a molecule by an integer")
-        if n <= 0:
-            raise ValueError("Can only multiply a molecule by a positive integer")
         if not self._patch:
             raise RuntimeError("Cannot multiply a molecule without a patch defined")
 
-        for i in range(n - 1):
-            self += self
+        self.repeat(n)
 
         return self
 

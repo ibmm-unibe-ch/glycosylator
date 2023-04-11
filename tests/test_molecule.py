@@ -461,6 +461,43 @@ def test_multiply():
     v.show()
 
 
+def test_repeat():
+
+    man = gl.Molecule.from_compound("GLC")
+    man.lock_all()
+
+    pre_residues = len(man.residues)
+    pre_atoms = len(man.atoms)
+    pre_bonds = len(man.bonds)
+    pre_locked = len(man._locked_bonds)
+
+    n = 10
+    man.repeat(n, "14bb")
+   
+    new_residues = len(man.residues)
+    new_atoms = len(man.atoms)
+    new_bonds = len(man.bonds)
+    new_locked = len(man._locked_bonds)
+
+    assert new_residues == pre_residues * n
+    assert n * 0.75 * pre_atoms < new_atoms < pre_atoms * n
+    assert n * 0.75 * pre_bonds < new_bonds < pre_bonds * n
+    assert n * 0.75 * pre_locked < new_locked < pre_locked * n
+
+    # test that the new molecule has no weird bond lengths
+    for atom1, atom2 in man.bonds:
+        dist = np.linalg.norm(atom1.coord - atom2.coord)
+        assert 0.95 < dist < 1.8
+
+    # test that the new molecule has no weird bond angles
+    for angle in man.angles.values():
+        assert 100 < angle < 130
+
+    v = gl.utils.visual.MoleculeViewer3D(man)
+    v.show()
+
+
+
 def test_make_mannose8():
 
     """
