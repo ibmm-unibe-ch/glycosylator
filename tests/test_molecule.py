@@ -472,7 +472,7 @@ def test_repeat():
     pre_locked = len(man._locked_bonds)
 
     n = 10
-    man.repeat(n, "14bb")
+    man = man.repeat(n, "14bb")
    
     new_residues = len(man.residues)
     new_atoms = len(man.atoms)

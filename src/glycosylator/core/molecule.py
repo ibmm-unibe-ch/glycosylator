@@ -1217,7 +1217,8 @@ class Molecule:
         if not patch and not self._patch:
             raise RuntimeError("Cannot multiply a molecule without a patch defined")
 
-        if inplace:
+        _other = deepcopy(self)
+        if not inplace:
             obj = deepcopy(self)
         else:
             obj = self
@@ -1227,7 +1228,7 @@ class Molecule:
             obj % patch
 
         for i in range(n - 1):
-            obj += obj
+            obj += _other
 
         if _patch:
             obj % _patch
@@ -1723,8 +1724,25 @@ class Molecule:
 
 if __name__ == "__main__":
 
-    man = Molecule.from_compound("MAN")
-    glc = Molecule.from_compound("MAN")
+    from timeit import timeit
 
-    man.adjust_indexing(glc)
-    assert glc.atoms[0].serial_number == len(man.atoms) + 1
+    # man = Molecule.from_compound("MAN")
+    glc = Molecule.from_compound("GLC")
+
+    # man.adjust_indexing(glc)
+    # assert glc.atoms[0].serial_number == len(man.atoms) + 1
+
+    t1 = timeit()
+
+    glc.repeat(5, "14bb")
+    # glc % "14bb"
+    # glc *= 10
+
+    t2 = timeit()
+
+    print(t2 - t1)
+
+    from glycosylator.utils import visual
+
+    v = visual.MoleculeViewer3D(glc)
+    v.show()
