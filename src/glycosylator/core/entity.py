@@ -65,6 +65,18 @@ class BaseEntity:
         return self._bonds
 
     @property
+    def chains(self):
+        return list(self._base_struct.get_chains())
+
+    @property
+    def residues(self):
+        return list(self._base_struct.get_residues())
+
+    @property
+    def atoms(self):
+        return list(self._base_struct.get_atoms())
+
+    @property
     def atom_triplets(self):
         """
         Compute triplets of three consequtively bonded atoms
@@ -125,6 +137,9 @@ class BaseEntity:
         if not self._ResidueGraph:
             self.make_residue_graph()
         return self._ResidueGraph
+
+    def get_residues(self):
+        return self._base_struct.get_residues()
 
     def get_atoms(self, *atoms: Union[int, str, tuple], by: str = None) -> list:
         """
@@ -545,6 +560,22 @@ class BaseEntity:
         )
         self._bonds.extend([b for b in bonds if b not in self._bonds])
         return bonds
+
+    def autolabel(self, _compounds=None):
+        """
+        Relabel the atom ids in the current structure to match the standard labelling
+        according to available compounds. This is useful if you want to use some pre-generated
+        PDB file that may have used a different labelling scheme for atoms. Using this method,
+        the labels are adjusted which makes it possible to use standard bond inference and patching.
+
+        Parameters
+        ----------
+        _compounds : PDBECompounds
+            The compounds object to use for relabelling. If None, the default compounds object is used.
+        """
+        if _compounds is None:
+            _compounds = utils.defaults.get_default_compounds()
+        _compounds.relabel_atoms(self._base_struct)
 
     def compute_angle(
         self,

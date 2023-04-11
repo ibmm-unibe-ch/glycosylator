@@ -2,28 +2,31 @@
 Parsers to extract information from the PDBE compound database.
 """
 
+import warnings
 import numpy as np
 import pdbecif.mmcif_tools as mmcif_tools
 import pickle
 
 import Bio.PDB as bio
+from Bio import SVDSuperimposer
 
 import glycosylator.utils.auxiliary as aux
 import glycosylator.core.molecule as molecule
+import glycosylator.structural.infer as infer
 
 __to_float__ = {
-    "_chem_comp" :
-        set(    
-    ("formula_weight",
-    "pdbx_formal_charge",
-    )
-        ),
+    "_chem_comp": set(
+        (
+            "formula_weight",
+            "pdbx_formal_charge",
+        )
+    ),
 }
 
 __to_delete__ = {
-    "_chem_comp" : 
-        set(
-            ("pdbx_type",
+    "_chem_comp": set(
+        (
+            "pdbx_type",
             "mon_nstd_parent_comp_id",
             "pdbx_synonyms",
             "pdbx_initial_date",
@@ -39,9 +42,8 @@ __to_delete__ = {
             "pdbx_subcomponent_list",
             "pdbx_model_coordinates_missing_flag",
             "pdbx_ideal_coordinates_missing_flag",
-            )
-        ),
-    
+        )
+    ),
 }
 
 # a list of categories to ignore while parsing
@@ -64,8 +66,8 @@ class PDBECompounds:
     """
 
     def __init__(self, compounds: dict) -> None:
-        
-        self._compounds = {k : None for k in compounds.keys()}
+
+        self._compounds = {k: None for k in compounds.keys()}
         self._pdb = dict(self._compounds)
         self._setup_dictionaries(compounds)
 
@@ -122,8 +124,7 @@ class PDBECompounds:
             A list of all compound ids.
         """
         return list(self._compounds.keys())
-    
-    
+
     @property
     def formulas(self) -> list:
         """
@@ -159,7 +160,12 @@ class PDBECompounds:
         with open(filename, "wb") as f:
             pickle.dump(self, f)
 
-    def get(self, query: str, by: str = "id", return_type: str = "molecule",):
+    def get(
+        self,
+        query: str,
+        by: str = "id",
+        return_type: str = "molecule",
+    ):
         """
         Get a compound that matches the given criteria.
 
@@ -167,21 +173,21 @@ class PDBECompounds:
         ----------
         query : str
             The query to search for.
-        
+
         by : str, optional
             The type of query, by default "id". Possible values are:
             - "id": search by compound id
             - "name": search by compound name (must match any available synonym exactly)
             - "formula": search by compound formula
             - "smiles": search by compound smiles (this also works for inchi)
-        
+
         return_type : str, optional
             The type of object to return, by default "molecule". Possible values are:
             - "molecule": return a glycosylator `Molecule` object
             - "dict": return a dictionary of the compound data
             - "structure": return a biopython `Structure` object
             - "residue": return a biopython `Residue` object
-        
+
         Returns
         -------
         object
@@ -201,9 +207,91 @@ class PDBECompounds:
         elif return_type == "structure":
             return self._make_structure(_dict)
         elif return_type == "residue":
-            return self._make_residue(_dict)
+            res = self._make_residue(_dict)
+            self._fill_residue(res, _dict)
+            return res
         else:
             raise ValueError(f"Invalid return_type '{return_type}'.")
+
+    def translate_ids_3_to_1(self, ids: list) -> list:
+        """
+        Translate a list of 3-letter compound ids to 1-letter ids.
+
+        Parameters
+        ----------
+        ids : list
+            A list of 3-letter compound ids.
+
+        Returns
+        -------
+        list
+            A list of 1-letter compound ids.
+        """
+        new = []
+        for i in ids:
+            i = self.get(i, "id", "dict")
+            new.append(i.get("one_letter_code"))
+        return new
+
+    def translate_ids_1_to_3(self, ids: list) -> list:
+        """
+        Translate a list of 1-letter compound ids to 3-letter ids.
+
+        Parameters
+        ----------
+        ids : list
+            A list of 1-letter compound ids.
+
+        Returns
+        -------
+        list
+            A list of 3-letter compound ids.
+        """
+        new = []
+        for i in self._compounds.values():
+            if i.get("one_letter_code") in ids:
+                new.append(i.get("three_letter_code"))
+        return new
+
+    def relabel_atoms(self, structure):
+        """
+        Relabel the atoms of a `Molecule` object to match the atom names of the given compound.
+
+        Parameters
+        ----------
+        structure
+            A `Molecule` object or biopython object holding at least one residue.
+
+        Returns
+        -------
+        object
+            The object with relabeled atoms.
+        """
+        imposer = SVDSuperimposer.SVDSuperimposer()
+        for residue in structure.get_residues():
+
+            # get a reference
+            name = residue.resname
+            ref = self.get(name, "id", "residue")
+            if ref is None:
+                warnings.warn(f"Could not find residue '{name}' in PDBECompounds.")
+                continue
+
+            residue_coords = np.asarray([atom.coord for atom in residue.get_atoms()])
+            ref_coords = np.asarray([atom.coord for atom in ref.get_atoms()])
+            imposer.set(ref_coords, residue_coords)
+            imposer.run()
+
+            # get the residue coordinates
+            new_coords = imposer.get_transformed()
+
+            ref_atom_ids = [atom.id for atom in ref.get_atoms()]
+            for idx, atom in enumerate(list(residue.get_atoms())):
+                _new = new_coords[idx]
+                min_idx = np.argmin(np.linalg.norm(ref_coords - _new, axis=1))
+                atom.id = ref_atom_ids[min_idx]
+
+        return structure
 
     def _get(self, q: str, by: str = "id"):
         """
@@ -211,7 +299,7 @@ class PDBECompounds:
 
         Parameters
         ----------
-        q : str 
+        q : str
             The query to search for.
         by : str, optional
             The type of query, by default "id". Possible values are:
@@ -229,16 +317,20 @@ class PDBECompounds:
             _q = self._compounds.get(q)
             if _q is None:
                 return {}
-            return {q : _q}
+            return {q: _q}
         elif by == "name":
-            return {k : v for k, v in self._compounds.items() if q.lower() in v["names"]}
+            return {k: v for k, v in self._compounds.items() if q.lower() in v["names"]}
         elif by == "formula":
-            return {k : v for k, v in self._compounds.items() if q.upper().replace(" ", "") == v["formula"]}
+            return {
+                k: v
+                for k, v in self._compounds.items()
+                if q.upper().replace(" ", "") == v["formula"]
+            }
         elif by == "smiles":
-            return {k : v for k, v in self._compounds.items() if q in v["descriptors"]}
+            return {k: v for k, v in self._compounds.items() if q in v["descriptors"]}
         else:
             raise ValueError(f"Invalid search type: {by}")
-        
+
     def _setup_dictionaries(self, data_dict):
         """
         Fill in the dictionaries with the appropriate data
@@ -249,11 +341,12 @@ class PDBECompounds:
             A dictionary of data from the cif file.
         """
         for key, value in data_dict.items():
-            
+
             comp = value["_chem_comp"]
 
             for k in __to_delete__["_chem_comp"]:
-                comp.pop(k)
+                if k in comp:
+                    comp.pop(k)
             for k in __to_float__["_chem_comp"]:
                 comp[k] = float(comp[k])
             for k in comp:
@@ -261,7 +354,7 @@ class PDBECompounds:
                     comp[k] = None
 
             comp["descriptors"] = value["_pdbx_chem_comp_descriptor"]["descriptor"]
-            
+
             comp["names"] = [comp["name"]]
             synonyms = value.get("_pdbx_chem_comp_synonyms", None)
             if synonyms:
@@ -275,37 +368,40 @@ class PDBECompounds:
             atoms = value["_chem_comp_atom"]
             bonds = value["_chem_comp_bond"]
 
-            atoms["pdbx_model_Cartn_x_ideal"] = [i.replace("?", "NaN") for i in atoms["pdbx_model_Cartn_x_ideal"]]
-            atoms["pdbx_model_Cartn_y_ideal"] = [i.replace("?", "NaN") for i in atoms["pdbx_model_Cartn_y_ideal"]]
-            atoms["pdbx_model_Cartn_z_ideal"] = [i.replace("?", "NaN") for i in atoms["pdbx_model_Cartn_z_ideal"]]
+            atoms["pdbx_model_Cartn_x_ideal"] = [
+                i.replace("?", "NaN") for i in atoms["pdbx_model_Cartn_x_ideal"]
+            ]
+            atoms["pdbx_model_Cartn_y_ideal"] = [
+                i.replace("?", "NaN") for i in atoms["pdbx_model_Cartn_y_ideal"]
+            ]
+            atoms["pdbx_model_Cartn_z_ideal"] = [
+                i.replace("?", "NaN") for i in atoms["pdbx_model_Cartn_z_ideal"]
+            ]
             atoms["charge"] = [i.replace("?", "NaN") for i in atoms["charge"]]
 
             pdb = {
-                "atoms" : {
-                "ids" : atoms["pdbx_component_atom_id"],
-                "serials" : np.array(atoms["pdbx_ordinal"], dtype=int),
-                "coords" : np.array(
-                                    [
-                                        (float(i), float(j), float(k))
-                                        for i, j, k in zip(
-                                            atoms["pdbx_model_Cartn_x_ideal"],
-                                            atoms["pdbx_model_Cartn_y_ideal"],
-                                            atoms["pdbx_model_Cartn_z_ideal"],
-                                        )
-                                    ]
-                            ),
-                "elements" : atoms["type_symbol"],
-                "charges" : np.array(atoms["charge"], dtype=float),
+                "atoms": {
+                    "ids": atoms["pdbx_component_atom_id"],
+                    "serials": np.array(atoms["pdbx_ordinal"], dtype=int),
+                    "coords": np.array(
+                        [
+                            (float(i), float(j), float(k))
+                            for i, j, k in zip(
+                                atoms["pdbx_model_Cartn_x_ideal"],
+                                atoms["pdbx_model_Cartn_y_ideal"],
+                                atoms["pdbx_model_Cartn_z_ideal"],
+                            )
+                        ]
+                    ),
+                    "elements": atoms["type_symbol"],
+                    "charges": np.array(atoms["charge"], dtype=float),
                 },
-                "bonds" : [
-                (a, b)
-                for a, b in zip(
-                    bonds["atom_id_1"],
-                    bonds["atom_id_2"])
-                ]
+                "bonds": [
+                    (a, b) for a, b in zip(bonds["atom_id_1"], bonds["atom_id_2"])
+                ],
             }
             self._pdb[key] = pdb
- 
+
     def _make_molecule(self, compound: dict) -> molecule.Molecule:
         """
         Make a glycosylator Molecule from a compound.
@@ -314,7 +410,7 @@ class PDBECompounds:
         ----------
         compound : dict
             A dictionary of a compound.
-        
+
         Returns
         -------
         Molecule
@@ -344,7 +440,7 @@ class PDBECompounds:
         """
         if len(compound) == 0:
             return None
-        
+
         struct = bio.Structure.Structure(compound["id"])
         model = bio.Model.Model(0)
         struct.add(model)
@@ -370,12 +466,17 @@ class PDBECompounds:
         pdb = self._pdb.get(compound["id"], None)
         if pdb is None:
             raise ValueError("No pdb data for compound.")
-      
+
         atoms = pdb["atoms"]
         for i in range(len(atoms["ids"])):
-            atom = self._make_atom(atoms["ids"][i], atoms["serials"][i], atoms["coords"][i], atoms["elements"][i], atoms["charges"][i],)
+            atom = self._make_atom(
+                atoms["ids"][i],
+                atoms["serials"][i],
+                atoms["coords"][i],
+                atoms["elements"][i],
+                atoms["charges"][i],
+            )
             residue.add(atom)
-
 
     def _make_residue(self, compound: dict) -> "bio.PDB.Residue":
         """
@@ -393,14 +494,14 @@ class PDBECompounds:
         """
         if len(compound) == 0:
             return None
-        
-        res = bio.Residue.Residue(
-            ("H_"+compound["id"], 1, " "), compound["id"], " "
-        )
-        
+
+        res = bio.Residue.Residue(("H_" + compound["id"], 1, " "), compound["id"], " ")
+
         return res
 
-    def _make_atom(self, id: str, serial: int, coords: np.ndarray, element: str, charge: float) -> "bio.PDB.Atom":
+    def _make_atom(
+        self, id: str, serial: int, coords: np.ndarray, element: str, charge: float
+    ) -> "bio.PDB.Atom":
         """
         Make an atom.
 
@@ -421,21 +522,20 @@ class PDBECompounds:
             An atom.
         """
         atom = bio.Atom.Atom(
-            id, 
-            coord=coords, 
-            serial_number=serial, 
-            bfactor=0.0, 
-            occupancy=0.0, 
-            element=element, 
-            fullname=id, 
-            altloc=" ", 
+            id,
+            coord=coords,
+            serial_number=serial,
+            bfactor=0.0,
+            occupancy=0.0,
+            element=element,
+            fullname=id,
+            altloc=" ",
             pqr_charge=charge,
         )
         return atom
-    
+
     def __getitem__(self, key):
         return self._compounds[key], self._pdb[key]
-    
 
 
 if __name__ == "__main__":
@@ -445,8 +545,22 @@ if __name__ == "__main__":
     f = "support/pdbe_compounds/test.cif"
     compounds = PDBECompounds.from_file(f)
 
-    glc = compounds.get("glucose", "name", "dict")
-    print(glc)
+    from glycosylator.core import Molecule
 
+    real = Molecule.from_compound("GLC")
 
-        
+    scrambled = Molecule.from_compound("GLC")
+
+    counts = {"C": 0, "H": 0, "O": 0, "N": 0, "S": 0, "P": 0}
+    for atom in scrambled.atoms:
+        counts[atom.element] += 1
+        atom.id = atom.element + str(counts[atom.element])
+
+    print(scrambled.atoms)
+    compounds.relabel_atoms(scrambled)
+    print(scrambled.atoms)
+
+    from glycosylator.utils.visual import MoleculeViewer3D
+
+    v = MoleculeViewer3D(scrambled)
+    v.show()

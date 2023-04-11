@@ -6,6 +6,7 @@ import base
 import Bio.PDB as bio
 import glycosylator as gl
 from glycosylator.resources import pdbe_compounds
+import numpy as np
 
 
 def test_from_cif():
@@ -88,3 +89,89 @@ def test_compound_getting_types():
     assert len(glc_struct) == 2
     assert isinstance(glc_struct[0], bio.Structure.Structure)
     assert len(list(glc_struct[0].get_atoms())) == 24
+
+
+def test_relabel():
+
+    scrambled = gl.Molecule.from_compound("MAN")
+
+    # randomly rotate the molecule
+    random_vector = np.random.rand(3) * 10
+
+    # choose some rotation axis
+    axis = np.random.randint(0, len(scrambled.bonds) - 1)
+    axis = scrambled.bonds[axis]
+
+    # relabel to elementwise order without specific connectivity
+    counts = {"C": 0, "H": 0, "O": 0, "N": 0, "S": 0, "P": 0}
+
+    for atom in scrambled.atoms:
+        counts[atom.element] += 1
+        atom.id = atom.element + str(counts[atom.element])
+        atom.coord += random_vector
+
+    scrambled.rotate_around_bond(*axis, np.random.randint(0, 180))
+
+    # now relabel the atoms to match the original
+    old_scrambled = [i.id for i in scrambled.atoms]
+    old_scrambled_coords = np.array([i.coord for i in scrambled.atoms])
+
+    comps = gl.utils.defaults.get_default_compounds()
+    comps.relabel_atoms(scrambled)
+
+    new_scrambled = [i.id for i in scrambled.atoms]
+    new_scrambled_coords = np.array([i.coord for i in scrambled.atoms])
+
+    assert "H12" in old_scrambled
+    assert "H61" not in old_scrambled
+    assert "H12" not in new_scrambled
+    assert "H61" in new_scrambled
+    assert np.allclose(old_scrambled_coords, new_scrambled_coords)
+
+    v = gl.utils.visual.MoleculeViewer3D(scrambled)
+    v.show()
+
+
+def test_relabel_2():
+
+    comps = gl.utils.defaults.get_default_compounds()
+
+    for i in ("MAN", "GLC", "BMA", "FUC"):
+
+        scrambled = gl.Molecule.from_compound(i)
+
+        # relabel to elementwise order without specific connectivity
+        counts = {"C": 0, "H": 0, "O": 0, "N": 0, "S": 0, "P": 0}
+
+        for atom in scrambled.atoms:
+            counts[atom.element] += 1
+            atom.id = atom.element + str(counts[atom.element])
+
+        # randomly rotate the molecule
+        random_vector = np.random.rand(3) * 10
+
+        # choose some rotation axis
+        axis = np.random.randint(0, len(scrambled.bonds) - 1)
+        axis = scrambled.bonds[axis]
+
+        for atom in scrambled.atoms:
+            atom.coord += random_vector
+
+        scrambled.rotate_around_bond(*axis, np.random.randint(0, 180))
+
+        # now relabel the atoms to match the original
+        old_scrambled = set(i.id for i in scrambled.atoms)
+        old_scrambled_coords = np.array([i.coord for i in scrambled.atoms])
+
+        comps.relabel_atoms(scrambled)
+
+        new_scrambled = set(i.id for i in scrambled.atoms)
+        new_scrambled_coords = np.array([i.coord for i in scrambled.atoms])
+
+        assert scrambled.get_bonds("C1", "C2") != []
+        assert scrambled.get_bonds("C6", "H61") != []
+        assert old_scrambled.difference(new_scrambled) != set()
+        assert np.allclose(old_scrambled_coords, new_scrambled_coords)
+
+        # v = gl.utils.visual.MoleculeViewer3D(scrambled)
+        # v.show()
