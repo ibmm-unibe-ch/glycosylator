@@ -564,7 +564,9 @@ def test_atom_neighborhood_get():
 
 def test_residue_neighborhood_basic():
 
-    mannose = gl.graphs.ResidueGraph.from_pdb(base.MANNOSE9)
+    mannose = gl.Molecule.from_pdb(base.MANNOSE9)
+    mannose.infer_bonds(restrict_residues=False)
+    mannose = mannose.make_residue_graph()
 
     neighborhood = gl.structural.ResidueNeighborhood(mannose)
     assert neighborhood is not None, "No neighborhood object is made..."
@@ -592,7 +594,9 @@ def test_residue_neighborhood_basic():
 
 def test_residue_neighborhood_get():
 
-    mannose = gl.graphs.ResidueGraph.from_pdb(base.MANNOSE9)
+    mannose = gl.Molecule.from_pdb(base.MANNOSE9)
+    mannose.infer_bonds(restrict_residues=False)
+    mannose = mannose.make_residue_graph()
 
     neighborhood = gl.structural.ResidueNeighborhood(mannose)
     assert neighborhood is not None, "No neighborhood object is made..."
@@ -757,6 +761,24 @@ def test_patcher_anchors():
     assert anchors[1].id == "C1"
 
 
+def test_patcher_anchors_2():
+
+    glc = gl.Molecule.from_compound("GLC")
+
+    top = gl.get_default_topology()
+    patch = top.get_patch("14bb")
+
+    p = gl.structural.Patcher(True, True)
+    p.target = glc
+    p.source = glc
+    p.patch = patch
+    anchors = p.get_anchor_atoms()
+
+    assert len(anchors) == 2
+    assert anchors[0].id == "O4"
+    assert anchors[1].id == "C1"
+
+
 def test_patcher_two_man():
     man1 = gl.Molecule.from_pdb(base.MANNOSE)
     man1.infer_bonds()
@@ -774,10 +796,14 @@ def test_patcher_two_man():
         assert len(man1.atoms) == len(man2.atoms) == 24
         assert len(man1.bonds) == len(man2.bonds) == 24
 
-        p.patch_molecules(patch, man1, man2)
-        new = patch.merge()
+        p.apply(patch, man1, man2)
+        new = p.merge()
 
-        assert new != man1 and new != man2
+        v = gl.utils.visual.MoleculeViewer3D(new)
+        v.draw_edges(new.locked_bonds, color="red")
+        v.show()
+
+        assert new is not man1 and new is not man2
         assert len(new.residues) == 2
 
         # check that the right amount of atoms are available
@@ -786,11 +812,11 @@ def test_patcher_two_man():
         assert 1.5 * len(man1.atoms) < len(new.atoms) < 2 * len(man1.atoms)
         assert 1.5 * len(man1.bonds) < len(new.bonds) < 2 * len(man1.bonds)
         assert (
-            1.5 * len(man1._locked_bonds)
-            < len(new._locked_bonds)
-            < 2 * len(man1._locked_bonds)
+            1.5 * len(man1.locked_bonds)
+            < len(new.locked_bonds)
+            < 2 * len(man1.locked_bonds)
         )
-        assert len(new._locked_bonds) < 2 * len(
+        assert len(new.locked_bonds) < 2 * len(
             new.bonds
         )  # there is a new connection that should not be locked
         # however, we need x2 because the locked bonds are in "either way"
@@ -839,13 +865,13 @@ def test_patcher_multiple_man():
 
     p = gl.structural.Patcher(False, False)
 
-    p.patch_molecules(top.get_patch("14bb"), man3, man4)
+    p.apply(top.get_patch("14bb"), man3, man4)
     man_34 = p.merge()
 
-    p.patch_molecules(top.get_patch("14bb"), man_34, man2)
+    p.apply(top.get_patch("14bb"), man_34, man2)
     man_23 = p.merge()
 
-    p.patch_molecules(top.get_patch("12aa"), man1, man_23)
+    p.apply(top.get_patch("12aa"), man1, man_23)
     new = p.merge()
 
     assert new is man1
@@ -883,3 +909,18 @@ def test_patcher_multiple_man():
     v.draw_edges(g.edges, color="limegreen", linewidth=2)
     v.draw_edges(g._locked_edges, color="red", linewidth=2)
     v.show()
+
+
+def test_keep_copy_patcher():
+
+    glc = gl.Molecule.from_compound("GLC")
+
+    patcher = gl.structural.Patcher(copy_target=True, copy_source=True)
+    patch = gl.get_default_topology().get_patch("12aa")
+
+    patcher.apply(patch, glc, glc)
+    new = patcher.merge()
+
+    assert new is not glc
+    assert len(new.atoms) == len(glc.atoms) * 2 - 3
+    assert len(glc.atoms) == 24

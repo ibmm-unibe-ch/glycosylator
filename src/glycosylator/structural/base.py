@@ -3,6 +3,24 @@ Basic structure related functions
 """
 
 import numpy as np
+import Bio.PDB as bio
+
+
+def make_empty_structure(id: str = "empty"):
+    """
+    Make an empty PDB structure with a single model and chain.
+
+    Returns
+    -------
+    structure : Bio.PDB.Structure
+        The empty structure
+    """
+    s = bio.Structure.Structure(id)
+    m = bio.Model.Model(0)
+    s.add(m)
+    c = bio.Chain.Chain("A")
+    m.add(c)
+    return s
 
 
 def vector_between(atom1, atom2):

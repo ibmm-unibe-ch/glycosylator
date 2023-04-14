@@ -2,14 +2,12 @@
 Functions to patch molecules together
 """
 
-import Bio.PDB as bio
 import numpy as np
-from scipy.spatial.transform import Rotation
 from copy import deepcopy
 
-
+import glycosylator.core.molecule as molecule
 import glycosylator.utils.abstract as abstract
-import glycosylator.structural.base as base
+import glycosylator.structural.connector as base
 import glycosylator.structural.infer as infer
 
 
@@ -17,7 +15,7 @@ class PatchError(Exception):
     pass
 
 
-class Patcher:
+class Patcher(base.Connector):
     """
     This class is responsible for patching molecules together
     based on an `AbstractPatch` object and two `Molecule` objects,
@@ -33,37 +31,8 @@ class Patcher:
     """
 
     def __init__(self, copy_target: bool = False, copy_source: bool = False):
+        super().__init__(copy_target=copy_target, copy_source=copy_source)
         self.patch = None
-        self.target = None
-        self.source = None
-        self.copy_target = copy_target
-        self.copy_source = copy_source
-
-        self._anchors = (None, None)
-        self._target_residue = None
-        self._source_residue = None
-
-    def set_target(self, target: "Molecule"):
-        """
-        Set the target molecule
-
-        Parameters
-        ----------
-        target : Molecule
-            The target molecule
-        """
-        self.target = target
-
-    def set_source(self, source: "Molecule"):
-        """
-        Set the source molecule
-
-        Parameters
-        ----------
-        source : Molecule
-            The source molecule
-        """
-        self.source = source
 
     def set_patch(self, patch: "AbstractPatch"):
         """
@@ -76,11 +45,11 @@ class Patcher:
         """
         self.patch = patch
 
-    def patch_molecules(
+    def apply(
         self,
         patch: "AbstractPatch" = None,
-        target: "Molecule" = None,
-        source: "Molecule" = None,
+        target: "molecule.Molecule" = None,
+        source: "molecule.Molecule" = None,
         target_residue=None,
         source_residue=None,
     ):
@@ -109,8 +78,8 @@ class Patcher:
 
         Returns
         -------
-        Molecule
-            The patched target molecule
+        tuple
+            The patched target and source molecules (not yet merged into one molecule)
         """
         if patch:
             self.patch = patch
@@ -153,10 +122,30 @@ class Patcher:
         self._transpose_source()
 
         self._delete_atoms()
-        # self.merge()
 
+        return self.target, self.source
+
+    def merge(self):
+        """
+        Merge the source molecule into the target molecule
+
+        Returns
+        -------
+        Molecule
+            The target molecule with the source molecule merged into it
+        """
+        # self.target.adjust_indexing(self.source)
+        self.target.add_residues(*self.source.residues)
+        for bond in self.source.bonds:
+            self.target.add_bond(*bond)
+
+        for bond in self.source.locked_bonds:
+            self.target.lock_bond(*bond)
+
+        self.target.add_bond(*self._anchors)
         return self.target
-
+    
+    
     def get_anchor_atoms(self, target_residue=None, source_residue=None):
         """
         Returns the two atoms that will be used for anchoring structure alignment.
@@ -181,44 +170,14 @@ class Patcher:
             the first atom is from molecule1 and the second is from molecule2.
         """
         if not self.patch:
-            raise PatchError("No patch set")
-        if not self.target:
-            raise PatchError("No target set")
-        if not self.source:
-            raise PatchError("No source set")
+            raise AttributeError("No patch set")
 
         _ref_atoms = {int(i[0]) - 1: i[1:] for i in self.patch.bonds[0].atoms}
-
-        ref_atom_1 = self.target.get_atoms(_ref_atoms[0])
-        ref_atom_2 = self.source.get_atoms(_ref_atoms[1])
-
-        if target_residue:
-            if isinstance(target_residue, int):
-                target_residue = self.target.get_residue(id=target_residue)
-            elif isinstance(target_residue, str):
-                target_residue = self.target.get_residue(name=target_residue)
-            ref_atom_1 = [i for i in ref_atom_1 if i.get_parent() == target_residue]
-
-        if source_residue:
-            if isinstance(source_residue, int):
-                source_residue = self.source.get_residue(id=source_residue)
-            elif isinstance(source_residue, str):
-                source_residue = self.source.get_residue(name=source_residue)
-            ref_atom_2 = [i for i in ref_atom_2 if i.get_parent() == source_residue]
-
-        if len(ref_atom_1) == 0:
-            raise PatchError("No anchor atom found in target molecule")
-        if len(ref_atom_2) == 0:
-            raise PatchError("No anchor atom found in source molecule")
-
-        ref_atom_1 = ref_atom_1[-1]
-        ref_atom_2 = ref_atom_2[0]
-
-        self._anchors = (ref_atom_1, ref_atom_2)
-        self._target_residue = ref_atom_1.get_parent()
-        self._source_residue = ref_atom_2.get_parent()
+        ref_atom_1, ref_atom_2 = self._get_anchors(
+            _ref_atoms, target_residue, source_residue
+        )
         return ref_atom_1, ref_atom_2
-
+    
     def _align_anchors(self):
         """
         Align the source to the target molecule such that the anchors are in the correct distance
@@ -449,30 +408,7 @@ class Patcher:
         self.target.remove_atoms(*delete_from_target)
         self.source.remove_atoms(*delete_from_source)
 
-    def merge(self):
-        """
-        Merge the source molecule into the target molecule
-
-        Returns
-        -------
-        Molecule
-            The target molecule with the source molecule merged into it
-        """
-        # self.target.adjust_indexing(self.source)
-        self.target.add_residues(*self.source.residues)
-        self.target._bonds.extend(
-            bond for bond in self.source._bonds if bond not in self.target._bonds
-        )
-        self.target._bonds.append(self._anchors)
-        self.target._locked_bonds.update(self.source._locked_bonds)
-
-        # # now finally vet that we have no remnant bonds that connect
-        # # to atoms that have been deleted
-        # for b in self.target._bonds:
-        #     if b[0] not in self.target.atoms or b[1] not in self.target.atoms:
-        #         self.target.remove_bond(b)
-
-        return self.target
+    
 
     @property
     def _objs(self):
@@ -552,7 +488,7 @@ if __name__ == "__main__":
         # patcher._v = v2
 
         patch = top.get_patch(i)
-        patcher.patch_molecules(patch, man1, man2)
+        patcher.apply(patch, man1, man2)
         man1 = patcher.merge()
 
         new = man1

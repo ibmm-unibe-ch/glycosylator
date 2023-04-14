@@ -152,13 +152,22 @@ class Molecule(entity.BaseEntity):
                 raise ValueError("The root atom is not in the structure")
         self._root_atom = root_atom
 
-        # let the molecule store a patch to use for attaching other
-        # molecules to it
-        self._patch = None
-
         # let the molecule also store the residue at which it should be attached to
         # another molecule
         self._attach_residue = None
+
+    @classmethod
+    def empty(cls, id: str = None):
+        """
+        Create an empty Molecule object
+
+        Parameters
+        ----------
+        id : str
+            The id of the Molecule. By default an id is inferred from the filename.
+        """
+        structure = structural.make_empty_structure(id)
+        return cls(structure)
 
     @classmethod
     def from_pdb(
@@ -265,17 +274,6 @@ class Molecule(entity.BaseEntity):
             return self.root_atom.get_parent()
 
     @property
-    def patch(self):
-        return self._patch
-
-    @patch.setter
-    def patch(self, value):
-        if value is None:
-            self._patch = None
-        else:
-            self._patch = self.get_residue(value)
-
-    @property
     def attach_residue(self):
         return self._attach_residue
 
@@ -298,43 +296,6 @@ class Molecule(entity.BaseEntity):
     def atoms(self):
         _atoms = [atom for residue in self.residues for atom in residue]
         return _atoms
-
-    def get_residue(self, seqid: int = None, name: str = None):
-        """
-        Get a residue from the structure either based on its
-        seqid or its residue name. Note, if there are multiple
-        residues with the same name, all of them are returned
-        in a list!
-
-        Parameters
-        ----------
-        seqid : int
-            The sequence id of the residue
-        name : str
-            The name of the residue
-
-        Returns
-        -------
-        residue : bio.Residue.Residue or list
-            The residue(s)
-        """
-        if seqid:
-            if seqid > len(self._chain.child_list):
-                raise ValueError("Seqid is out of range")
-            elif seqid >= 1:
-                seqid -= 1
-            elif seqid == 0:
-                raise ValueError(
-                    "Seqid must start at 1 (not 0), use negative numbers for counting from the end"
-                )
-            return self._chain.child_list[seqid]
-        elif name:
-            res = [i for i in self._base_struct.get_residues() if i.resname == name]
-            if len(res) == 1:
-                res = res[0]
-            return res
-        else:
-            raise ValueError("Either seqid or name must be provided")
 
     def get_root(self):
         return self.root_atom
@@ -386,33 +347,6 @@ class Molecule(entity.BaseEntity):
         else:
             raise ValueError(f"Unknown patch type {type(patch)}")
 
-    def reindex(self):
-        """
-        Reindex the atoms and residues in the molecule.
-        You can use this method if you made substantial changes
-        to the molecule and want to be sure that there are no gaps in the
-        atom and residue numbering.
-        """
-        j = 0
-        idx = 0
-
-        residues = list(self.residues)
-        parents = [i.get_parent() for i in residues]
-        for residue, parent in zip(residues, parents):
-            parent.detach_child(residue.id)
-
-        for residue, parent in zip(residues, parents):
-            idx += 1
-            residue.id = (residue.id[0], idx, *residue.id[2:])
-            for atom in residue.get_atoms():
-                j += 1
-                atom.serial_number = j
-                atom.set_parent(residue)
-            parent.add(residue)
-
-        self._AtomGraph = None
-        self._ResidueGraph = None
-
     def adjust_indexing(self, other: "Molecule"):
         """
         Adjust another Molecule's residue and atom indexing to continue this Molecule's indexing.
@@ -424,157 +358,9 @@ class Molecule(entity.BaseEntity):
         other : Molecule
             The other molecule to adjust
         """
-        residues = list(other.residues)
-        parents = [i.get_parent() for i in residues]
-        for residue, parent in zip(residues, parents):
-            parent.detach_child(residue.id)
-
         rdx = len(self.residues)
         adx = len(self.atoms)
-        for residue, parent in zip(residues, parents):
-            rdx += 1
-            residue.id = (residue.id[0], rdx, *residue.id[2:])
-            parent.add(residue)
-            for atom in residue.child_list:
-                adx += 1
-                atom.set_serial_number(adx)
-                atom.set_parent(residue)
-
-    def add_residues(
-        self,
-        *residues: bio.Residue.Residue,
-        adjust_seqid: bool = True,
-        _copy: bool = False,
-    ):
-        """
-        Add residues to the structure
-
-        Parameters
-        ----------
-        residues : bio.Residue.Residue
-            The residues to add
-        adjust_seqid : bool
-            If True, the seqid of the residues is adjusted to
-            match the current number of residues in the structure
-            (i.e. a new residue can be given seqid 1, and it will be adjusted
-            to the correct value of 3 if there are already two other residues in the molecule).
-        _copy : bool
-            If True, the residues are copied before adding them to the molecule.
-            This is useful if you want to add the same residue to multiple molecules, while leaving
-            them and their original parent structures intakt.
-        """
-        rdx = len(self.residues)
-        adx = len(self.atoms)
-        for residue in residues:
-            p = residue.get_parent()
-            if p:
-                p.detach_child(residue.id)
-            if _copy and p is not None:
-                p.add(deepcopy(residue))
-
-            rdx += 1
-            if adjust_seqid and residue.id[1] != rdx:
-                residue.id = (residue.id[0], rdx, *residue.id[2:])
-
-            self._chain.add(residue)
-            residue._generate_full_id()
-
-            for atom in residue.child_list:
-                adx += 1
-                atom.set_serial_number(adx)
-                atom.set_parent(residue)
-
-    def remove_residues(self, *residues: Union[int, bio.Residue.Residue]) -> list:
-        """
-        Remove residues from the structure
-
-        Parameters
-        ----------
-        residues : int or bio.Residue.Residue
-            The residues to remove, either the object itself or its seqid
-
-        Returns
-        -------
-        list
-            The removed residues
-        """
-        _residues = []
-        for residue in residues:
-            if isinstance(residue, int):
-                residue = self._chain.child_list[residue - 1]
-            for atom in residue.child_list:
-                self.purge_bonds(atom)
-            self._chain.detach_child(residue.id)
-            _residues.append(residue)
-        return _residues
-
-    def add_atoms(self, *atoms: bio.Atom.Atom, residue=None, _copy: bool = False):
-        """
-        Add atoms to the structure. This will automatically adjust the atom's serial number to
-        fit into the structure.
-
-        Parameters
-        ----------
-        atoms : bio.Atom.Atom
-            The atoms to add
-        residue : int or str
-            The residue to which the atoms should be added,
-            this may be either the seqid or the residue name,
-            if None the atoms are added to the last residue.
-            Note, that if multiple identically named residues
-            are present, the first one is chosen, so using the
-            seqid is a safer option!
-        _copy : bool
-            If True, the atoms are copied and then added to the structure.
-            This will leave the original atoms (and their parent structures) untouched.
-        """
-        if residue is not None:
-            if isinstance(residue, int):
-                residue = self._chain.child_list[residue - 1]
-            elif isinstance(residue, str):
-                residue = next(i for i in self._chain.child_list if i.resname == i)
-            target = residue
-        else:
-            target = self._chain.child_list[-1]
-
-        _max_serial = len(self.atoms)
-        for atom in atoms:
-            if _copy:
-                atom = deepcopy(atom)
-            _max_serial += 1
-            atom.set_serial_number(_max_serial)
-            target.add(atom)
-
-    def remove_atoms(self, *atoms: Union[int, str, tuple, bio.Atom.Atom]) -> list:
-        """
-        Remove one or more atoms from the structure
-
-        Parameters
-        ----------
-        atoms
-            The atoms to remove, which can either be directly provided (biopython object)
-            or by providing the serial number, the full_id or the id of the atoms.
-
-        Returns
-        -------
-        list
-            The removed atoms
-        """
-        _atoms = []
-        for atom in atoms:
-
-            atom = self.get_atom(atom)
-            self.purge_bonds(atom)
-            atom.get_parent().detach_child(atom.id)
-            _atoms.append(atom)
-
-        # reindex the atoms
-        adx = 0
-        for atom in self.atoms:
-            adx += 1
-            atom.serial_number = adx
-
-        return _atoms
+        other.reindex(rdx + 1, adx + 1)
 
     def infer_missing_atoms(self, _topology=None):
         """
@@ -587,25 +373,6 @@ class Molecule(entity.BaseEntity):
             If None, the default CHARMM topology is used.
         """
         structural.fill_missing_atoms(self._base_struct, _topology)
-
-    def apply_standard_bonds(self, _topology=None) -> list:
-        """
-        Get the standard bonds for the structure
-
-        Parameters
-        ----------
-        _topology
-            A specific topology to use for referencing.
-            If None, the default CHARMM topology is used.
-
-        Returns
-        -------
-        list
-            A list of tuples of atom pairs that are bonded
-        """
-        bonds = structural.apply_standard_bonds(self._base_struct, _topology)
-        self._bonds.extend([b for b in bonds if b not in self._bonds])
-        return bonds
 
     def attach(
         self,
@@ -651,7 +418,7 @@ class Molecule(entity.BaseEntity):
             )
 
         p = structural.__default_keep_copy_patcher__
-        p.patch_molecules(patch, self, other, at_residue, other_residue)
+        p.apply(patch, self, other, at_residue, other_residue)
         p.merge()
         return self
 
@@ -748,10 +515,10 @@ class Molecule(entity.BaseEntity):
         """
         atom1 = self.get_atom(atom1)
         atom2 = self.get_atom(atom2)
-        if (atom1, atom2) in self._locked_bonds:
+        if (atom1, atom2) in self.locked_bonds:
             raise RuntimeError("Cannot rotate around a locked bond")
 
-        self.AtomGraph.rotate_around_edge(atom1, atom2, angle, descendants_only)
+        self._AtomGraph.rotate_around_edge(atom1, atom2, angle, descendants_only)
 
     def get_descendants(
         self,
@@ -795,7 +562,7 @@ class Molecule(entity.BaseEntity):
         atom1 = self.get_atom(atom1)
         atom2 = self.get_atom(atom2)
 
-        return self.AtomGraph.get_descendants(atom1, atom2)
+        return self._AtomGraph.get_descendants(atom1, atom2)
 
     def get_neighbors(
         self,
@@ -840,7 +607,7 @@ class Molecule(entity.BaseEntity):
         {"CH"}
         """
         atom = self.get_atom(atom)
-        return self.AtomGraph.get_neighbors(atom, n, mode)
+        return self._AtomGraph.get_neighbors(atom, n, mode)
 
     def __add__(self, other) -> "Molecule":
         """
@@ -858,7 +625,7 @@ class Molecule(entity.BaseEntity):
             )
 
         p = structural.__default_copy_copy_patcher__
-        p.patch_molecules(patch, self, other)
+        p.apply(patch, self, other)
         new = p.merge()
         return new
 
@@ -908,13 +675,6 @@ class Molecule(entity.BaseEntity):
 
         self.repeat(n)
 
-        return self
-
-    def __mod__(self, patch) -> "Molecule":
-        """
-        Add a patch to the molecule using the % operator (i.e. mol % patch)
-        """
-        self.set_patch(patch)
         return self
 
     def __matmul__(self, residue) -> "Molecule":
