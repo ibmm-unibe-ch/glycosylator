@@ -108,6 +108,8 @@ class Neighborhood:
                 node = node[0]
             else:
                 warnings.warn(f"No nodes found with the given id!")
+        elif isinstance(node, (bio.Residue.Residue, bio.Atom.Atom)):
+            pass
         else:
             raise TypeError(f"Invalid node type: {type(node)}")
         return node
@@ -221,8 +223,16 @@ class ResidueNeighborhood(Neighborhood):
         A ResidueGraph
     """
 
-    __index_method__ = __index_method__ = lambda _, node: node.id[1]
-    __id_method__ = lambda _, node: getattr(node, "resname")
+    # a maybe little hacky way to get the residue name or atom id, depending on the node type
+    # since we have mixed types in detailed residue graphs
+    __index_method__ = __index_method__ = (
+        lambda _, node: node.id[1] if isinstance(node.id, tuple) else node.serial_number
+    )
+    __id_method__ = (
+        lambda _, node: getattr(node, "resname")
+        if hasattr(node, "resname")
+        else f"{node.id}@{node.serial_number}"
+    )
 
     @property
     def residues(self):
