@@ -2,6 +2,7 @@
 The base class for classes storing biopython structures
 """
 
+from copy import deepcopy
 from typing import Union
 import warnings
 
@@ -17,17 +18,22 @@ class BaseEntity:
         self._base_struct = structure
         self._id = structure.id
 
-        self._AtomGraph = None
-        self._ResidueGraph = None
-
         self._bonds = []
-        self._locked_bonds = set()
+        # self._locked_bonds = set()
+
+        self._AtomGraph = AtomGraph(self.id, [])
+
+        # let the molecule store a patch to use for attaching other
+        # molecules to it
+        self._patch = None
+
+        self._working_chain = None
+        self._root_atom = None
 
     @classmethod
     def from_pdb(
         cls,
         filename: str,
-        root_atom: Union[str, int] = None,
         id: str = None,
     ):
         """
@@ -45,7 +51,7 @@ class BaseEntity:
         if id is None:
             id = utils.filename_to_id(filename)
         struct = utils.defaults.__bioPDBParser__.get_structure(id, filename)
-        return cls(struct, root_atom)
+        return cls(struct)
 
     @property
     def id(self):
@@ -61,40 +67,73 @@ class BaseEntity:
         return self._base_struct
 
     @property
+    def patch(self):
+        return self._patch
+
+    @patch.setter
+    def patch(self, value):
+        if value is None:
+            self._patch = None
+        else:
+            self._patch = self.get_residue(value)
+
+    @property
     def bonds(self):
         return self._bonds
+        # return list(self._AtomGraph.edges)
+
+    @bonds.setter
+    def bonds(self, value):
+        self._bonds = value
+        if value is None or len(value) == 0:
+            self._bonds = []
+            self._AtomGraph.clear_edges()
+
+    @property
+    def locked_bonds(self):
+        return self._AtomGraph._locked_edges
+
+    @locked_bonds.setter
+    def locked_bonds(self, value):
+        if value is None or len(value) == 0:
+            self._AtomGraph._locked_edges = set()
+        elif isinstance(value, set):
+            self._AtomGraph._locked_edges = value
+        else:
+            raise TypeError("locked_bonds must be a set")
 
     @property
     def chains(self):
-        return list(self._base_struct.get_chains())
+        return sorted(list(self._base_struct.get_chains()))
 
     @property
     def residues(self):
-        return list(self._base_struct.get_residues())
+        return sorted(list(self._base_struct.get_residues()))
 
     @property
     def atoms(self):
-        return list(self._base_struct.get_atoms())
+        return sorted(list(self._AtomGraph.nodes))
+        # return list(self._base_struct.get_atoms())
 
     @property
     def atom_triplets(self):
         """
         Compute triplets of three consequtively bonded atoms
         """
-        if len(self._bonds) == 0:
+        if len(self.bonds) == 0:
             warnings.warn("No bonds found (yet), returning empty list")
             return []
-        return structural.compute_triplets(self._bonds)
+        return structural.compute_triplets(self.bonds)
 
     @property
     def atom_quartets(self):
         """
         Compute quartets of four consequtively bonded atoms
         """
-        if len(self._bonds) == 0:
+        if len(self.bonds) == 0:
             warnings.warn("No bonds found (yet), returning empty list")
             return []
-        return structural.compute_quartets(self._bonds)
+        return structural.compute_quartets(self.bonds)
 
     @property
     def angles(self):
@@ -127,16 +166,235 @@ class BaseEntity:
         }
 
     @property
-    def AtomGraph(self):
-        if not self._AtomGraph:
-            self.make_atom_graph()
-        return self._AtomGraph
+    def _chain(self):
+        if self._working_chain is None:
+            return self.chains[-1]
+        else:
+            return self._working_chain
 
-    @property
-    def ResidueGraph(self):
-        if not self._ResidueGraph:
-            self.make_residue_graph()
-        return self._ResidueGraph
+    @_chain.setter
+    def _chain(self, value):
+        self._working_chain = value
+
+    def rotate_around_bond(
+        self,
+        atom1: Union[str, int, bio.Atom.Atom],
+        atom2: Union[str, int, bio.Atom.Atom],
+        angle: float,
+        descendants_only: bool = False,
+    ):
+        """
+        Rotate the structure around a bond
+
+        Parameters
+        ----------
+        atom1
+            The first atom
+        atom2
+            The second atom
+        angle
+            The angle to rotate by in degrees
+        descendants_only
+            Whether to only rotate the descendants of the bond
+            (sensible only for linear molecules, or bonds that are not part of a circular structure).
+        
+        Examples
+        --------
+        For a molecule starting as:
+        ```
+                     OH
+                    /
+        (1)CH3 --- CH 
+                    \\
+                    CH2 --- (2)CH3
+        ```
+        we can rotate around the bond `(1)CH3 --- CH` by 180° using
+
+        >>> import numpy as np
+        >>> angle = np.radians(180) # rotation angle needs to be in radians
+        >>> mol.rotate_around_bond("(1)CH3", "CH", angle)
+
+        and thus achieve the following:
+        ```
+                     CH2 --- (2)CH3
+                    /
+        (1)CH3 --- CH 
+                    \\
+                     OH
+        ```
+
+        """
+        atom1 = self.get_atom(atom1)
+        atom2 = self.get_atom(atom2)
+        if (atom1, atom2) in self.locked_bonds:
+            raise RuntimeError("Cannot rotate around a locked bond")
+
+        self._AtomGraph.rotate_around_edge(atom1, atom2, angle, descendants_only)
+
+    def get_ancestors(
+        self,
+        atom1: Union[str, int, bio.Atom.Atom],
+        atom2: Union[str, int, bio.Atom.Atom],
+    ):
+        """
+        Get the atoms upstream of a bond. This will return the set
+        of all atoms that are connected before the bond atom1-atom2 in the direction of atom1,
+        the selection can be reversed by reversing the order of atoms (atom2-atom1).
+
+        Parameters
+        ----------
+        atom1
+            The first atom
+        atom2
+            The second atom
+
+        Returns
+        -------
+        set
+            A set of atoms
+
+        Examples
+        --------
+        For a molecule
+        ```
+                     OH
+                    /
+        (1)CH3 --- CH 
+                    \\
+                    CH2 --- (2)CH3
+        ```
+        >>> mol.get_ancestors("(1)CH3", "CH")
+        set()
+        >>> mol.get_ancestors("CH", "CH2")
+        {"(1)CH3", "OH"}
+        >>> mol.get_ancestors("CH2", "CH")
+        {"(2)CH3"}
+        """
+        return self.get_descendants(atom2, atom1)
+
+    def get_descendants(
+        self,
+        atom1: Union[str, int, bio.Atom.Atom],
+        atom2: Union[str, int, bio.Atom.Atom],
+    ):
+        """
+        Get the atoms downstream of a bond. This will return the set
+        of all atoms that are connected after the bond atom1-atom2 in the direction of atom2,
+        the selection can be reversed by reversing the order of atoms (atom2-atom1).
+
+        Parameters
+        ----------
+        atom1
+            The first atom
+        atom2
+            The second atom
+
+        Returns
+        -------
+        set
+            A set of atoms
+
+        Examples
+        --------
+        For a molecule
+        ```
+                     OH
+                    /
+        (1)CH3 --- CH 
+                    \\
+                    CH2 --- (2)CH3
+        ```
+        >>> mol.get_descendants("(1)CH3", "CH")
+        {"OH", "CH2", "(2)CH3"}
+        >>> mol.get_descendants("CH", "CH2")
+        {"(2)CH3"}
+        >>> mol.get_descendants("CH2", "CH")
+        {"OH", "(1)CH3"}
+        """
+        atom1 = self.get_atom(atom1)
+        atom2 = self.get_atom(atom2)
+
+        return self._AtomGraph.get_descendants(atom1, atom2)
+
+    def get_neighbors(
+        self,
+        atom: Union[int, str, tuple, bio.Atom.Atom],
+        n: int = 1,
+        mode: str = "upto",
+    ):
+        """
+        Get the neighbors of an atom.
+
+        Parameters
+        ----------
+        atom
+            The atom
+        n
+            The number of bonds that may separate the atom from its neighbors.
+        mode
+            The mode to use. Can be "upto" or "at". If `upto`, all neighbors that are at most `n` bonds away
+            are returned. If `at`, only neighbors that are exactly `n` bonds away are returned.
+
+        Returns
+        -------
+        set
+            A set of atoms
+
+
+        Examples
+        --------
+        For a molecule
+        ```
+                     O --- (2)CH2
+                    /         \\
+        (1)CH3 --- CH          OH
+                    \\
+                    (1)CH2 --- (2)CH3
+        ```
+        >>> mol.get_neighbors("(2)CH2", n=1)
+        {"O", "OH"}
+        >>> mol.get_neighbors("(2)CH2", n=2, mode="upto")
+        {"O", "OH", "CH"}
+        >>> mol.get_neighbors("(2)CH2", n=2, mode="at")
+        {"CH"}
+        """
+        atom = self.get_atom(atom)
+        return self._AtomGraph.get_neighbors(atom, n, mode)
+
+    def reindex(self, start_resid: int = 1, start_atomid: int = 1):
+        """
+        Reindex the atoms and residues in the molecule.
+        You can use this method if you made substantial changes
+        to the molecule and want to be sure that there are no gaps in the
+        atom and residue numbering.
+
+        Parameters
+        ----------
+        start_resid : int
+            The starting residue id
+        start_atomid : int
+            The starting atom id
+        """
+        j = start_atomid
+        idx = start_resid
+
+        # residues = list(self.residues)
+        # parents = [i.get_parent() for i in residues]
+        # for residue, parent in zip(residues, parents):
+        #     parent.detach_child(residue.id)
+
+        # for residue, parent in zip(residues, parents):
+        for residue in self.residues:
+            residue.id = (residue.id[0], idx, *residue.id[2:])
+            idx += 1
+            for atom in residue.get_atoms():
+                atom.serial_number = j
+                j += 1
+                atom.set_parent(residue)
+            # parent.add(residue)
+
+        self._AtomGraph = None
+        self._ResidueGraph = None
 
     def get_residues(self):
         return self._base_struct.get_residues()
@@ -248,11 +506,64 @@ class BaseEntity:
 
         return atom
 
+    def get_residue(self, res, by: str = None):
+        """
+        Get a residue from the structure either based on its
+        seqid or its residue name. Note, if there are multiple
+        residues with the same name, all of them are returned
+        in a list!
+
+        Parameters
+        ----------
+        res
+            The residue's seqid, name, or full_id tuple
+        by : str
+            The type of parameter to search for. Can be either 'seqid', 'name' or 'full_id'
+            By default, this is inferred from the datatype of the res parameter.
+
+        Returns
+        -------
+        residue : bio.Residue.Residue or list
+            The residue(s)
+        """
+        if isinstance(res, bio.Residue.Residue):
+            return res
+
+        if by is None:
+            if isinstance(res, int):
+                by = "seqid"
+            elif isinstance(res, str):
+                by = "name"
+            elif isinstance(res, tuple):
+                by = "full_id"
+            else:
+                raise ValueError(
+                    "Unknown search parameter, must be either 'seqid', 'name' or 'full_id'"
+                )
+
+        if by == "seqid":
+            if res < 0:
+                res = len(self.residues) + res + 1
+            res = next(i for i in self._base_struct.get_residues() if i.id[1] == res)
+        elif by == "name":
+            res = [i for i in self._base_struct.get_residues() if i.resname == res]
+            if len(res) == 1:
+                res = res[0]
+        elif by == "full_id":
+            res = next(i for i in self._base_struct.get_residues() if i.full_id == res)
+        else:
+            raise ValueError(
+                "Unknown search parameter, must be either 'seqid', 'name' or 'full_id'"
+            )
+
+        return res
+
     def get_bonds(
         self,
-        atom1: Union[int, str, tuple, bio.Atom.Atom],
+        atom1: Union[int, str, tuple, bio.Atom.Atom, bio.Residue.Residue],
         atom2: Union[int, str, tuple, bio.Atom.Atom] = None,
         either_way: bool = True,
+        residue_internal: bool = True,
     ):
         """
         Get one or multiple bonds from the molecule. If only one atom is provided, all bonds
@@ -261,19 +572,37 @@ class BaseEntity:
         Parameters
         ----------
         atom1
-            The atom id, serial number or full_id tuple of the first atom
+            The atom id, serial number or full_id tuple of the first atom.
+            This may also be a residue, in which case all bonds between atoms in that residue are returned.
         atom2
             The atom id, serial number or full_id tuple of the second atom
         either_way : bool
             If True, the order of the atoms does not matter, if False, the order of the atoms
             does matter. By setting this to false, it is possible to also search for bonds that have
             a specific atom in position 1 or 2 depending on which argument was set, while leaving the other input as none.
+        residue_internal : bool
+            If True, only bonds where both atoms are in the given residue (if `atom1` is a residue) are returned.
+            If False, all bonds where either atom is in the given residue are returned.
 
         Returns
         -------
         bond : list
             The bond(s)
         """
+        if isinstance(atom1, bio.Residue.Residue):
+            if residue_internal:
+                return [
+                    i
+                    for i in self.bonds
+                    if i[0].get_parent() == atom1 and i[1].get_parent() == atom1
+                ]
+            else:
+                return [
+                    i
+                    for i in self.bonds
+                    if i[0].get_parent() == atom1 or i[1].get_parent() == atom1
+                ]
+
         if atom1:
             atom1 = self.get_atom(atom1)
         if atom2:
@@ -281,25 +610,169 @@ class BaseEntity:
 
         if atom1 and atom2:
             if either_way:
-                return [i for i in self._bonds if atom1 in i and atom2 in i]
+                return [i for i in self.bonds if atom1 in i and atom2 in i]
             else:
                 return [
                     i
-                    for i in self._bonds
+                    for i in self.bonds
                     if atom1 in i and atom2 in i and i[0] == atom1 and i[1] == atom2
                 ]
         elif atom1:
             if either_way:
-                return [i for i in self._bonds if atom1 in i]
+                return [i for i in self.bonds if atom1 in i]
             else:
-                return [i for i in self._bonds if atom1 in i and i[0] == atom1]
+                return [i for i in self.bonds if atom1 in i and i[0] == atom1]
         elif atom2:
             if either_way:
-                return [i for i in self._bonds if atom2 in i]
+                return [i for i in self.bonds if atom2 in i]
             else:
-                return [i for i in self._bonds if atom2 in i and i[1] == atom2]
+                return [i for i in self.bonds if atom2 in i and i[1] == atom2]
         else:
             raise ValueError("No atom provided")
+
+    def add_residues(
+        self,
+        *residues: bio.Residue.Residue,
+        adjust_seqid: bool = True,
+        _copy: bool = False,
+    ):
+        """
+        Add residues to the structure
+
+        Parameters
+        ----------
+        residues : bio.Residue.Residue
+            The residues to add
+        adjust_seqid : bool
+            If True, the seqid of the residues is adjusted to
+            match the current number of residues in the structure
+            (i.e. a new residue can be given seqid 1, and it will be adjusted
+            to the correct value of 3 if there are already two other residues in the molecule).
+        _copy : bool
+            If True, the residues are copied before adding them to the molecule.
+            This is useful if you want to add the same residue to multiple molecules, while leaving
+            them and their original parent structures intakt.
+        """
+        rdx = len(self.residues)
+        adx = len(self.atoms)
+        for residue in residues:
+            p = residue.get_parent()
+            if p:
+                p.detach_child(residue.id)
+            if _copy and p is not None:
+                p.add(deepcopy(residue))
+
+            rdx += 1
+            if adjust_seqid and residue.id[1] != rdx:
+                residue.id = (residue.id[0], rdx, *residue.id[2:])
+
+            self._chain.add(residue)
+            residue._generate_full_id()
+
+            for atom in residue.child_list:
+                adx += 1
+                atom.set_serial_number(adx)
+                atom.set_parent(residue)
+
+                self._AtomGraph.add_node(atom)
+
+    def remove_residues(self, *residues: Union[int, bio.Residue.Residue]) -> list:
+        """
+        Remove residues from the structure
+
+        Parameters
+        ----------
+        residues : int or bio.Residue.Residue
+            The residues to remove, either the object itself or its seqid
+
+        Returns
+        -------
+        list
+            The removed residues
+        """
+        _residues = []
+        for residue in residues:
+            if isinstance(residue, int):
+                residue = self._chain.child_list[residue - 1]
+
+            for atom in residue.child_list:
+                self.purge_bonds(atom)
+                self._AtomGraph.remove_node(atom)
+
+            self._chain.detach_child(residue.id)
+            _residues.append(residue)
+        return _residues
+
+    def add_atoms(self, *atoms: bio.Atom.Atom, residue=None, _copy: bool = False):
+        """
+        Add atoms to the structure. This will automatically adjust the atom's serial number to
+        fit into the structure.
+
+        Parameters
+        ----------
+        atoms : bio.Atom.Atom
+            The atoms to add
+        residue : int or str
+            The residue to which the atoms should be added,
+            this may be either the seqid or the residue name,
+            if None the atoms are added to the last residue.
+            Note, that if multiple identically named residues
+            are present, the first one is chosen, so using the
+            seqid is a safer option!
+        _copy : bool
+            If True, the atoms are copied and then added to the structure.
+            This will leave the original atoms (and their parent structures) untouched.
+        """
+        if residue is not None:
+            if isinstance(residue, int):
+                residue = self._chain.child_list[residue - 1]
+            elif isinstance(residue, str):
+                residue = next(i for i in self._chain.child_list if i.resname == i)
+            target = residue
+        else:
+            target = self._chain.child_list[-1]
+
+        _max_serial = len(self.atoms)
+        for atom in atoms:
+            if _copy:
+                atom = deepcopy(atom)
+            _max_serial += 1
+            atom.set_serial_number(_max_serial)
+            target.add(atom)
+            self._AtomGraph.add_node(atom)
+
+    def remove_atoms(self, *atoms: Union[int, str, tuple, bio.Atom.Atom]) -> list:
+        """
+        Remove one or more atoms from the structure
+
+        Parameters
+        ----------
+        atoms
+            The atoms to remove, which can either be directly provided (biopython object)
+            or by providing the serial number, the full_id or the id of the atoms.
+
+        Returns
+        -------
+        list
+            The removed atoms
+        """
+        _atoms = []
+        for atom in atoms:
+
+            atom = self.get_atom(atom)
+            self._AtomGraph.remove_node(atom)
+            self.purge_bonds(atom)
+            atom.get_parent().detach_child(atom.id)
+
+            _atoms.append(atom)
+
+        # reindex the atoms
+        adx = 0
+        for atom in self.atoms:
+            adx += 1
+            atom.serial_number = adx
+
+        return _atoms
 
     def add_bond(
         self,
@@ -318,8 +791,10 @@ class BaseEntity:
         atom1 = self.get_atom(atom1)
         atom2 = self.get_atom(atom2)
 
-        bond = (atom1, atom2)
-        self._bonds.append(bond)
+        if (atom1, atom2) not in self._bonds:
+            self._bonds.append((atom1, atom2))
+        if (atom1, atom2) not in self._AtomGraph.edges:
+            self._AtomGraph.add_edge(atom1, atom2)
 
     def remove_bond(
         self,
@@ -339,23 +814,22 @@ class BaseEntity:
             If True, the bond will be removed in both directions, i.e. if the bond is (1, 2)
             it will be removed if either (1, 2) or (2, 1) is provided.
         """
+        if either_way:
+            self.remove_bond(atom1, atom2, either_way=False)
+            self.remove_bond(atom2, atom1, either_way=False)
+            return
+
         atom1 = self.get_atom(atom1)
         atom2 = self.get_atom(atom2)
 
-        bond = (atom1, atom2)
-        if either_way:
-            if bond in self._bonds:
-                self._bonds.remove(bond)
-            if bond[::-1] in self._bonds:
-                self._bonds.remove(bond[::-1])
-        else:
-            self._bonds.remove(bond)
-        if bond in self._locked_bonds:
-            self._locked_bonds.remove(bond)
-        if either_way and bond[::-1] in self._locked_bonds:
-            self._locked_bonds.remove(bond[::-1])
+        if (atom1, atom2) in self._bonds:
+            self._bonds.remove((atom1, atom2))
+        if (atom1, atom2) in self._AtomGraph.edges:
+            self._AtomGraph.remove_edge(atom1, atom2)
+        if (atom1, atom2) in self.locked_bonds:
+            self.locked_bonds.remove((atom1, atom2))
 
-    def purge_bonds(self, atom: Union[int, str, bio.Atom.Atom]):
+    def purge_bonds(self, atom: Union[int, str, bio.Atom.Atom] = None):
         """
         Remove all bonds connected to an atom
 
@@ -363,22 +837,17 @@ class BaseEntity:
         ----------
         atom
             The atom to remove the bonds from, which can either be directly provided (biopython object)
-            or by providing the serial number, the full_id or the id of the atoms.
+            or by providing the serial number, the full_id or the id of the atoms. If None, all bonds
+            are removed.
         """
-        atom = self.get_atom(atom)
-        bonds = [i for i in self._bonds if atom in i]
-        for bond in bonds:
-            if bond in self._bonds:
-                self._bonds.remove(bond)
-            elif bond[::-1] in self._bonds:
-                self._bonds.remove(bond[::-1])
+        if atom is None:
+            self.bonds = []
+            return
 
-        bonds = [i for i in self._locked_bonds if atom in i]
+        atom = self.get_atom(atom)
+        bonds = [i for i in self.bonds if atom in i]
         for bond in bonds:
-            if bond in self._locked_bonds:
-                self._locked_bonds.remove(bond)
-            elif bond[::-1] in self._locked_bonds:
-                self._locked_bonds.remove(bond[::-1])
+            self.remove_bond(*bond)
 
     def lock_all(self, both_ways: bool = True):
         """
@@ -391,15 +860,15 @@ class BaseEntity:
             i.e. atom1 --- atom2 direction will be unavailable for
             rotation as well as atom2 --- atom1 direction as well.
         """
-        self._locked_bonds = set(self._bonds)
+        self.locked_bonds = set(self.bonds)
         if both_ways:
-            self._locked_bonds.update(b[::-1] for b in self._bonds)
+            self.locked_bonds.update(b[::-1] for b in self.bonds)
 
     def unlock_all(self):
         """
         Unlock all bonds in the structure
         """
-        self._locked_bonds = set()
+        self._AtomGraph.unlock_all()
 
     def lock_bond(
         self,
@@ -419,13 +888,14 @@ class BaseEntity:
         both_ways : bool
             If True, the bond is locked in both directions. By default the bond is only locked in the specified direction.
         """
+        if both_ways:
+            self.lock_bond(atom2, atom1, both_ways=False)
+            self.lock_bond(atom2, atom1, both_ways=False)
+            return
+
         atom1 = self.get_atom(atom1)
         atom2 = self.get_atom(atom2)
-
-        bond = (atom1, atom2)
-        self._locked_bonds.add(bond)
-        if both_ways:
-            self._locked_bonds.add(bond[::-1])
+        self._AtomGraph.lock_edge(atom1, atom2)
 
     def unlock_bond(
         self,
@@ -445,17 +915,17 @@ class BaseEntity:
         both_ways : bool
             If True, the bond is unlocked in both directions. By default the bond is only unlocked in the specified direction.
         """
+        if both_ways:
+            self.unlock_bond(atom1, atom2, both_ways=False)
+            self.unlock_bond(atom2, atom1, both_ways=False)
+            return
+
         atom1 = self.get_atom(atom1)
         atom2 = self.get_atom(atom2)
-
-        bond = (atom1, atom2)
-        if both_ways:
-            if bond in self._locked_bonds:
-                self._locked_bonds.remove(bond)
-            if bond[::-1] in self._locked_bonds:
-                self._locked_bonds.remove(bond[::-1])
-            return
-        self._locked_bonds.remove(bond)
+        if (atom1, atom2) in self._AtomGraph.edges:
+            self._AtomGraph.unlock_edge(atom1, atom2)
+        if both_ways and (atom2, atom1) in self._AtomGraph.edges:
+            self._AtomGraph.unlock_edge(atom2, atom1)
 
     def is_locked(
         self,
@@ -480,7 +950,49 @@ class BaseEntity:
         atom2 = self.get_atom(atom2)
 
         bond = (atom1, atom2)
-        return bond in self._locked_bonds
+        return bond in self.locked_bonds
+
+    def direct_connections(self, triplet: bool = True, by: str = "serial"):
+        """
+        "Sort" the bonds that connect different residues
+        such that each bond's first atom is the one earlier in the sequence.
+
+        Parameters
+        ----------
+        triplet : bool
+            If True, triplet-connections are used.
+        by : str
+            The attribute to sort by. Can be either "serial", "resid" or "root".
+            In the case of "serial", the bonds are sorted by the serial number of the first atom.
+            In the case of "resid", the bonds are sorted by the residue number of the first atom.
+            In this case, bonds connecting atoms from the same residue are sorted by the serial number of the first atom.
+            In the case of "root" the bonds are sorted based on the graph distances to the root atom,
+            provided that the root atom is set (otherwise the atom with serial 1 is used).
+        """
+        bonds = self.get_residue_connections(triplet=triplet, directed=False)
+
+        if by == "serial":
+            for bond in bonds:
+                if bond[0].serial_number > bond[1].serial_number:
+                    self.remove_bond(*bond)
+                    self.add_bond(*bond[::-1])
+        elif by == "resid":
+            for bond in bonds:
+                if bond[0].parent.id[1] > bond[1].parent.id[1] or (
+                    bond[0].parent.id[1] == bond[1].parent.id[1]
+                    and bond[0].serial_number > bond[1].serial_number
+                ):
+                    self.remove_bond(*bond)
+                    self.add_bond(*bond[::-1])
+        elif by == "root":
+            root = self._root_atom
+            if root is None:
+                root = self.get_atom(1)
+            directed = self._AtomGraph.direct_edges(root, bonds)
+            for old, new in zip(bonds, directed):
+                if old != new:
+                    self.remove_bond(*old)
+                    self.add_bond(*new)
 
     def infer_bonds(
         self, max_bond_length: float = None, restrict_residues: bool = True
@@ -505,7 +1017,63 @@ class BaseEntity:
         bonds = structural.infer_bonds(
             self._base_struct, max_bond_length, restrict_residues
         )
-        self._bonds.extend([b for b in bonds if b not in self._bonds])
+        for bond in bonds:
+            if bond not in self.bonds:
+                self.add_bond(*bond)
+        return bonds
+
+    def get_residue_connections(self, triplet: bool = True, directed: bool = True):
+        """
+        Get bonds between atoms that connect different residues in the structure
+        This method is different from `infer_residue_connections` in that it works
+        with the already present bonds in the molecule instead of computing new ones.
+
+        Parameters
+        ----------
+        triplet : bool
+            Whether to include bonds between atoms that are in the same residue
+            but neighboring a bond that connects different residues. This is useful
+            for residues that have a side chain that is connected to the main chain.
+            This is mostly useful if you intend to use the returned list for some purpose,
+            because the additionally returned bonds are already present in the structure
+            from inference or standard-bond applying and therefore do not actually add any
+            particular information to the Molecule object itself.
+        directed : bool
+            Whether to return the bonds in the direction of the sequence.
+
+        Returns
+        -------
+        set
+            A set of tuples of atom pairs that are bonded and connect different residues
+        """
+        bonds = set(i for i in self.bonds if i[0].get_parent() != i[1].get_parent())
+
+        if triplet:
+            _new = set()
+            for atom1, atom2 in bonds:
+
+                neighs = self.get_neighbors(atom1)
+                neighs.remove(atom2)
+                if len(neighs) == 1:
+                    neigh = neighs.pop()
+                    if neigh.get_parent() == atom1.get_parent():
+                        _new.add((atom1, neigh))
+                    continue
+
+                neighs = self.get_neighbors(atom2)
+                neighs.remove(atom1)
+                if len(neighs) == 1:
+                    neigh = neighs.pop()
+                    if neigh.get_parent() == atom2.get_parent():
+                        _new.add((atom2, neigh))
+                    continue
+
+            bonds.update(_new)
+
+        if directed:
+            root = self._root_atom if self._root_atom is not None else self.get_atom(1)
+            bonds = self._AtomGraph.direct_edges(root, bonds)
+            bonds = set(bonds)
         return bonds
 
     def infer_residue_connections(
@@ -558,7 +1126,30 @@ class BaseEntity:
         bonds = structural.infer_residue_connections(
             self._base_struct, max_bond_length, triplet
         )
-        self._bonds.extend([b for b in bonds if b not in self._bonds])
+        for bond in bonds:
+            if bond not in self.bonds:
+                self.add_bond(*bond)
+        return bonds
+
+    def apply_standard_bonds(self, _topology=None) -> list:
+        """
+        Get the standard bonds for the structure
+
+        Parameters
+        ----------
+        _topology
+            A specific topology to use for referencing.
+            If None, the default CHARMM topology is used.
+
+        Returns
+        -------
+        list
+            A list of tuples of atom pairs that are bonded
+        """
+        bonds = structural.apply_standard_bonds(self._base_struct, _topology)
+        for bond in bonds:
+            if bond not in self.bonds:
+                self.add_bond(*bond)
         return bonds
 
     def autolabel(self, _compounds=None):
@@ -645,17 +1236,17 @@ class BaseEntity:
         ----------
         locked : bool
             If True, the graph will also migrate the information on any locked bonds into the graph.
+
+        Returns
+        -------
+        AtomGraph
+            The generated graph
         """
-        if len(self._bonds) == 0:
-            warnings.warn(
-                "No bonds found (yet), be sure to first apply or infer bonds to generate a graph"
-            )
-            return
-        self._AtomGraph = AtomGraph(self._base_struct.id, self._bonds)
-        if locked:
-            for bond in self._locked_bonds:
-                self._AtomGraph.lock_edge(*bond)
-        return self._AtomGraph
+        graph = deepcopy(self._AtomGraph)
+        if not locked:
+            graph.unlock_all()
+        graph.direct_edges()
+        return graph
 
     def make_residue_graph(self, detailed: bool = False, locked: bool = True):
         """
@@ -671,13 +1262,8 @@ class BaseEntity:
             If True, the graph will also migrate the information on any locked bonds into the graph.
             This is only relevant if detailed is True.
         """
-        if len(self._bonds) == 0:
-            warnings.warn(
-                "No bonds found (yet), be sure to first apply or infer bonds to generate a graph"
-            )
-            return
-        self._ResidueGraph = ResidueGraph.from_molecule(self, detailed, locked)
-        return self._ResidueGraph
+        graph = ResidueGraph.from_molecule(self, detailed, locked)
+        return graph
 
     def to_pdb(self, filename: str):
         """
@@ -691,3 +1277,10 @@ class BaseEntity:
         io = bio.PDBIO()
         io.set_structure(self._base_struct)
         io.save(filename)
+
+    def __mod__(self, patch):
+        """
+        Add a patch to the molecule using the % operator (i.e. mol % patch)
+        """
+        self.set_patch(patch)
+        return self

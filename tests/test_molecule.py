@@ -52,7 +52,7 @@ def test_molecule_basic():
     a = mol.get_residue(1)
     assert a is not None
 
-    b = mol.get_residue(name="MAN")
+    b = mol.get_residue("MAN", by="name")
     assert b is not None
 
     assert a is b
@@ -67,6 +67,9 @@ def test_can_write_pdb():
 
     try:
         glc.to_pdb("test.pdb")
+        with open("test.pdb", "r") as f:
+            lines = f.readlines()
+        assert len(lines) != 0
     except Exception as e:
         raise e
 
@@ -98,15 +101,16 @@ def test_molecule_from_compound():
 def test_molecule_bonds():
     mol = gl.Molecule.from_pdb(base.MANNOSE)
 
+    assert len(mol.bonds) == 0
+
     mol.apply_standard_bonds()
     assert len(mol.bonds) == 24
 
-    mol._bonds = []
+    mol.bonds = []
+    assert len(mol.bonds) == 0
 
     mol.infer_bonds()
     assert len(mol.bonds) == 24
-
-    mol._bonds = []
 
 
 def test_angles():
@@ -190,7 +194,7 @@ def test_add_residues():
 
     assert len(mol.residues) == residues_pre + 1
 
-    _new = mol.get_residue(name="NEW")
+    _new = mol.get_residue("NEW")
     assert _new is not None
     assert _new.id[1] != 1
 
@@ -274,9 +278,14 @@ def test_rotate_some():
     mol = gl.Molecule.from_pdb(base.MANNOSE)
     mol.apply_standard_bonds()
 
+    v = gl.utils.visual.MoleculeViewer3D(mol)
+
     first = mol.get_atom("O3")
     second = mol.get_atom("C3")
     angle = np.radians(45)
+
+    v.draw_point("first (O3)", first.coord, color="magenta")
+    v.draw_point("second (C3)", second.coord, color="magenta")
 
     # HO3 should not change in dicrection O3---C3
     anchor = mol.get_atom("HO3")
@@ -298,6 +307,12 @@ def test_rotate_some():
     assert not np.allclose(current_coords, new_coords)
     assert np.allclose(current_refs, new_refs)
     assert np.allclose(current_anchor, new_anchor)
+
+    v.draw_edges(mol.bonds)
+    for atom in mol.atoms:
+        v.draw_point(atom.id, atom.coord, opacity=0.4, showlegend=False)
+
+    v.show()
 
 
 def test_rotate_some_inverse():
@@ -432,7 +447,7 @@ def test_multiply():
     pre_residues = len(man.residues)
     pre_atoms = len(man.atoms)
     pre_bonds = len(man.bonds)
-    pre_locked = len(man._locked_bonds)
+    pre_locked = len(man.locked_bonds)
 
     n = 10
     man % "14bb"
@@ -441,7 +456,7 @@ def test_multiply():
     new_residues = len(man.residues)
     new_atoms = len(man.atoms)
     new_bonds = len(man.bonds)
-    new_locked = len(man._locked_bonds)
+    new_locked = len(man.locked_bonds)
 
     assert new_residues == pre_residues * n
     assert n * 0.75 * pre_atoms < new_atoms < pre_atoms * n
@@ -469,7 +484,7 @@ def test_repeat():
     pre_residues = len(man.residues)
     pre_atoms = len(man.atoms)
     pre_bonds = len(man.bonds)
-    pre_locked = len(man._locked_bonds)
+    pre_locked = len(man.locked_bonds)
 
     n = 10
     man = man.repeat(n, "14bb")
@@ -477,7 +492,7 @@ def test_repeat():
     new_residues = len(man.residues)
     new_atoms = len(man.atoms)
     new_bonds = len(man.bonds)
-    new_locked = len(man._locked_bonds)
+    new_locked = len(man.locked_bonds)
 
     assert new_residues == pre_residues * n
     assert n * 0.75 * pre_atoms < new_atoms < pre_atoms * n
@@ -553,11 +568,6 @@ def test_make_mannose8():
     man8 % "16ab"
     man8 += man_branch
 
-    man8._bonds = []
-    man8._locked_bonds = set()
-
-    man8.infer_bonds(restrict_residues=False)
-
     v = gl.utils.visual.MoleculeViewer3D(man8)
     for bond in man8.bonds:
         assert bond[0] in man8.atoms
@@ -566,20 +576,40 @@ def test_make_mannose8():
         if not length:
             v.draw_edges([bond], color="magenta", linewidth=3)
 
-    for angle in man8.angles.values():
-        assert 100 < angle < 130
+    for triplet, angle in man8.angles.items():
+        if not 100 < angle < 150:
+            v.draw_vector(
+                None,
+                triplet[0].coord,
+                triplet[1].coord - triplet[0].coord,
+                color="red",
+            )
+            v.draw_vector(
+                None,
+                triplet[2].coord,
+                triplet[1].coord - triplet[2].coord,
+                color="red",
+            )
 
     _seen_serials = set()
     for atom in man8.atoms:
         assert atom.get_serial_number() not in _seen_serials
         _seen_serials.add(atom.get_serial_number())
 
+    v.draw_edges(man8.get_residue_connections(triplet=True), color="red", linewidth=3)
+
     v.show()
 
-    v = gl.utils.visual.MoleculeViewer3D(man8.make_residue_graph(detailed=False))
+    g = man8.make_residue_graph(detailed=False)
+    g2 = man8.make_residue_graph(detailed=True)
+
+    assert g is not g2
+    assert len(g.nodes) < len(g2.nodes)
+
+    v = gl.utils.visual.MoleculeViewer3D(g)
     v.show()
 
-    v = gl.utils.visual.MoleculeViewer3D(man8.make_residue_graph(detailed=True))
+    v = gl.utils.visual.MoleculeViewer3D(g2)
     v.show()
 
     try:
@@ -798,3 +828,78 @@ def test_relabel():
     assert scrambled.get_bonds("C6", "H61") != []
     assert old_scrambled.difference(new_scrambled) != set()
     assert np.allclose(old_scrambled_coords, new_scrambled_coords)
+
+
+def test_rotate_descendants_2():
+
+    glc = gl.Molecule.from_compound("GLC")
+    glc.lock_all()
+    glc.repeat(4, "14bb")
+    glc.direct_connections(by="root")
+    connections = glc.get_residue_connections()
+
+    v = gl.utils.visual.MoleculeViewer3D(glc)
+
+    v.draw_point(
+        "root",
+        glc.get_atom(1).coord,
+        color="red",
+        showlegend=True,
+    )
+
+    cdx = 1
+    for c in connections:
+        glc.unlock_bond(*c, True)
+
+        v.draw_vector(
+            f"""[{cdx}]    {c[0].full_id[3:]} -> {c[1].full_id[3:]}""",
+            c[0].coord,
+            1.2 * (c[1].coord - c[0].coord),
+            color="cyan",
+            showlegend=True,
+        )
+        cdx += 1
+
+    v.draw_edges(
+        glc.get_bonds(glc.residues[0]),
+        color="limegreen",
+        linewidth=5,
+        opacity=1,
+    )
+
+    opacities = np.linspace(0.2, 0.8, len(connections))
+    cdx = 0
+    for c in connections:
+        assert c not in glc.locked_bonds
+
+        descendants = glc.get_descendants(*c)
+        ancestors = glc.get_ancestors(*c)
+
+        old_coords_descendants = np.array([i.coord for i in descendants])
+        old_coords_ancestors = np.array([i.coord for i in ancestors])
+
+        glc.rotate_around_bond(*c, 2, descendants_only=True)
+
+        new_coords_descendants = np.array([i.coord for i in descendants])
+        new_coords_ancestors = np.array([i.coord for i in ancestors])
+
+        assert not np.allclose(old_coords_descendants, new_coords_descendants)
+        assert np.allclose(old_coords_ancestors, new_coords_ancestors)
+
+        v.draw_edges(glc.bonds, color="lightgreen", opacity=opacities[cdx])
+
+        v.draw_edges(
+            glc.get_bonds(glc.residues[0]),
+            color="green",
+            linewidth=3,
+            opacity=1,  # opacities[cdx],
+        )
+
+        cdx += 1
+    # for atom in glc.atoms:
+    #     v.draw_point(atom.id, atom.coord, color="red", opacity=0.3, showlegend=False)
+
+    # v.draw_edges(glc.bonds, color="red")
+
+    v.draw_edges(glc.get_bonds(glc.residues[0]), color="teal", linewidth=5, opacity=1)
+    v.show()

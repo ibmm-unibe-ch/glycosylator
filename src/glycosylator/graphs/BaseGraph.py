@@ -3,6 +3,7 @@ The basic Class for Molecular Graphs
 """
 
 from abc import abstractmethod
+import warnings
 
 import Bio.PDB as bio
 import networkx as nx
@@ -16,28 +17,39 @@ class BaseGraph(nx.Graph):
     """
 
     def __init__(self, id, bonds: list):
-        if len(bonds) == 0:
-            raise ValueError("Cannot create a graph with no bonds")
         super().__init__(bonds)
         self.id = id
         self._structure = None
         self._neighborhood = None
         self._locked_edges = set()
+        self._structure_was_searched = False
 
     @property
     def structure(self):
         """
         Returns the underlying `bio.PDB.Structure` object
         """
-        if not self._structure:
+        if not self._structure_was_searched:
             self._structure = self._get_structure()
+            self._structure_was_searched = True
         return self._structure
+
+    @property
+    def chains(self):
+        """
+        Returns the chains in the molecule
+        """
+        if not self.structure:
+            return
+        return list(self.structure.get_chains())
 
     @property
     def residues(self):
         """
         Returns the residues in the molecule
         """
+        if not self.structure:
+            return
         return list(self.structure.get_residues())
 
     @property
@@ -45,6 +57,8 @@ class BaseGraph(nx.Graph):
         """
         Returns the atoms in the molecule
         """
+        if not self.structure:
+            return
         return list(self.structure.get_atoms())
 
     @property
@@ -164,6 +178,13 @@ class BaseGraph(nx.Graph):
 
         return neighbors
 
+    def direct_edges(self):
+        """
+        Sort all edges such that the first node is always earlier
+        in the sequence than the second node.
+        """
+        raise NotImplementedError
+
     def lock_edge(self, node_1, node_2):
         """
         Lock an edge, preventing it from being rotated.
@@ -184,7 +205,8 @@ class BaseGraph(nx.Graph):
         node_1, node_2
             The nodes that define the edge
         """
-        self._locked_edges.remove((node_1, node_2))
+        if (node_1, node_2) in self._locked_edges:
+            self._locked_edges.remove((node_1, node_2))
 
     def is_locked(self, node_1, node_2):
         """
@@ -270,7 +292,7 @@ class BaseGraph(nx.Graph):
             nodes = {i: i.coord for i in self.get_descendants(node_1, node_2)}
             nodes[node_2] = node_2.coord
         else:
-            nodes = nx.get_node_attributes(self, "coord")
+            nodes = {i: i.coord for i in self.nodes}
 
         node_coords = np.array(tuple(nodes.values()))
 
@@ -298,8 +320,12 @@ class BaseGraph(nx.Graph):
         Get the underlying `bio.PDB.Structure` object
         """
         if not hasattr(list(self.nodes)[0], "get_parent"):
-            raise ValueError("Nodes are not Biopython entities with linked parents!")
+            warnings.warn("Nodes are not Biopython entities with linked parents!")
+            return None
         structure = list(self.nodes)[0].get_parent()
+        if structure is None:
+            warnings.warn("Nodes do not seem to have linked parents!")
+            return None
         while not isinstance(structure, bio.Structure.Structure):
             structure = structure.get_parent()
         return structure

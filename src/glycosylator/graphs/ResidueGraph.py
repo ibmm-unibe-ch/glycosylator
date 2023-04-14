@@ -14,13 +14,20 @@ class ResidueGraph(BaseGraph):
     A graph representation of residues bonded together as an abstraction of a large contiguous molecule.
     """
 
+    __idx_method__ = (
+        lambda x: x.serial_number if hasattr(x, "serial_number") else x.id[1]
+    )
+
     def __init__(self, id, bonds: list):
         super().__init__(id, bonds)
         self._AtomGraph = None
         self._atomic_bonds = {}
+        self._atomic_bonds_list = []
+
         self._residues = {i.id: i for i in self.nodes}
         for r in self.nodes:
             r.coord = r.center_of_mass()
+
         nx.set_node_attributes(
             self, {i: i.center_of_mass() for i in self.nodes}, "coord"
         )
@@ -47,18 +54,38 @@ class ResidueGraph(BaseGraph):
         ResidueGraph
             The ResidueGraph representation of the molecule
         """
-        atomgraph = mol.make_atom_graph()
-        new = cls.from_AtomGraph(atomgraph)
+        if len(mol.residues) < 2:
+            raise ValueError(
+                "Molecule must have at least 2 residues to make a ResidueGraph"
+            )
+
+        connections = mol.get_residue_connections(triplet=True)
+        main_connections = [
+            (i.get_parent(), j.get_parent())
+            for i, j in connections
+            if i.get_parent() != j.get_parent()
+        ]
+        new = cls(mol.id, main_connections)
+        new._AtomGraph = mol._AtomGraph
+        new._structure = mol.structure
+
+        new._atomic_bonds_list = list(connections)
+
+        for bond in connections:
+            parent_1 = bond[0].get_parent()
+            parent_2 = bond[1].get_parent()
+            new._atomic_bonds.setdefault((parent_1, parent_2), []).append(bond)
+
         if detailed:
             new.make_detailed()
             if locked:
                 new._locked_edges.update(
-                    (i for i in mol._locked_bonds if i in new.edges)
+                    (i for i in mol.locked_bonds if i in new.edges)
                 )
         return new
 
     @classmethod
-    def from_AtomGraph(cls, atom_graph):
+    def from_AtomGraph(cls, atom_graph, infer_connections: bool = None):
         """
         Create a ResidueGraph from an AtomGraph.
 
@@ -66,6 +93,11 @@ class ResidueGraph(BaseGraph):
         ----------
         atom_graph : AtomGraph
             The AtomGraph representation of the molecule
+        infer_connections : bool
+            Whether to infer the bonds between residues from the atom-level bonds.
+            If the AtomGraph already contains atom-level bonds that connect different residues,
+            this is not necessary. If this is set to None, connections will be inferred automatically
+            if no atom-level bonds are present in the AtomGraph.
 
         Returns
         -------
@@ -73,66 +105,38 @@ class ResidueGraph(BaseGraph):
             The ResidueGraph representation of the molecule
         """
         id = atom_graph.id
-        # we first get all the atom-resolution bonds between different residues,
-        # then we get the participating parents (e.g. residues) and make the edges from them.
-        main_connections = struct.infer_residue_connections(
-            atom_graph.structure, triplet=False
-        )
-        bonds = struct.infer_residue_connections(atom_graph.structure, triplet=True)
-        _bonds = [(p1.get_parent(), p2.get_parent()) for p1, p2 in main_connections]
-        new = cls(id, _bonds)
+
+        connections = [
+            i for i in atom_graph.edges if i[0].get_parent() != i[1].get_parent()
+        ]
+        main_connections = [
+            (p1.get_parent(), p2.get_parent()) for p1, p2 in connections
+        ]
+        if infer_connections is None:
+            infer_connections = len(connections) == 0
+
+        if infer_connections:
+            main_connections = struct.infer_residue_connections(
+                atom_graph.structure, triplet=False
+            )
+            main_connections = [
+                (p1.get_parent(), p2.get_parent()) for p1, p2 in main_connections
+            ]
+            connections = struct.infer_residue_connections(
+                atom_graph.structure, triplet=True
+            )
+
+        if len(main_connections) < 1:
+            raise ValueError("No connections between residues could be inferred!")
+
+        new = cls(id, main_connections)
         new._AtomGraph = atom_graph
 
-        for bond in bonds:
+        for bond in connections:
             parent_1 = bond[0].get_parent()
             parent_2 = bond[1].get_parent()
             new._atomic_bonds.setdefault((parent_1, parent_2), []).append(bond)
 
-        return new
-
-    @classmethod
-    def from_pdb(
-        cls,
-        filename: str,
-        id=None,
-        apply_standard_bonds: bool = True,
-        infer_bonds: bool = False,
-        max_bond_length: float = None,
-        restrict_residues: bool = True,
-    ):
-        """
-        Create a ResidueGraph from a PDB of a single molecule
-
-        Parameters
-        ----------
-        filename : str
-            Path to the PDB file
-        id : str
-            The ID of the molecule. By default the filename is used.
-        apply_standard_bonds : bool
-            Whether to apply standard bonds from known molecule connectivities.
-        infer_bonds : bool
-            Whether to infer bonds from the distance between atoms.
-        max_bond_length : float
-            The maximum distance between atoms to infer a bond.
-        restrict_residues : bool
-            Whether to restrict to atoms of the same residue when inferring bonds.
-
-        Returns
-        -------
-        ResidueGraph
-            The ResidueGraph representation of the molecule
-        """
-        _atom_graph = AtomGraph.from_pdb(
-            filename,
-            id,
-            apply_standard_bonds,
-            infer_bonds,
-            max_bond_length,
-            restrict_residues,
-        )
-
-        new = cls.from_AtomGraph(_atom_graph)
         return new
 
     def make_detailed(self):
@@ -145,23 +149,27 @@ class ResidueGraph(BaseGraph):
         This function is not reversible.
         """
 
-        for residue_pair, bonds in self._atomic_bonds.items():
-            if residue_pair in self.edges:
-                self.remove_edge(*residue_pair)
+        self.clear_edges()
 
-            for atom1, atom2 in bonds:
+        for edge in self._atomic_bonds_list:
+            self.add_edge(*edge)
 
-                # add edges between the atoms
-                self.add_edge(atom1, atom2)
+        triplets = struct.compute_triplets(self._atomic_bonds_list)
+        for triplet in triplets:
+            e1 = (triplet[0], triplet[0].get_parent())
+            e3 = (triplet[2], triplet[2].get_parent())
+            self.add_edge(*e1)
+            self.add_edge(*e3)
 
-                p1 = atom1.get_parent()
-                p2 = atom2.get_parent()
-
-                # and selectively connect either atom to their center of mass residue
-                if p1 != p2:
-                    self.add_edge(atom2, p2)
-                else:
-                    self.add_edge(atom1, p1)
+    def direct_edges(self):
+        """
+        Sort the edges such that the first atom in each edge
+        is the one with the lower serial number.
+        """
+        for edge in self.edges:
+            if self.__idx_method__(edge[0]) > self.__idx_method__(edge[1]):
+                self.remove_edge(*edge)
+                self.add_edge(edge[1], edge[0])
 
     def lock_centers(self):
         """
@@ -169,9 +177,13 @@ class ResidueGraph(BaseGraph):
         This only applies to detailed graphs.
         """
         for edge in self.edges:
-            if isinstance(edge[0], bio.Residue.Residue) and isinstance(edge[1],bio.Atom.Atom):
+            if isinstance(edge[0], bio.Residue.Residue) and isinstance(
+                edge[1], bio.Atom.Atom
+            ):
                 self._locked_edges.add(edge)
-            elif isinstance(edge[0], bio.Atom.Atom) and isinstance(edge[1], bio.Residue.Residue):
+            elif isinstance(edge[0], bio.Atom.Atom) and isinstance(
+                edge[1], bio.Residue.Residue
+            ):
                 self._locked_edges.add(edge)
 
     @property
