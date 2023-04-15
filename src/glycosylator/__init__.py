@@ -6,6 +6,7 @@
 import glycosylator.utils as utils
 import glycosylator.resources as resources
 import glycosylator.graphs as graphs
+import glycosylator.optimizers as optimizers
 
 from glycosylator.core import *
 from glycosylator.utils import (
@@ -23,6 +24,7 @@ __all__ = [
     utils,
     resources,
     graphs,
+    optimizers,
     Molecule,
     get_default_parameters,
     get_default_topology,
