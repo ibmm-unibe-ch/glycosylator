@@ -6,6 +6,8 @@ import random
 import numpy as np
 import glycosylator as gl
 import base
+import timeit
+
 
 
 # =================================================================
@@ -330,8 +332,13 @@ def test_residue_graph_rotate_descendants_only():
     mol.infer_bonds(restrict_residues=False)
     graph = gl.graphs.ResidueGraph.from_molecule(mol, detailed=False)
 
+    v = gl.utils.visual.MoleculeViewer3D(graph)
+
     nag3 = mol.residues[1]
     bma = mol.residues[2]
+
+    v.draw_point("nag3", nag3.coord, color="red")
+    v.draw_point("bma", bma.coord, color="blue")
 
     descendants = graph.get_descendants(nag3, bma)
     others = set(i for i in graph.residues if i not in descendants)
@@ -339,7 +346,9 @@ def test_residue_graph_rotate_descendants_only():
     current_descendants = np.array([i.coord for i in descendants])
     current_others = np.array([i.coord for i in others])
 
-    graph.rotate_around_edge(nag3, bma, np.radians(35), descendants_only=True)
+    for i in range(5):
+        graph.rotate_around_edge(nag3, bma, np.radians(10), descendants_only=True)
+        v.draw_edges(graph.edges, color="magenta")
 
     new_descendants = np.array([i.coord for i in descendants])
     new_others = np.array([i.coord for i in others])
@@ -348,6 +357,50 @@ def test_residue_graph_rotate_descendants_only():
     assert not np.allclose(
         current_descendants, new_descendants
     ), "Descendants have not moved"
+
+    v.show()
+
+
+def test_residue_graph_rotate_descendants_only_detailed():
+    mol = gl.Molecule.from_pdb(base.MANNOSE9)
+    mol.infer_bonds(restrict_residues=False)
+    graph = gl.graphs.ResidueGraph.from_molecule(mol, detailed=True)
+
+    v = gl.utils.visual.MoleculeViewer3D(graph)
+
+
+    t1 = timeit.timeit()
+    cons = mol.get_residue_connections()
+    for i in range(20):
+
+        atom1, atom2 = cons.pop()
+
+        v.draw_point(str(i) + " atom1", atom1.coord, color="red")
+        v.draw_point(str(i) + " atom2", atom2.coord, color="blue")
+
+        descendants = graph.get_descendants(atom1, atom2)
+        others = set(i for i in graph.residues if i not in descendants)
+
+        current_descendants = np.array([i.coord for i in descendants])
+        current_others = np.array([i.coord for i in others])
+
+        for j in range(5):
+            graph.rotate_around_edge(
+                atom1, atom2, np.radians(10), descendants_only=True
+            )
+            v.draw_edges(graph.edges, color="magenta")
+
+        new_descendants = np.array([i.coord for i in descendants])
+        new_others = np.array([i.coord for i in others])
+
+        assert np.all(current_others == new_others), "Other residues have also moved!"
+        assert not np.allclose(
+            current_descendants, new_descendants
+        ), "Descendants have not moved"
+
+    t2 = timeit.timeit()
+    v.show()
+    print("Total: ", t2 - t1)
 
 
 def test_residue_graph_rotate_all():

@@ -282,7 +282,7 @@ def test_rotate_some():
 
     first = mol.get_atom("O3")
     second = mol.get_atom("C3")
-    angle = np.radians(45)
+    angle = np.radians(10)
 
     v.draw_point("first (O3)", first.coord, color="magenta")
     v.draw_point("second (C3)", second.coord, color="magenta")
@@ -290,27 +290,28 @@ def test_rotate_some():
     # HO3 should not change in dicrection O3---C3
     anchor = mol.get_atom("HO3")
 
-    current_coords = np.array(
-        [i.coord for i in mol.get_atoms() if i != first and i != second and i != anchor]
-    )
-    current_refs = np.array((first.coord, second.coord))
-    current_anchor = anchor.coord
+    for i in range(5):
+        current_coords = np.array(
+            [i.coord for i in mol.get_atoms() if i != first and i != second and i != anchor]
+        )
+        current_refs = np.array((first.coord, second.coord))
+        current_anchor = anchor.coord
 
-    mol.rotate_around_bond(first, second, angle, descendants_only=True)
+        mol.rotate_around_bond(first, second, angle, descendants_only=True)
 
-    new_coords = np.array(
-        [i.coord for i in mol.get_atoms() if i != first and i != second and i != anchor]
-    )
-    new_refs = np.array((first.coord, second.coord))
-    new_anchor = anchor.coord
+        new_coords = np.array(
+            [i.coord for i in mol.get_atoms() if i != first and i != second and i != anchor]
+        )
+        new_refs = np.array((first.coord, second.coord))
+        new_anchor = anchor.coord
 
-    assert not np.allclose(current_coords, new_coords)
-    assert np.allclose(current_refs, new_refs)
-    assert np.allclose(current_anchor, new_anchor)
+        assert not np.allclose(current_coords, new_coords)
+        assert np.allclose(current_refs, new_refs)
+        assert np.allclose(current_anchor, new_anchor)
 
-    v.draw_edges(mol.bonds)
-    for atom in mol.atoms:
-        v.draw_point(atom.id, atom.coord, opacity=0.4, showlegend=False)
+        v.draw_edges(mol.bonds)
+        for atom in mol.atoms:
+            v.draw_point(atom.id, atom.coord, opacity=0.4, showlegend=False)
 
     v.show()
 
