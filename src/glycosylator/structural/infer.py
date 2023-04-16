@@ -13,6 +13,105 @@ import glycosylator.structural.base as base
 import glycosylator.structural.neighbors as neighbors
 
 
+def compute_residue_radius(residue):
+    """
+    Compute the radius of a residue by computing the distance between its center of mass
+    and the furthest atom.
+
+    Parameters
+    ----------
+    residue : Bio.PDB.Residue.Residue
+        The residue to compute the radius for.
+
+    Returns
+    -------
+    radius : float
+        The radius of the residue.
+    """
+    atoms = list(residue.get_atoms())
+    atom_coords = np.array([atom.get_coord() for atom in atoms])
+    center = residue.center_of_mass()
+
+    distances = np.linalg.norm(atom_coords - center, axis=1)
+    radius = np.max(distances)
+    return radius
+
+
+def compute_outlier_atoms(residue, f: float = 1.5):
+    """
+    Compute which atoms of a residue are especially far away from the residues center of mass.
+    This function compute the distances between the center of mass of the residue and its atoms
+    and returns all atoms are further than `f * p75` away from the center of mass, where `p75`
+    is the 75th percentile of the distances.
+
+    Parameters
+    ----------
+    residue : Bio.PDB.Residue.Residue
+        The residue to compute the outlier atoms for.
+    f : float
+        The factor to multiply the 75th percentile with.
+
+    Returns
+    -------
+    outlier_atoms : list
+        A list of atoms that are considered outliers.
+    """
+    atoms = list(residue.get_atoms())
+    atom_coords = np.array([atom.get_coord() for atom in atoms])
+    center = residue.center_of_mass()
+
+    distances = np.linalg.norm(atom_coords - center, axis=1)
+    p75 = np.percentile(distances, 75)
+    f = f * p75
+
+    outlier_atoms = [atom for atom, distance in zip(atoms, distances) if distance > f]
+    return outlier_atoms
+
+
+def infer_surface_residues(
+    structure,
+    cutoff: int = 75,
+    fraction: float = None,
+):
+    """
+    Infer residues that are likely to be on the surface of the structure
+    using the Solvent accessible surface area (SASA) of the structure.
+
+    Parameters
+    ----------
+    structure : Bio.PDB.Structure.Structure
+        The structure to infer the surface residues from.
+    n_points : int
+        The number of points to sample on the surface of the structure.
+    cutoff : int
+        The cutoff to use for classifying residues as surface residues.
+    fraction : float
+        The fraction of residues to classify as surface residues. In this case,
+        the cutoff is adjusted to match the fraction of residues.
+
+    Returns
+    -------
+    surface_residues : list
+        A list of residues that are likely to be on the surface of the structure.
+    """
+
+    sasa = defaults.get_default_instance("bioSASA")
+    sasa.compute(structure, level="R")
+
+    sasa_values = np.array([residue.sasa for residue in structure.get_residues()])
+    sasa_values = sasa_values / sasa_values.max() * 100
+
+    if fraction is not None:
+        cutoff = np.percentile(sasa_values, 100 - fraction * 100)
+
+    surface_residues = [
+        residue
+        for residue, sasa in zip(structure.get_residues(), sasa_values)
+        if sasa > cutoff
+    ]
+    return surface_residues
+
+
 def infer_residue_connections(
     structure,
     bond_length: float = None,

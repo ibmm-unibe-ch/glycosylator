@@ -139,7 +139,12 @@ class ResidueGraph(BaseGraph):
 
         return new
 
-    def make_detailed(self):
+    def make_detailed(
+        self,
+        include_outliers: bool = False,
+        include_heteroatoms: bool = False,
+        f: float = 1.5,
+    ):
         """
         Use a detailed representation of the residues in the molecule by adding the specific atoms
         that connect the residues together. This is useful for visualization and analysis.
@@ -147,12 +152,30 @@ class ResidueGraph(BaseGraph):
         Note
         ----
         This function is not reversible.
+
+        Parameters
+        ----------
+        include_outliers : bool
+            If True, atoms that are not involved in residue connections are also included if their
+            distance to the residue's center of mass is greater than f * the 75th percentile of
+            atom distances to the residue's center of mass.
+
+        include_heteroatoms : bool
+            If True, all hetero-atoms are included in the detailed representation, regardless of
+            their distance to the residue center of mass.
+
+        f : float
+            The factor by which the 75th percentile of atom distances to the residue's center of mass
+            is multiplied to determine the cutoff distance for outlier atoms. This is only used if
+            include_outliers is True.
         """
 
         self.clear_edges()
 
+        _added_nodes = set()
         for edge in self._atomic_bonds_list:
             self.add_edge(*edge)
+            _added_nodes.update(edge)
 
         triplets = struct.compute_triplets(self._atomic_bonds_list)
         for triplet in triplets:
@@ -160,6 +183,23 @@ class ResidueGraph(BaseGraph):
             e3 = (triplet[2], triplet[2].get_parent())
             self.add_edge(*e1)
             self.add_edge(*e3)
+            _added_nodes.update(e1)
+
+        if include_outliers:
+            for residue in self.residues:
+                outliers = struct.compute_outlier_atoms(residue, f=f)
+                for outlier in outliers:
+                    if outlier not in _added_nodes:
+                        self.add_edge(outlier, residue)
+                        _added_nodes.add(outlier)
+
+        if include_heteroatoms:
+            for residue in self.residues:
+                for atom in residue.get_atoms():
+                    if atom.element not in ("C", "H"):
+                        if atom not in _added_nodes:
+                            self.add_edge(atom, residue)
+                            _added_nodes.add(atom)
 
     def direct_edges(self):
         """
@@ -287,14 +327,17 @@ class ResidueGraph(BaseGraph):
 
 if __name__ == "__main__":
 
+    import glycosylator as gl
+
     _man = "support/examples/MAN9.pdb"
-    _man = AtomGraph.from_pdb(_man)
-    man = ResidueGraph.from_AtomGraph(_man)
+    _man = gl.Molecule.from_pdb(_man)
+    _man.infer_bonds(restrict_residues=False)
+    man = ResidueGraph.from_molecule(_man)
 
     import matplotlib.pyplot as plt
     import networkx as nx
 
-    man.make_detailed()
+    man.make_detailed(True, f = 1)
 
     import glycosylator.utils.visual as vis
 
