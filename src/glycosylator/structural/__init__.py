@@ -6,6 +6,13 @@ from glycosylator.structural.patch import (
     __default_copy_copy_patcher__,
     __default_keep_copy_patcher__,
 )
+
+from glycosylator.structural.stitch import (
+    Stitcher,
+    __default_copy_copy_stitcher__,
+    __default_keep_copy_stitcher__,
+)
+
 from glycosylator.structural.neighbors import (
     AtomNeighborhood,
     ResidueNeighborhood,
