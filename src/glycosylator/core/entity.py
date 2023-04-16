@@ -393,9 +393,6 @@ class BaseEntity:
                 atom.set_parent(residue)
             # parent.add(residue)
 
-        self._AtomGraph = None
-        self._ResidueGraph = None
-
     def get_residues(self):
         return self._base_struct.get_residues()
 
@@ -1245,7 +1242,6 @@ class BaseEntity:
         graph = deepcopy(self._AtomGraph)
         if not locked:
             graph.unlock_all()
-        graph.direct_edges()
         return graph
 
     def make_residue_graph(self, detailed: bool = False, locked: bool = True):
