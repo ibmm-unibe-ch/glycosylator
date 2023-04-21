@@ -778,10 +778,10 @@ class BaseEntity:
         for residue in residues:
             p = residue.get_parent()
             if p:
-                p.detach_child(residue.id)
+                residue.detach_parent()
             if _copy and p is not None:
                 r = deepcopy(residue)
-                p.add(residue)
+                residue.set_parent(p)
                 residue = r
 
             rdx += 1

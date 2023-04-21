@@ -90,11 +90,19 @@ class Scaffold(entity.BaseEntity):
         rdx = 1
         adx = 1
 
+        res_chain_map = {
+            residue: chain for chain in self.chains for residue in chain.child_list
+        }
+
         for chain in self.chains:
             chain.id = chr(cdx)
             cdx += 1
 
-            for residue in chain.child_list:
+            residues = list(chain.child_list)
+            for residue in residues:
+                residue.detach_parent()
+
+            for residue in residues:
                 residue.id = (residue.id[0], rdx, *residue.id[2:])
                 rdx += 1
                 for atom in residue.child_list:
@@ -430,6 +438,10 @@ if __name__ == "__main__":
     mol.reindex()
 
     mol.root_atom = 1
+
+    import time
+
+    t1 = time.time()
     s.attach(
         mol,
         remove_atoms=("HD22",),
@@ -437,5 +449,8 @@ if __name__ == "__main__":
         at_atom="ND2",
         sequon="N-linked",
     )
+    t2 = time.time()
     print("Oh yeah - it works!")
+    s.to_pdb("final_scaffold_superduper.pdb")
+    print(f"Time: {t2 - t1}")
     pass
