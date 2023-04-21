@@ -103,13 +103,10 @@ class Stitcher(base.Connector):
         This will move the source molecule such that its anchor atom is in the position
         of one of the target molecule's removed atoms
         """
-
-        ref_target_atom = self._anchors[0]
-        neighs = self.target.get_neighbors(ref_target_atom)
+        neighs = self.target.get_neighbors(self._anchors[0])
         ref_target_atom = next(i for i in neighs if i in self._removals[0])
 
-        ref_source_atom = self._anchors[1]
-        neighs = self.source.get_neighbors(ref_source_atom)
+        neighs = self.source.get_neighbors(self._anchors[1])
         ref_source_atom = next(i for i in neighs if i in self._removals[1])
 
         # self._v.draw_point("anchor target", self._anchors[0].coord, color="blue")
@@ -208,8 +205,39 @@ class Stitcher(base.Connector):
         """
         Remove the atoms specified in the removals list
         """
-        self.target.remove_atoms(*self._removals[0])
-        self.source.remove_atoms(*self._removals[1])
+        # self.target.remove_atoms(*self._removals[0])
+        # self.source.remove_atoms(*self._removals[1])
+        # return
+        mapping = {
+            0: self.target,
+            1: self.source,
+        }
+        for i, removals in enumerate(self._removals):
+            obj = mapping[i]
+            graph = obj._AtomGraph
+
+            for atom in removals:
+                bonds = (
+                    i
+                    for i in obj.bonds
+                    # interestingly, using this approach, we can (seemingly) avoid
+                    # the problem of lost neighbors when calling the stitcher repeatedly...
+                    # don't really know why this works, but it seems to do...
+                    if atom.full_id == i[0].full_id or atom.full_id == i[1].full_id
+                )
+                for bond in bonds:
+                    obj._bonds.remove(bond)
+                    if graph.has_edge(*bond):
+                        graph.remove_edge(*bond)
+                    elif graph.has_edge(*bond[::-1]):
+                        graph.remove_edge(*bond[::-1])
+                graph.remove_node(atom)
+                atom.detach_parent()
+
+            adx = 0
+            for atom in obj.atoms:
+                adx += 1
+                atom.serial_number = adx
 
     def _optimize(self, steps: int = 1e4, **kwargs):
         """
@@ -223,16 +251,6 @@ class Stitcher(base.Connector):
 
         tmp = molecule.Molecule.empty()
         self.target.adjust_indexing(self.source)
-
-        # anchor_1_serial = self._anchors[0].serial_number
-        # anchor_2_serial = self._anchors[1].serial_number
-
-        # _index_mappings = {
-        #     i.full_id[3:]: i.serial_number for i in self.target.get_atoms()
-        # }
-        # _index_mappings.update(
-        #     {i.full_id[3:]: i.serial_number for i in self.source.get_atoms()}
-        # )
 
         tmp.add_residues(
             self._target_residue,
