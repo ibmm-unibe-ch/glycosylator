@@ -65,7 +65,7 @@ class BaseEntity:
             Path to the file
         """
         obj = utils.load_pickle(filename)
-        if not isinstance(obj, cls):
+        if obj.__class__.__name__ != cls.__name__:
             raise TypeError(
                 f"Object loaded from {filename} is not a {cls.__name__} but a {type(obj)}"
             )
@@ -102,10 +102,12 @@ class BaseEntity:
 
     @bonds.setter
     def bonds(self, value):
-        self._bonds = value
         if value is None or len(value) == 0:
             self._bonds = []
             self._AtomGraph.clear_edges()
+        self._bonds = value
+        self._AtomGraph.clear_edges()
+        self._AtomGraph.add_edges_from(value)
 
     @property
     def locked_bonds(self):
@@ -130,7 +132,7 @@ class BaseEntity:
 
     @property
     def atoms(self):
-        return sorted(list(self._AtomGraph.nodes))
+        return sorted(self._AtomGraph.nodes)
         # return list(self._base_struct.get_atoms())
 
     @property
@@ -462,20 +464,20 @@ class BaseEntity:
         j = start_atomid
         idx = start_resid
 
-        # residues = list(self.residues)
-        # parents = [i.get_parent() for i in residues]
-        # for residue, parent in zip(residues, parents):
-        #     parent.detach_child(residue.id)
+        residues = list(self.residues)
+        parents = [i.get_parent() for i in residues]
+        for residue, parent in zip(residues, parents):
+            parent.detach_child(residue.id)
 
-        # for residue, parent in zip(residues, parents):
-        for residue in self.residues:
+        for residue, parent in zip(residues, parents):
+            # for residue in self.residues:
             residue.id = (residue.id[0], idx, *residue.id[2:])
             idx += 1
             for atom in residue.get_atoms():
                 atom.serial_number = j
                 j += 1
                 atom.set_parent(residue)
-            # parent.add(residue)
+            parent.add(residue)
 
     def get_residues(self):
         return self._base_struct.get_residues()
@@ -560,7 +562,10 @@ class BaseEntity:
             The atom
         """
         if isinstance(atom, bio.Atom.Atom):
-            return atom
+            if atom in self.atoms:
+                return atom
+            else:
+                return self.get_atom(atom.serial_number, by="serial")
 
         if by is None:
             if isinstance(atom, int):
@@ -588,58 +593,6 @@ class BaseEntity:
             )
 
         return atom
-
-    def get_residue(self, res, by: str = None):
-        """
-        Get a residue from the structure either based on its
-        seqid or its residue name. Note, if there are multiple
-        residues with the same name, all of them are returned
-        in a list!
-
-        Parameters
-        ----------
-        res
-            The residue's seqid, name, or full_id tuple
-        by : str
-            The type of parameter to search for. Can be either 'seqid', 'name' or 'full_id'
-            By default, this is inferred from the datatype of the res parameter.
-
-        Returns
-        -------
-        residue : bio.Residue.Residue or list
-            The residue(s)
-        """
-        if isinstance(res, bio.Residue.Residue):
-            return res
-
-        if by is None:
-            if isinstance(res, int):
-                by = "seqid"
-            elif isinstance(res, str):
-                by = "name"
-            elif isinstance(res, tuple):
-                by = "full_id"
-            else:
-                raise ValueError(
-                    "Unknown search parameter, must be either 'seqid', 'name' or 'full_id'"
-                )
-
-        if by == "seqid":
-            if res < 0:
-                res = len(self.residues) + res + 1
-            res = next(i for i in self._base_struct.get_residues() if i.id[1] == res)
-        elif by == "name":
-            res = [i for i in self._base_struct.get_residues() if i.resname == res]
-            if len(res) == 1:
-                res = res[0]
-        elif by == "full_id":
-            res = next(i for i in self._base_struct.get_residues() if i.full_id == res)
-        else:
-            raise ValueError(
-                "Unknown search parameter, must be either 'seqid', 'name' or 'full_id'"
-            )
-
-        return res
 
     def get_bonds(
         self,
@@ -712,6 +665,90 @@ class BaseEntity:
                 return [i for i in self.bonds if atom2 in i and i[1] == atom2]
         else:
             raise ValueError("No atom provided")
+
+    def get_residue(
+        self,
+        residue: Union[int, str, tuple, bio.Residue.Residue],
+        by: str = None,
+        chain=None,
+    ):
+        """
+        Get a residue from the structure either based on its
+        name, serial number or full_id. Note, if multiple residues match the requested criteria,
+        for instance there are multiple 'MAN' from different chains, only the first one is returned.
+
+        Parameters
+        ----------
+        residue
+            The residue id, seqid or full_id tuple
+        by : str
+            The type of parameter to search for. Can be either 'name', 'seqid' or 'full_id'
+            By default, this is inferred from the datatype of the residue parameter.
+            If it is an integer, it is assumed to be the sequence identifying number,
+            if it is a string, it is assumed to be the residue name and if it is a tuple, it is assumed
+            to be the full_id.
+        chain : str
+            Further restrict to a residue from a specific chain.
+        """
+        if isinstance(residue, bio.Residue.Residue):
+            if residue in self.residues:
+                return residue
+            else:
+                return self.get_residue(residue.id[1], by="seqid", chain=chain)
+
+        if by is None:
+            if isinstance(residue, int):
+                by = "seqid"
+            elif isinstance(residue, str):
+                by = "name"
+            elif isinstance(residue, tuple):
+                by = "full_id"
+            else:
+                raise ValueError(
+                    "Unknown search parameter, must be either 'name', 'seqid' or 'full_id'"
+                )
+
+        if by == "name":
+            residue = (
+                i for i in self._base_struct.get_residues() if i.resname == residue
+            )
+        elif by == "seqid":
+            residue = (
+                i for i in self._base_struct.get_residues() if i.id[1] == residue
+            )
+        elif by == "full_id":
+            residue = (
+                i for i in self._base_struct.get_residues() if i.full_id == residue
+            )
+        else:
+            raise ValueError(
+                "Unknown search parameter, must be either 'name', 'seqid' or 'full_id'"
+            )
+        if chain is not None:
+            chain = self.get_chain(chain)
+            residue = (i for i in residue if i.get_parent() == chain)
+        return next(residue)
+
+    def get_chain(self, chain: str):
+        """
+        Get a chain from the structure either based on its
+        name.
+
+        Parameters
+        ----------
+        chain
+            The chain id
+        Returns
+        -------
+        chain : bio.Chain.Chain
+            The chain
+        """
+        if isinstance(chain, bio.Chain.Chain):
+            if chain in self.chains:
+                return chain
+            else:
+                return self.get_chain(chain.id)
+        return next(i for i in self.chains if i.id == chain)
 
     def add_residues(
         self,
@@ -847,7 +884,6 @@ class BaseEntity:
             self._AtomGraph.remove_node(atom)
             self.purge_bonds(atom)
             atom.get_parent().detach_child(atom.id)
-
             _atoms.append(atom)
 
         # reindex the atoms
@@ -877,7 +913,7 @@ class BaseEntity:
 
         if (atom1, atom2) not in self._bonds:
             self._bonds.append((atom1, atom2))
-        if (atom1, atom2) not in self._AtomGraph.edges:
+        if not self._AtomGraph.has_edge(atom1, atom2):
             self._AtomGraph.add_edge(atom1, atom2)
 
     def remove_bond(
@@ -908,7 +944,7 @@ class BaseEntity:
 
         if (atom1, atom2) in self._bonds:
             self._bonds.remove((atom1, atom2))
-        if (atom1, atom2) in self._AtomGraph.edges:
+        if self._AtomGraph.has_edge(atom1, atom2):
             self._AtomGraph.remove_edge(atom1, atom2)
         if (atom1, atom2) in self.locked_bonds:
             self.locked_bonds.remove((atom1, atom2))
@@ -929,7 +965,7 @@ class BaseEntity:
             return
 
         atom = self.get_atom(atom)
-        bonds = [i for i in self.bonds if atom in i]
+        bonds = (i for i in self.bonds if atom in i)
         for bond in bonds:
             self.remove_bond(*bond)
 
@@ -1059,9 +1095,9 @@ class BaseEntity:
         bonds = structural.infer_bonds(
             self._base_struct, max_bond_length, restrict_residues
         )
-        for bond in bonds:
-            if bond not in self.bonds:
-                self.add_bond(*bond)
+        to_add = [b for b in bonds if b not in self.bonds]
+        self._bonds.extend(to_add)
+        self._AtomGraph.add_edges_from(to_add)
         return bonds
 
     def get_residue_connections(self, triplet: bool = True):
@@ -1113,16 +1149,16 @@ class BaseEntity:
         return bonds
 
     def infer_residue_connections(
-        self, max_bond_length: float = None, triplet: bool = True
+        self, bond_length: Union[float, tuple] = None, triplet: bool = True
     ) -> list:
         """
         Infer bonds between atoms that connect different residues in the structure
 
         Parameters
         ----------
-        max_bond_length : float
-            The maximum distance between atoms to consider them bonded.
-            If None, the default value is 1.6 Angstroms.
+        bond_length : float or tuple
+            If a float is given, the maximum distance between atoms to consider them bonded.
+            If a tuple, the minimal and maximal distance between atoms. If None, the default value is min 0.8 Angstrom, max 1.6 Angstroms.
         triplet : bool
             Whether to include bonds between atoms that are in the same residue
             but neighboring a bond that connects different residues. This is useful
@@ -1150,21 +1186,20 @@ class BaseEntity:
              (5)CA --- (4)CA
         ``` 
         The circular residue A and linear residue B are connected by a bond between
-        (1)CA and the oxygen OA and (1)CB. By default, because OA originally is associated
-        with residue A, only the bond OA --- (1)CB is returned. However, if `triplet=True`,
-        the bond OA --- (1)CA is also returned, because the entire connecting "bridge" between residues
-        A and B spans either bond around OA.
+        `(1)CA` and the oxygen `OA` and `(1)CB`. By default, because OA originally is associated
+        with residue A, only the bond `OA --- (1)CB` is returned. However, if `triplet=True`,
+        the bond `OA --- (1)CA` is also returned, because the entire connecting "bridge" between residues
+        A and B spans either bond around `OA`.
         >>> mol.infer_residue_connections(triplet=False)
         [("OA", "(1)CB")]
         >>> mol.infer_residue_connections(triplet=True)
         [("OA", "(1)CB"), ("OA", "(2)CA")]
         """
         bonds = structural.infer_residue_connections(
-            self._base_struct, max_bond_length, triplet
+            self._base_struct, bond_length, triplet
         )
-        for bond in bonds:
-            if bond not in self.bonds:
-                self.add_bond(*bond)
+        self._bonds.extend(bonds)
+        self._AtomGraph.add_edges_from(bonds)
         return bonds
 
     def apply_standard_bonds(self, _topology=None) -> list:
@@ -1183,9 +1218,9 @@ class BaseEntity:
             A list of tuples of atom pairs that are bonded
         """
         bonds = structural.apply_standard_bonds(self._base_struct, _topology)
-        for bond in bonds:
-            if bond not in self.bonds:
-                self.add_bond(*bond)
+        to_add = [b for b in bonds if b not in self.bonds]
+        self._bonds.extend(to_add)
+        self._AtomGraph.add_edges_from(to_add)
         return bonds
 
     def autolabel(self, _compounds=None):
@@ -1329,6 +1364,50 @@ class BaseEntity:
         """
         structural.fill_missing_atoms(self._base_struct, _topology, _compounds)
 
+    def _direct_bonds(self, bonds: list, by: str = "serial", save: bool = True):
+        """
+        Sort a given list of bonds such that the first atom is the "earlier" atom
+        in the bond.
+
+        Parameters
+        ----------
+        bonds : list
+            A list of tuples of atom pairs that are bonded and connect different residues
+        by : str
+            The attribute to sort by. Can be either "serial", "resid" or "root".
+            In the case of "serial", the bonds are sorted by the serial number of the first atom.
+            In the case of "resid", the bonds are sorted by the residue number of the first atom.
+            In this case, bonds connecting atoms from the same residue are sorted by the serial number of the first atom.
+            In the case of "root" the bonds are sorted based on the graph distances to the root atom,
+            provided that the root atom is set (otherwise the atom with serial 1 is used).
+        save : bool
+            Whether to save the sorted bonds as the new bonds in the Molecule.
+
+        Returns
+        -------
+        list
+            A list of tuples of atom pairs that are bonded and connect different residues
+        """
+        if by == "serial":
+            directed = [
+                bond if bond[0].serial_number < bond[1].serial_number else bond[::-1]
+                for bond in bonds
+            ]
+        elif by == "root":
+            root = self._root_atom
+            if root is None:
+                root = self.get_atom(1)
+            directed = self._AtomGraph.direct_edges(root, bonds)
+        elif by == "resid":
+            directed = [
+                bond if not should_revert(bond) else bond[::-1] for bond in bonds
+            ]
+        if save:
+            for old, new in zip(bonds, directed):
+                self.remove_bond(*old)
+                self.add_bond(*new)
+        return directed
+
     def __mod__(self, patch):
         """
         Add a patch to the molecule using the % operator (i.e. mol % patch)
@@ -1351,6 +1430,17 @@ class BaseEntity:
         self.set_attach_residue(residue)
         return self
 
+
+should_revert = lambda bond: (
+    bond[0].parent.id[1] > bond[1].parent.id[1]
+    or (
+        bond[0].parent.id[1] == bond[1].parent.id[1]
+        and bond[0].serial_number > bond[1].serial_number
+    )
+)
+"""
+A helper function to sort bonds and determine whether they should be reversed
+"""
 
 if __name__ == "__main__":
     # f = "/Users/noahhk/GIT/glycosylator/support/examples/4tvp.prot.pdb"

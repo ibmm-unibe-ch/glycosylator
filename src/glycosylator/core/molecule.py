@@ -261,11 +261,6 @@ class Molecule(entity.BaseEntity):
     def residues(self):
         return self._chain.child_list
 
-    @property
-    def atoms(self):
-        _atoms = [atom for residue in self.residues for atom in residue]
-        return _atoms
-
     def get_patch(self):
         return self._patch
 
@@ -309,7 +304,7 @@ class Molecule(entity.BaseEntity):
         adx = len(self.atoms)
         other.reindex(rdx + 1, adx + 1)
 
-    def get_residue_connections(self, triplet: bool = True, directed: bool = True):
+    def get_residue_connections(self, triplet: bool = True, direct_by: str = "serial"):
         """
         Get bonds between atoms that connect different residues in the structure
         This method is different from `infer_residue_connections` in that it works
@@ -325,8 +320,12 @@ class Molecule(entity.BaseEntity):
             because the additionally returned bonds are already present in the structure
             from inference or standard-bond applying and therefore do not actually add any
             particular information to the Molecule object itself.
-        directed : bool
-            Whether to return the bonds in the direction of the sequence.
+        direct_by : str
+            The attribute to sort by. Can be either "serial", "resid" or "root".
+            In the case of "serial", the bonds are sorted by the serial number of the first atom.
+            In the case of "resid", the bonds are sorted by the residue id of the first atom.
+            In the case of "root", the bonds are sorted by the root atom of the first atom.
+            Set to None to not sort the bonds.
 
         Returns
         -------
@@ -334,45 +333,9 @@ class Molecule(entity.BaseEntity):
             A set of tuples of atom pairs that are bonded and connect different residues
         """
         bonds = super().get_residue_connections(triplet)
-        if directed:
-            root = self._root_atom if self._root_atom is not None else self.atoms[0]
-            bonds = self._AtomGraph.direct_edges(root, bonds)
-            bonds = set(bonds)
-        return bonds
-
-    def direct_connections(self, triplet: bool = True, by: str = "serial"):
-        """
-        "Sort" the bonds that connect different residues
-        such that each bond's first atom is the one earlier in the sequence.
-
-        Parameters
-        ----------
-        triplet : bool
-            If True, triplet-connections are used.
-        by : str
-            The attribute to sort by. Can be either "serial", "resid" or "root".
-            In the case of "serial", the bonds are sorted by the serial number of the first atom.
-            In the case of "resid", the bonds are sorted by the residue number of the first atom.
-            In this case, bonds connecting atoms from the same residue are sorted by the serial number of the first atom.
-            In the case of "root" the bonds are sorted based on the graph distances to the root atom,
-            provided that the root atom is set (otherwise the atom with serial 1 is used).
-        """
-        bonds = self.get_residue_connections(triplet=triplet, directed=False)
-        if by in ("serial", "root"):
-            directed = self._direct_bonds(bonds, by)
-        elif by == "resid":
-            directed = []
-            for bond in bonds:
-                if bond[0].parent.id[1] > bond[1].parent.id[1] or (
-                    bond[0].parent.id[1] == bond[1].parent.id[1]
-                    and bond[0].serial_number > bond[1].serial_number
-                ):
-                    directed.append(bond[::-1])
-                else:
-                    directed.append(bond)
-        for old, new in zip(bonds, directed):
-            self.remove_bond(*old)
-            self.add_bond(*new)
+        if direct_by is not None:
+            bonds = self._direct_bonds(bonds, direct_by)
+        return set(bonds)
 
     def attach(
         self,
@@ -609,33 +572,6 @@ class Molecule(entity.BaseEntity):
         atom = self.get_atom(atom)
         return self._AtomGraph.get_neighbors(atom, n, mode)
 
-    def _direct_bonds(self, bonds, by: str = "serial"):
-        """
-        Order a set of bonds such that the first atom is always
-        "earlier" than the second atom in the molecule.
-
-        Parameters
-        ----------
-        bonds
-            The bonds to order
-        by : str
-            The attribute to order by. This can be "serial",
-            or "root" (path distance from the molecule's root atom)
-        """
-        if by == "serial":
-            ordered_bonds = [
-                bond if bond[0].serial_number < bond[1].serial_number else bond[::-1]
-                for bond in bonds
-            ]
-        elif by == "root":
-            root = self._root_atom
-            if root is None:
-                root = self.get_atom(1)
-            ordered_bonds = self._AtomGraph.direct_edges(root, bonds)
-        else:
-            raise ValueError(f"Unknown ordering method {by}")
-        return ordered_bonds
-
     def __add__(self, other) -> "Molecule":
         """
         Add two molecules together. This will return a new molecule.
@@ -710,6 +646,7 @@ class Molecule(entity.BaseEntity):
 
 if __name__ == "__main__":
     import pickle
+
     tmp = pickle.load(open("/Users/noahhk/GIT/glycosylator/tmp.pickle", "rb"))
     tmp.get_residue_connections()
     exit()
