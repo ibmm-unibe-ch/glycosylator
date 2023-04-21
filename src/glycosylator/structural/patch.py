@@ -5,7 +5,7 @@ Functions to patch molecules together
 import numpy as np
 from copy import deepcopy
 
-import glycosylator.core.molecule as molecule
+# import glycosylator.core.molecule as molecule
 import glycosylator.utils.abstract as abstract
 import glycosylator.structural.connector as base
 import glycosylator.structural.infer as infer
@@ -48,8 +48,8 @@ class Patcher(base.Connector):
     def apply(
         self,
         patch: "AbstractPatch" = None,
-        target: "molecule.Molecule" = None,
-        source: "molecule.Molecule" = None,
+        target: "Molecule" = None,
+        source: "Molecule" = None,
         target_residue=None,
         source_residue=None,
     ):
@@ -101,7 +101,7 @@ class Patcher(base.Connector):
             target_residue = self.target.attach_residue
         if not source_residue:
             source_residue = self.source.attach_residue
-        self.get_anchor_atoms(target_residue, source_residue)
+        self.get_anchors(target_residue, source_residue)
 
         # compute internal coordinates to rebuild the source molecule
         _ics = infer.compute_internal_coordinates(self.source.bonds)
@@ -144,9 +144,8 @@ class Patcher(base.Connector):
 
         self.target.add_bond(*self._anchors)
         return self.target
-    
-    
-    def get_anchor_atoms(self, target_residue=None, source_residue=None):
+
+    def get_anchors(self, target_residue=None, source_residue=None):
         """
         Returns the two atoms that will be used for anchoring structure alignment.
         These atoms form a bond between the two molecules.
@@ -173,11 +172,11 @@ class Patcher(base.Connector):
             raise AttributeError("No patch set")
 
         _ref_atoms = {int(i[0]) - 1: i[1:] for i in self.patch.bonds[0].atoms}
-        ref_atom_1, ref_atom_2 = self._get_anchors(
+        ref_atom_1, ref_atom_2 = super().get_anchors(
             _ref_atoms, target_residue, source_residue
         )
         return ref_atom_1, ref_atom_2
-    
+
     def _align_anchors(self):
         """
         Align the source to the target molecule such that the anchors are in the correct distance
@@ -296,7 +295,6 @@ class Patcher(base.Connector):
         R = VT.T @ U.T
 
         for atom in self.source.get_atoms():
-
             # self._v.draw_point(
             #     atom.id + " (old)",
             #     atom.coord,
@@ -408,8 +406,6 @@ class Patcher(base.Connector):
         self.target.remove_atoms(*delete_from_target)
         self.source.remove_atoms(*delete_from_source)
 
-    
-
     @property
     def _objs(self):
         return {
@@ -459,7 +455,6 @@ to leave the originals intact.
 
 
 if __name__ == "__main__":
-
     import glycosylator as gl
 
     man = "support/examples/MAN.pdb"
@@ -483,7 +478,6 @@ if __name__ == "__main__":
 
     patcher = Patcher(False, True)
     for i in ("14bb", "14bb", "12ab"):
-
         # v2 = gl.utils.visual.MoleculeViewer3D(man1)
         # patcher._v = v2
 
