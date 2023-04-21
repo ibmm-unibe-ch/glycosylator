@@ -10,7 +10,7 @@ import Bio.PDB as bio
 
 import glycosylator.structural as structural
 import glycosylator.utils as utils
-from glycosylator.graphs import AtomGraph, ResidueGraph
+import glycosylator.graphs as graphs
 
 
 class BaseEntity:
@@ -21,7 +21,7 @@ class BaseEntity:
         self._bonds = []
         # self._locked_bonds = set()
 
-        self._AtomGraph = AtomGraph(self.id, [])
+        self._AtomGraph = graphs.AtomGraph(self.id, [])
 
         # let the molecule store a patch to use for attaching other
         # molecules to it
@@ -29,6 +29,7 @@ class BaseEntity:
 
         self._working_chain = None
         self._root_atom = None
+        self._attach_residue = None
 
     @classmethod
     def from_pdb(
@@ -52,6 +53,23 @@ class BaseEntity:
             id = utils.filename_to_id(filename)
         struct = utils.defaults.__bioPDBParser__.get_structure(id, filename)
         return cls(struct)
+
+    @classmethod
+    def load(cls, filename: str):
+        """
+        Load a Molecule from a pickle file
+
+        Parameters
+        ----------
+        filename : str
+            Path to the file
+        """
+        obj = utils.load_pickle(filename)
+        if not isinstance(obj, cls):
+            raise TypeError(
+                f"Object loaded from {filename} is not a {cls.__name__} but a {type(obj)}"
+            )
+        return obj
 
     @property
     def id(self):
@@ -175,6 +193,72 @@ class BaseEntity:
     @_chain.setter
     def _chain(self, value):
         self._working_chain = value
+
+    @property
+    def root_atom(self):
+        return self._root_atom
+
+    @root_atom.setter
+    def root_atom(self, value):
+        if value is None:
+            self._root_atom = None
+        else:
+            self._root_atom = self.get_atom(value)
+
+    @property
+    def root_residue(self):
+        if self._root_atom:
+            return self.root_atom.get_parent()
+
+    @property
+    def attach_residue(self):
+        return self._attach_residue
+
+    @attach_residue.setter
+    def attach_residue(self, value):
+        if value is None:
+            self._attach_residue = None
+        else:
+            self._attach_residue = self.get_residue(value)
+
+    def get_root(self):
+        return self.root_atom
+
+    def set_root(self, atom):
+        self.root_atom = atom
+
+    def save(self, filename: str):
+        """
+        Save the molecule object to a pickle file
+
+        Parameters
+        ----------
+        filename : str
+            Path to the PDB file
+        """
+        utils.save_pickle(self, filename)
+
+    def view(self):
+        """
+        Open a browser window to view the molecule in 3D
+        """
+        utils.visual.MoleculeViewer3D(self).show()
+
+    def get_attach_residue(self):
+        return self._attach_residue
+
+    def set_attach_residue(self, residue: Union[int, bio.Residue.Residue] = None):
+        """
+        Set the residue that is used for attaching other molecules to this one.
+
+        Parameters
+        ----------
+        residue
+            The residue to be used for attaching other molecules to this one
+        """
+        if isinstance(residue, int):
+            residue = self.get_residue(residue)
+        self._attach_residue = residue
 
     def rotate_around_bond(
         self,
@@ -430,6 +514,8 @@ class BaseEntity:
                 by = "id"
             elif isinstance(atoms[0], tuple):
                 by = "full_id"
+            elif isinstance(atoms[0], bio.Atom.Atom):
+                return atoms
             else:
                 raise ValueError(
                     "Unknown search parameter, must be either 'id', 'serial' or 'full_id'"
@@ -657,7 +743,9 @@ class BaseEntity:
             if p:
                 p.detach_child(residue.id)
             if _copy and p is not None:
-                p.add(deepcopy(residue))
+                r = deepcopy(residue)
+                p.add(residue)
+                residue = r
 
             rdx += 1
             if adjust_seqid and residue.id[1] != rdx:
@@ -667,10 +755,10 @@ class BaseEntity:
             residue._generate_full_id()
 
             for atom in residue.child_list:
-                adx += 1
-                atom.set_serial_number(adx)
+                if adjust_seqid:
+                    adx += 1
+                    atom.set_serial_number(adx)
                 atom.set_parent(residue)
-
                 self._AtomGraph.add_node(atom)
 
     def remove_residues(self, *residues: Union[int, bio.Residue.Residue]) -> list:
@@ -755,7 +843,6 @@ class BaseEntity:
         """
         _atoms = []
         for atom in atoms:
-
             atom = self.get_atom(atom)
             self._AtomGraph.remove_node(atom)
             self.purge_bonds(atom)
@@ -949,48 +1036,6 @@ class BaseEntity:
         bond = (atom1, atom2)
         return bond in self.locked_bonds
 
-    def direct_connections(self, triplet: bool = True, by: str = "serial"):
-        """
-        "Sort" the bonds that connect different residues
-        such that each bond's first atom is the one earlier in the sequence.
-
-        Parameters
-        ----------
-        triplet : bool
-            If True, triplet-connections are used.
-        by : str
-            The attribute to sort by. Can be either "serial", "resid" or "root".
-            In the case of "serial", the bonds are sorted by the serial number of the first atom.
-            In the case of "resid", the bonds are sorted by the residue number of the first atom.
-            In this case, bonds connecting atoms from the same residue are sorted by the serial number of the first atom.
-            In the case of "root" the bonds are sorted based on the graph distances to the root atom,
-            provided that the root atom is set (otherwise the atom with serial 1 is used).
-        """
-        bonds = self.get_residue_connections(triplet=triplet, directed=False)
-
-        if by == "serial":
-            for bond in bonds:
-                if bond[0].serial_number > bond[1].serial_number:
-                    self.remove_bond(*bond)
-                    self.add_bond(*bond[::-1])
-        elif by == "resid":
-            for bond in bonds:
-                if bond[0].parent.id[1] > bond[1].parent.id[1] or (
-                    bond[0].parent.id[1] == bond[1].parent.id[1]
-                    and bond[0].serial_number > bond[1].serial_number
-                ):
-                    self.remove_bond(*bond)
-                    self.add_bond(*bond[::-1])
-        elif by == "root":
-            root = self._root_atom
-            if root is None:
-                root = self.get_atom(1)
-            directed = self._AtomGraph.direct_edges(root, bonds)
-            for old, new in zip(bonds, directed):
-                if old != new:
-                    self.remove_bond(*old)
-                    self.add_bond(*new)
-
     def infer_bonds(
         self, max_bond_length: float = None, restrict_residues: bool = True
     ) -> list:
@@ -1019,7 +1064,7 @@ class BaseEntity:
                 self.add_bond(*bond)
         return bonds
 
-    def get_residue_connections(self, triplet: bool = True, directed: bool = True):
+    def get_residue_connections(self, triplet: bool = True):
         """
         Get bonds between atoms that connect different residues in the structure
         This method is different from `infer_residue_connections` in that it works
@@ -1035,8 +1080,6 @@ class BaseEntity:
             because the additionally returned bonds are already present in the structure
             from inference or standard-bond applying and therefore do not actually add any
             particular information to the Molecule object itself.
-        directed : bool
-            Whether to return the bonds in the direction of the sequence.
 
         Returns
         -------
@@ -1048,9 +1091,9 @@ class BaseEntity:
         if triplet:
             _new = set()
             for atom1, atom2 in bonds:
-
                 neighs = self.get_neighbors(atom1)
                 neighs.remove(atom2)
+                neighs -= set(i for i in neighs if i.element == "H")
                 if len(neighs) == 1:
                     neigh = neighs.pop()
                     if neigh.get_parent() == atom1.get_parent():
@@ -1059,6 +1102,7 @@ class BaseEntity:
 
                 neighs = self.get_neighbors(atom2)
                 neighs.remove(atom1)
+                neighs -= set(i for i in neighs if i.element == "H")
                 if len(neighs) == 1:
                     neigh = neighs.pop()
                     if neigh.get_parent() == atom2.get_parent():
@@ -1066,11 +1110,6 @@ class BaseEntity:
                     continue
 
             bonds.update(_new)
-
-        if directed:
-            root = self._root_atom if self._root_atom is not None else self.get_atom(1)
-            bonds = self._AtomGraph.direct_edges(root, bonds)
-            bonds = set(bonds)
         return bonds
 
     def infer_residue_connections(
@@ -1258,7 +1297,7 @@ class BaseEntity:
             If True, the graph will also migrate the information on any locked bonds into the graph.
             This is only relevant if detailed is True.
         """
-        graph = ResidueGraph.from_molecule(self, detailed, locked)
+        graph = graphs.ResidueGraph.from_molecule(self, detailed, locked)
         return graph
 
     def to_pdb(self, filename: str):
@@ -1274,9 +1313,48 @@ class BaseEntity:
         io.set_structure(self._base_struct)
         io.save(filename)
 
+    def infer_missing_atoms(self, _topology=None, _compounds=None):
+        """
+        Infer missing atoms in the structure based on a reference topology or compounds database.
+        By default, if a residue is not available in the topology, the compounds database is used.
+
+        Parameters
+        ----------
+        _topology
+            A specific topology to use for referencing.
+            If None, the default CHARMM topology is used.
+        _compounds
+            A specific compounds object to use for referencing.
+            If None, the default compounds object is used.
+        """
+        structural.fill_missing_atoms(self._base_struct, _topology, _compounds)
+
     def __mod__(self, patch):
         """
         Add a patch to the molecule using the % operator (i.e. mol % patch)
         """
         self.set_patch(patch)
         return self
+
+    def __xor__(self, atom):
+        """
+        Set the root atom for the molecule using the ^ operator (i.e. mol ^ atom)
+        """
+        self.set_root(atom)
+        return self
+
+    def __matmul__(self, residue) -> "Molecule":
+        """
+        Set the residue at which the molecule should be attached to another molecule
+        using the @ operator (i.e. mol @ 1, for residue 1)
+        """
+        self.set_attach_residue(residue)
+        return self
+
+
+if __name__ == "__main__":
+    # f = "/Users/noahhk/GIT/glycosylator/support/examples/4tvp.prot.pdb"
+    # e = BaseEntity.from_pdb(f)
+    # e.infer_bonds(restrict_residues=False)
+    # e.get_residue_connections()
+    pass

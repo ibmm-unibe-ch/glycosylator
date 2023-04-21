@@ -152,10 +152,6 @@ class Molecule(entity.BaseEntity):
                 raise ValueError("The root atom is not in the structure")
         self._root_atom = root_atom
 
-        # let the molecule also store the residue at which it should be attached to
-        # another molecule
-        self._attach_residue = None
-
     @classmethod
     def empty(cls, id: str = None):
         """
@@ -258,33 +254,6 @@ class Molecule(entity.BaseEntity):
         return cls(struct, root_atom)
 
     @property
-    def root_atom(self):
-        return self._root_atom
-
-    @root_atom.setter
-    def root_atom(self, value):
-        if value is None:
-            self._root_atom = None
-        else:
-            self._root_atom = self.get_atom(value)
-
-    @property
-    def root_residue(self):
-        if self._root_atom:
-            return self.root_atom.get_parent()
-
-    @property
-    def attach_residue(self):
-        return self._attach_residue
-
-    @attach_residue.setter
-    def attach_residue(self, value):
-        if value is None:
-            self._attach_residue = None
-        else:
-            self._attach_residue = self.get_residue(value)
-
-    @property
     def chain(self):
         return self._chain
 
@@ -296,28 +265,6 @@ class Molecule(entity.BaseEntity):
     def atoms(self):
         _atoms = [atom for residue in self.residues for atom in residue]
         return _atoms
-
-    def get_root(self):
-        return self.root_atom
-
-    def set_root(self, atom):
-        self.root_atom = atom
-
-    def get_attach_residue(self):
-        return self._attach_residue
-
-    def set_attach_residue(self, residue: Union[int, bio.Residue.Residue] = None):
-        """
-        Set the residue that is used for attaching other molecules to this one.
-
-        Parameters
-        ----------
-        residue
-            The residue to be used for attaching other molecules to this one
-        """
-        if isinstance(residue, int):
-            residue = self.get_residue(residue)
-        self._attach_residue = residue
 
     def get_patch(self):
         return self._patch
@@ -362,17 +309,70 @@ class Molecule(entity.BaseEntity):
         adx = len(self.atoms)
         other.reindex(rdx + 1, adx + 1)
 
-    def infer_missing_atoms(self, _topology=None):
+    def get_residue_connections(self, triplet: bool = True, directed: bool = True):
         """
-        Infer missing atoms in the structure
+        Get bonds between atoms that connect different residues in the structure
+        This method is different from `infer_residue_connections` in that it works
+        with the already present bonds in the molecule instead of computing new ones.
 
         Parameters
         ----------
-        _topology
-            A specific topology to use for referencing.
-            If None, the default CHARMM topology is used.
+        triplet : bool
+            Whether to include bonds between atoms that are in the same residue
+            but neighboring a bond that connects different residues. This is useful
+            for residues that have a side chain that is connected to the main chain.
+            This is mostly useful if you intend to use the returned list for some purpose,
+            because the additionally returned bonds are already present in the structure
+            from inference or standard-bond applying and therefore do not actually add any
+            particular information to the Molecule object itself.
+        directed : bool
+            Whether to return the bonds in the direction of the sequence.
+
+        Returns
+        -------
+        set
+            A set of tuples of atom pairs that are bonded and connect different residues
         """
-        structural.fill_missing_atoms(self._base_struct, _topology)
+        bonds = super().get_residue_connections(triplet)
+        if directed:
+            root = self._root_atom if self._root_atom is not None else self.atoms[0]
+            bonds = self._AtomGraph.direct_edges(root, bonds)
+            bonds = set(bonds)
+        return bonds
+
+    def direct_connections(self, triplet: bool = True, by: str = "serial"):
+        """
+        "Sort" the bonds that connect different residues
+        such that each bond's first atom is the one earlier in the sequence.
+
+        Parameters
+        ----------
+        triplet : bool
+            If True, triplet-connections are used.
+        by : str
+            The attribute to sort by. Can be either "serial", "resid" or "root".
+            In the case of "serial", the bonds are sorted by the serial number of the first atom.
+            In the case of "resid", the bonds are sorted by the residue number of the first atom.
+            In this case, bonds connecting atoms from the same residue are sorted by the serial number of the first atom.
+            In the case of "root" the bonds are sorted based on the graph distances to the root atom,
+            provided that the root atom is set (otherwise the atom with serial 1 is used).
+        """
+        bonds = self.get_residue_connections(triplet=triplet, directed=False)
+        if by in ("serial", "root"):
+            directed = self._direct_bonds(bonds, by)
+        elif by == "resid":
+            directed = []
+            for bond in bonds:
+                if bond[0].parent.id[1] > bond[1].parent.id[1] or (
+                    bond[0].parent.id[1] == bond[1].parent.id[1]
+                    and bond[0].serial_number > bond[1].serial_number
+                ):
+                    directed.append(bond[::-1])
+                else:
+                    directed.append(bond)
+        for old, new in zip(bonds, directed):
+            self.remove_bond(*old)
+            self.add_bond(*new)
 
     def attach(
         self,
@@ -609,6 +609,33 @@ class Molecule(entity.BaseEntity):
         atom = self.get_atom(atom)
         return self._AtomGraph.get_neighbors(atom, n, mode)
 
+    def _direct_bonds(self, bonds, by: str = "serial"):
+        """
+        Order a set of bonds such that the first atom is always
+        "earlier" than the second atom in the molecule.
+
+        Parameters
+        ----------
+        bonds
+            The bonds to order
+        by : str
+            The attribute to order by. This can be "serial",
+            or "root" (path distance from the molecule's root atom)
+        """
+        if by == "serial":
+            ordered_bonds = [
+                bond if bond[0].serial_number < bond[1].serial_number else bond[::-1]
+                for bond in bonds
+            ]
+        elif by == "root":
+            root = self._root_atom
+            if root is None:
+                root = self.get_atom(1)
+            ordered_bonds = self._AtomGraph.direct_edges(root, bonds)
+        else:
+            raise ValueError(f"Unknown ordering method {by}")
+        return ordered_bonds
+
     def __add__(self, other) -> "Molecule":
         """
         Add two molecules together. This will return a new molecule.
@@ -677,20 +704,15 @@ class Molecule(entity.BaseEntity):
 
         return self
 
-    def __matmul__(self, residue) -> "Molecule":
-        """
-        Set the residue at which the molecule should be attached to another molecule
-        using the @ operator (i.e. mol @ 1, for residue 1)
-        """
-        self.set_attach_residue(residue)
-        return self
-
     def __repr__(self):
         return f"Molecule({self.id})"
 
 
 if __name__ == "__main__":
-
+    import pickle
+    tmp = pickle.load(open("/Users/noahhk/GIT/glycosylator/tmp.pickle", "rb"))
+    tmp.get_residue_connections()
+    exit()
     # from timeit import timeit
 
     # # man = Molecule.from_compound("MAN")
@@ -714,8 +736,18 @@ if __name__ == "__main__":
     # v = visual.MoleculeViewer3D(glc)
     # v.show()
 
-    man = Molecule.from_pdb("support/examples/membrane.pdb", model=4)
-    man.infer_bonds()
+    # man = Molecule.from_pdb("support/examples/membrane.pdb", model=4)
+    # man.infer_bonds()
+    # man.
 
-    v = visual.MoleculeViewer3D(man.make_atom_graph())
+    man = Molecule.from_pdb("/Users/noahhk/GIT/glycosylator/support/examples/MAN9.pdb")
+    man.infer_bonds(restrict_residues=False)
+
+    g = man.make_residue_graph(True)
+    v = visual.MoleculeViewer3D(g)
+
+    for c in man.get_residue_connections():
+        v.draw_vector(
+            None, c[0].coord, 1.3 * (c[1].coord - c[0].coord), color="magenta"
+        )
     v.show()
