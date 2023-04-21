@@ -26,6 +26,7 @@ __all__ = [
     graphs,
     optimizers,
     Molecule,
+    Scaffold,
     get_default_parameters,
     get_default_topology,
     set_default_topology,
