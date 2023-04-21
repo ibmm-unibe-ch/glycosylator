@@ -213,9 +213,35 @@ class PDBECompounds:
         else:
             raise ValueError(f"Invalid return_type '{return_type}'.")
 
+    def has_residue(self, query: str, by: str = "id") -> bool:
+        """
+        Check if a compound has a residue definition.
+
+        Parameters
+        ----------
+        query : str
+            The query to search for.
+
+        by : str, optional
+            The type of query, by default "id". Possible values are:
+            - "id": search by compound id
+            - "name": search by compound name (must match any available synonym exactly)
+            - "formula": search by compound formula
+            - "smiles": search by compound smiles (this also works for inchi)
+
+        Returns
+        -------
+        bool
+            True if the compound has a residue definition, False otherwise.
+        """
+        _dict = self._get(query, by)
+        return len(_dict.keys()) > 0
+    
+    
     def translate_ids_3_to_1(self, ids: list) -> list:
         """
         Translate a list of 3-letter compound ids to 1-letter ids.
+        Any ids that cannot be translated are returned as "X".
 
         Parameters
         ----------
@@ -230,12 +256,16 @@ class PDBECompounds:
         new = []
         for i in ids:
             i = self.get(i, "id", "dict")
-            new.append(i.get("one_letter_code"))
+            i = i.get("one_letter_code")
+            if i is None:
+                i = "X"
+            new.append(i)
         return new
 
     def translate_ids_1_to_3(self, ids: list) -> list:
         """
         Translate a list of 1-letter compound ids to 3-letter ids.
+        Any unknown ids are replaced with "XXX".
 
         Parameters
         ----------
@@ -248,10 +278,13 @@ class PDBECompounds:
             A list of 3-letter compound ids.
         """
         new = []
-        for i in self._compounds.values():
-            if i.get("one_letter_code") in ids:
-                new.append(i.get("three_letter_code"))
-        return new
+        for i in ids:
+            i = self.get(i, "id", "dict")
+            i = i.get("three_letter_code")
+            if i is None:
+                i = "XXX"
+            new.append(i)
+            return new
 
     def relabel_atoms(self, structure):
         """
