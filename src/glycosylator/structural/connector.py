@@ -37,7 +37,7 @@ class Connector:
         """
         self.source = source
 
-    def _get_anchors(self, _ref_atoms, target_residue=None, source_residue=None):
+    def get_anchors(self, _ref_atoms, target_residue=None, source_residue=None):
         """
         Find appropriate anchor atoms in the source and target molecules
 
