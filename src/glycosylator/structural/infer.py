@@ -2,15 +2,39 @@
 Functions to infer structural data such as missing atom coordinates or bond connectivity
 """
 
+from copy import deepcopy
 import warnings
 import numpy as np
 
 from Bio.PDB import NeighborSearch
+from Bio import SVDSuperimposer
 
 import glycosylator.utils.abstract as _abstract
 import glycosylator.utils.defaults as defaults
 import glycosylator.structural.base as base
 import glycosylator.structural.neighbors as neighbors
+
+element_connectivity = {
+    "C": 4,
+    "H": 1,
+    "O": 2,
+    "N": 3,
+    "S": 2,
+    "P": 5,
+    "F": 1,
+    "Cl": 1,
+    "Br": 1,
+    "I": 1,
+    "B": 3,
+    "Si": 4,
+    "Se": 2,
+    "Zn": 2,
+    "Ca": 2,
+    "Mg": 2,
+    "Fe": 2,
+    "Cu": 1,
+    "Mn": 2,
+}
 
 
 def compute_residue_radius(residue):
@@ -142,7 +166,10 @@ def infer_residue_connections(
     """
     if not triplet:
         if bond_length is None:
-            bond_length = defaults.DEFAULT_BOND_LENGTH
+            bond_length = defaults.DEFAULT_BOND_LENGTH / 2, defaults.DEFAULT_BOND_LENGTH
+        elif isinstance(bond_length, (int, float)):
+            bond_length = defaults.DEFAULT_BOND_LENGTH / 2, bond_length
+        min_length, max_length = bond_length
 
         bonds = []
         _seen_residues = set()
@@ -153,19 +180,21 @@ def infer_residue_connections(
                 elif residue2 in _seen_residues:
                     continue
 
-                atoms1 = list(residue1.get_atoms())
-                atoms2 = list(residue2.get_atoms())
+                atoms = list(residue1.get_atoms())
+                atoms.extend(residue2.get_atoms())
 
-                _neighbors = NeighborSearch(atoms1 + atoms2)
-                _neighbors = _neighbors.search_all(radius=bond_length)
+                _neighbors = NeighborSearch(atoms)
+                _neighbors = _neighbors.search_all(radius=max_length)
 
                 _neighbors = (
-                    i for i in _neighbors if i[0].element != "H" and i[1].element != "H"
+                    i
+                    for i in _neighbors
+                    if (i[0].element != "H" and i[1].element != "H")
+                    and i[0].get_parent() != i[1].get_parent()
+                    and np.linalg.norm(i[0].coord - i[1].coord) > min_length
                 )
 
-                bonds.extend(
-                    [n for n in _neighbors if n[0].get_parent() != n[1].get_parent()],
-                )
+                bonds.extend(_neighbors)
 
             _seen_residues.add(residue1)
     else:
@@ -177,7 +206,7 @@ def infer_residue_connections(
         )
         _additional_bonds = []
         for atom1, atom2 in connections:
-            _new = [bond for bond in base_bonds if atom1 in bond]
+            _new = (bond for bond in base_bonds if atom1 in bond)
             _additional_bonds.extend(_new)
         bonds = connections + _additional_bonds
 
@@ -196,8 +225,9 @@ def infer_bonds(structure, bond_length: float = None, restrict_residues: bool = 
         - `Bio.PDB.Model`
         - `Bio.PDB.Chain`
         - `Bio.PDB.Residue`
-    bond_length : float
+    bond_length : float or tuple
         The maximum distance between two atoms to be considered a bond.
+        If a tuple is provided, it specifies the minimal and maximal distances between atoms.
     restrict_residues : bool
         If set to `True`, only bonds between atoms of the same residue will be considered.
 
@@ -207,7 +237,10 @@ def infer_bonds(structure, bond_length: float = None, restrict_residues: bool = 
         The connectivity graph of the molecule, storing tuples of `Bio.PDB.Atom` objects.
     """
     if bond_length is None:
-        bond_length = defaults.DEFAULT_BOND_LENGTH
+        bond_length = (defaults.DEFAULT_BOND_LENGTH / 2, defaults.DEFAULT_BOND_LENGTH)
+    elif isinstance(bond_length, (int, float)):
+        bond_length = (defaults.DEFAULT_BOND_LENGTH / 2, bond_length)
+    min_length, max_length = bond_length
 
     if restrict_residues:
         bonds = []
@@ -215,17 +248,21 @@ def infer_bonds(structure, bond_length: float = None, restrict_residues: bool = 
             atoms = list(residue.get_atoms())
             _neighbors = NeighborSearch(atoms)
             bonds.extend(
-                _neighbors.search_all(radius=bond_length),
+                _neighbors.search_all(radius=max_length),
             )
 
     else:
         atoms = list(structure.get_atoms())
         _neighbors = NeighborSearch(atoms)
-        bonds = _neighbors.search_all(radius=bond_length)
+        bonds = _neighbors.search_all(radius=max_length)
 
-    # # convert to Bond-tuples
-    # bonds = [Bond(i) for i in bonds]
-
+    bonds = [
+        i
+        for i in bonds
+        if not (i[0].element == "H" and i[1].element == "H")
+        and np.linalg.norm(i[0].coord - i[1].coord) > min_length
+    ]
+    bonds = _prune_H_triplets(bonds)
     return bonds
 
 
@@ -293,9 +330,14 @@ def apply_standard_bonds(structure, _topology=None):
         return bonds
 
 
-def fill_missing_atoms(structure, _topology=None):
+def fill_missing_atoms(structure, _topology=None, _compounds=None):
     """
-    Fill missing atoms in residues.
+    Fill missing atoms in residues either based on the loaded standard topology
+    or based on the loaded compounds dictionary. By default, if a residue is not
+    available in the topology, the compounds database will be used. Note, however,
+    that for structures that contain residues in non-standard conformations (e.g. proteins)
+    using the compounds database may lead to poor results and is not recommended. In such cases,
+    it is recommended to use a molecular dynamics software to fill missing atoms in appropriate coordinates.
 
     Parameters
     ----------
@@ -308,10 +350,12 @@ def fill_missing_atoms(structure, _topology=None):
 
     _topology
         A specific topology to use for references.
+    _compounds
+        A specific compounds dictionary to use for references.
     """
     if structure.level in set(("S", "M", "C")):
         for residue in structure.get_residues():
-            fill_missing_atoms(residue, _topology=_topology)
+            fill_missing_atoms(residue, _topology=_topology, _compounds=_compounds)
         return
     elif structure.level == "A":
         raise ValueError("Cannot fill missing atoms in an Atom object!")
@@ -320,35 +364,13 @@ def fill_missing_atoms(structure, _topology=None):
 
     if not _topology:
         _topology = defaults.get_default_topology()
+    if not _compounds:
+        _compounds = defaults.get_default_compounds()
 
-    if not _topology.has_residue(structure.resname):
-        warnings.warn(
-            f"[ignoring] No abstract residue found in Topology for {structure.resname}!"
-        )
-        return
-    _abstract = _topology.get_residue(structure.resname)
-
-    # first get all atoms that need to be added
-    _atoms_to_add = _abstract.get_missing_atoms(structure)
-
-    # now iterate through the atoms and impute them one by one
-    # try to keep atoms that could not be imputed in a queue
-    # in hopes of imputing them later, but abort if it's no good...
-    _fail_timer = 0
-    while len(_atoms_to_add) != 0:
-        _atom = _atoms_to_add.pop(0)
-        _success = impute_atom_from_IC(_atom, structure, _abstract)
-        if not _success:
-            _atoms_to_add.append(_atom)
-            _fail_timer += 1
-            if _fail_timer == len(_atoms_to_add) + 1:
-                warnings.warn(
-                    f"Could not impute atoms: {[i.id for i in _atoms_to_add]}! Aborting...",
-                    RuntimeWarning,
-                )
-                return
-            continue
-        _fail_timer = 0
+    if _topology.has_residue(structure.resname):
+        _infer_missing_via_topology(structure, _topology)
+    elif _compounds.has_residue(structure.resname):
+        _infer_missing_via_compounds(structure, _compounds)
 
 
 def compute_internal_coordinates(bonds: list):
@@ -563,3 +585,202 @@ def compute_atom4_from_others(coords1, coords2, coords3, ic):
             theta=-np.radians(ic.bond_angle_234),
             dihedral=np.radians(ic.dihedral),
         )
+
+
+def _infer_missing_via_topology(residue, _topology):
+    """
+    Infer missing atoms in a residue through the internal coordinates
+    of an abstract residue in a Topology.
+
+    Parameters
+    ----------
+    residue : Bio.PDB.Residue
+        The residue to impute atoms into.
+    _topology : Topology
+        The Topology to reference abstract residues from.
+    """
+    if not _topology.has_residue(residue.resname):
+        raise ValueError(
+            f"No abstract residue found in Topology for {residue.resname}!"
+        )
+        return
+    _abstract = _topology.get_residue(residue.resname)
+
+    # first get all atoms that need to be added
+    _atoms_to_add = _abstract.get_missing_atoms(residue)
+
+    # now iterate through the atoms and impute them one by one
+    # try to keep atoms that could not be imputed in a queue
+    # in hopes of imputing them later, but abort if it's no good...
+    _fail_timer = 0
+    while len(_atoms_to_add) != 0:
+        _atom = _atoms_to_add.pop(0)
+        _success = impute_atom_from_IC(_atom, residue, _abstract)
+        if not _success:
+            _atoms_to_add.append(_atom)
+            _fail_timer += 1
+            if _fail_timer == len(_atoms_to_add) + 1:
+                warnings.warn(
+                    f"Could not impute atoms: {[i.id for i in _atoms_to_add]}! Aborting...",
+                    RuntimeWarning,
+                )
+                return
+            continue
+        _fail_timer = 0
+
+
+def _infer_missing_via_compounds(residue, _compounds):
+    """
+    Infer missing atoms in a residue through a reference residue from the
+    compounds database.
+
+    Parameters
+    ----------
+    residue : Bio.PDB.Residue
+        The residue to impute atoms into.
+    _compounds : PDBECompounds
+        The Compounds database to reference abstract residues from.
+    """
+    if not _compounds.has_residue(residue.resname):
+        raise ValueError(
+            f"No abstract residue found in Compounds database for {residue.resname}!"
+        )
+    ref = _compounds.get(residue.resname, return_type="residue")
+
+    # first get all atoms that need to be added
+    _atoms_to_add = [i for i in ref.get_atoms() if i.id not in residue.child_dict]
+    _ref_atoms = [i.id for i in ref.get_atoms() if i.id in residue.child_dict]
+
+    # now overlay the abstract residue onto the real one
+    imposer = SVDSuperimposer.SVDSuperimposer()
+
+    residue_coords = np.array([residue.child_dict[i].coord for i in _ref_atoms])
+    ref_coords = np.array([ref.child_dict[i].coord for i in _ref_atoms])
+
+    imposer.set(residue_coords, ref_coords)
+    imposer.run()
+
+    rot, tran = imposer.get_rotran()
+    for atom in _atoms_to_add:
+        atom.coord = np.dot(atom.coord, rot) + tran
+        residue.add(atom)
+
+
+def _prune_H_triplets(bonds):
+    """
+    Remove and erroneous bonds that connect hydrogens to multiple other atoms.
+
+    Parameters
+    ----------
+    bonds : list of tuples
+        The bonds to prune.
+
+    Returns
+    -------
+    bonds : list of tuples
+        The pruned bonds.
+    """
+    bonds_with_H = [
+        set(bond) for bond in bonds if bond[0].element == "H" or bond[1].element == "H"
+    ]
+    bonds = [set(bond) for bond in bonds]
+
+    for bond in bonds_with_H:
+        if bond not in bonds:
+            continue
+        partners = [
+            i
+            for i in bonds_with_H
+            if i != bond
+            and not i.isdisjoint(bond)
+            and i.intersection(bond).pop().element == "H"
+        ]
+        if len(partners) == 0:
+            continue
+        for partner in partners:
+            a, b = bond
+            not_H_1 = b if a.element == "H" else a
+            not_H_2 = partner.difference(bond).pop()
+
+            not_H_1_allowed = element_connectivity[not_H_1.element]
+            not_H_1_have = sum(1 for _b in bonds if not_H_1 in _b)
+            if not_H_1_have > not_H_1_allowed:
+                bonds.remove(bond)
+                continue
+
+            not_H_2_allowed = element_connectivity[not_H_2.element]
+            not_H_2_have = sum(1 for _b in bonds if not_H_2 in _b)
+            if not_H_2_have > not_H_2_allowed:
+                bonds.remove(partner)
+                continue
+
+    bonds = [tuple(i) for i in bonds]
+    return bonds
+
+
+if __name__ == "__main__":
+    import glycosylator as gl
+    from scipy.spatial import distance
+    import time
+
+    # def infer_bonds2(structure, bond_length):
+    #     min_length, max_length = bond_length
+
+    #     atoms = np.array([atom for atom in structure.get_atoms()])
+    #     elements = np.array([atom.element for atom in atoms])
+    #     coords = np.stack([atom.coord for atom in atoms])
+
+    #     dists = distance.cdist(coords, coords, metric="euclidean")
+
+    #     mask = np.logical_and(dists < max_length, dists > min_length)
+
+    #     bonds = []
+    #     bond_set = []
+    #     for i in range(len(atoms)):
+    #         for j in np.where(mask[i])[0]:
+    #             if elements[i] == "H" and elements[j] == "H":
+    #                 continue
+    #             b = (atoms[i], atoms[j])
+    #             _s = set(b)
+    #             if _s in bond_set:
+    #                 continue
+    #             bonds.append(b)
+    #             bond_set.append(_s)
+
+    #     bonds = _prune_H_triplets(bonds)
+    #     return bonds
+
+    # repeats = 4
+    # print("size, infer_bonds, infer_bonds2")
+    # for size in (5, 10, 50, 100, 200):
+    #     for i in range(repeats):
+    #         glc = gl.Molecule.from_compound("GLC")
+    #         glc.repeat(size, "14bb")
+    #         glc.purge_bonds()
+
+    #         start = time.time()
+    #         bonds = infer_bonds(
+    #             glc._base_struct, bond_length=(0.8, 1.6), restrict_residues=False
+    #         )
+    #         end = time.time()
+    #         old_length = len(bonds)
+    #         t1 = end - start
+
+    #         glc.purge_bonds()
+    #         start = time.time()
+    #         bonds = infer_bonds2(glc._base_struct, (0.8, 1.6))
+    #         # for b in bonds:
+    #         #     glc.add_bond(*b)
+    #         # glc.view()
+    #         # glc.purge_bonds()
+    #         # bonds = _prune_H_triplets(bonds)
+    #         # for b in bonds:
+    #         #     glc.add_bond(*b)
+    #         # glc.view()
+    #         end = time.time()
+    #         new_length = len(bonds)
+    #         t2 = end - start
+    #         print(f"{size}, {t1}, {t2}")
+
+    #         # print("old: ", old_length, "new: ", new_length)
+    #         pass
