@@ -6,7 +6,24 @@ import math
 import os
 import re
 
+import pickle
 import numpy as np
+
+
+def load_pickle(filename):
+    """
+    Load an object from a pickle file
+    """
+    with open(filename, "rb") as f:
+        return pickle.load(f)
+
+
+def save_pickle(obj, filename):
+    """
+    Save an object to a pickle file
+    """
+    with open(filename, "wb") as f:
+        pickle.dump(obj, f)
 
 
 def filename_to_id(filename):
@@ -47,6 +64,63 @@ def change_suffix(filename, suffix):
     if suffix[0] != ".":
         suffix = "." + suffix
     return base + suffix
+
+
+class DummyStructure:
+    """
+    A dummy pdb structure
+
+    Used for the surface residue inference
+
+    Parameters
+    ----------
+    residues : list of Bio.PDB.Residue.Residue
+        The residues to include in the structure
+    """
+
+    def __init__(self, residues) -> None:
+        self.atoms = []
+        self.atoms.extend(a for r in residues for a in r.get_atoms())
+        self.residues = residues
+        self.chains = []
+        self.chains.extend(
+            r.get_parent() for r in residues if r.get_parent() not in self.chains
+        )
+        self.models = []
+        self.models.extend(
+            c.get_parent() for c in self.chains if c.get_parent() not in self.models
+        )
+        self.level = "S"
+
+    def get_atoms(self):
+        return iter(self.atoms)
+
+    def get_residues(self):
+        return iter(self.residues)
+
+    def get_chains(self):
+        return iter(self.chains)
+
+    def get_models(self):
+        return iter(self.models)
+
+
+class DummyBar:
+    """
+    A dummy progress bar
+    """
+
+    def __init__(self, *args, **kwargs) -> None:
+        pass
+
+    def __call__(self, *args, **kwargs) -> None:
+        pass
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args, **kwargs):
+        pass
 
 
 # =================================================================
