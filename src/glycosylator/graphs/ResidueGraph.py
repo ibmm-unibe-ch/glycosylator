@@ -1,12 +1,10 @@
 from typing import Union
 import networkx as nx
 import numpy as np
-import mdtraj as md
 import Bio.PDB as bio
 
 import glycosylator.structural as struct
 from glycosylator.graphs.BaseGraph import BaseGraph
-import glycosylator.graphs.AtomGraph as AtomGraph
 
 
 class ResidueGraph(BaseGraph):
@@ -59,7 +57,11 @@ class ResidueGraph(BaseGraph):
                 "Molecule must have at least 2 residues to make a ResidueGraph"
             )
 
-        connections = mol.get_residue_connections(triplet=True)
+        try:
+            connections = mol.get_residue_connections(triplet=True)
+        except:
+            mol.direct_connections()
+            connections = mol.get_residue_connections(triplet=True, directed=False)
         main_connections = [
             (i.get_parent(), j.get_parent())
             for i, j in connections
@@ -326,18 +328,22 @@ class ResidueGraph(BaseGraph):
 
 
 if __name__ == "__main__":
-
     import glycosylator as gl
 
-    _man = "support/examples/MAN9.pdb"
-    _man = gl.Molecule.from_pdb(_man)
-    _man.infer_bonds(restrict_residues=False)
-    man = ResidueGraph.from_molecule(_man)
+    f = "support/examples/4tvp.prot.pdb"
+    mol = gl.Scaffold.from_pdb(f)
+    mol.infer_bonds(restrict_residues=False)
+    man = ResidueGraph.from_molecule(mol)
+
+    # _man = "support/examples/MAN9.pdb"
+    # _man = gl.Molecule.from_pdb(_man)
+    # _man.infer_bonds(restrict_residues=False)
+    # man = ResidueGraph.from_molecule(_man)
 
     import matplotlib.pyplot as plt
     import networkx as nx
 
-    man.make_detailed(True, f = 1)
+    man.make_detailed(True, f=1)
 
     import glycosylator.utils.visual as vis
 
