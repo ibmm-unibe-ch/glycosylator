@@ -29,6 +29,15 @@ DEFAULT_PDBE_COMPOUNDS_FILE = os.path.join(constants.RESOURCES, "PDBECompounds.p
 The path to the default PDBe compounds file
 """
 
+DEFAULT_SASA_PROBE_RADIUS = 1.4
+"""
+The default probe radius for calculating solvent accessible surface area
+"""
+
+DEFAULT_SASA_N = 300
+"""
+The default number of points used to calculate solvent accessible surface area
+"""
 
 # =================================================================
 # Default instances of auxiliary classes
@@ -37,6 +46,7 @@ The path to the default PDBe compounds file
 
 __default_instances__ = dict(
     bioPDBParser=bio.PDBParser(),
+    bioSASA=bio.SASA.ShrakeRupley(DEFAULT_SASA_PROBE_RADIUS, DEFAULT_SASA_N),
     Topology=charmm.CHARMMTopology.load(DEFAULT_CHARMM_TOPOLOGY_FILE),
     Parameters=charmm.CHARMMParameters.load(DEFAULT_CHARMM_PARAMETERS_FILE),
     PDBECompounds=pickle.load(open(DEFAULT_PDBE_COMPOUNDS_FILE, "rb")),
