@@ -24,9 +24,7 @@ class Scaffold(entity.BaseEntity):
     """
 
     def __init__(self, structure, model: int = 0) -> None:
-        super().__init__(structure)
-
-        self._model = self._base_struct.child_dict[model]
+        super().__init__(structure, model)
 
         self._excluded_chains = set()
         self._excluded_residues = set()
@@ -34,33 +32,6 @@ class Scaffold(entity.BaseEntity):
         self._molecule_residues = set()
         self._internal_residues = []
         self._molecule_connections = set()
-
-    @property
-    def chains(self) -> list:
-        """
-        Returns the chains in the structure
-
-        Returns
-        -------
-        list
-            A list of the chains in the structure
-        """
-        return list(self._model.child_list)
-
-    @property
-    def residues(self) -> list:
-        """
-        Returns the residues in the structure
-
-        Returns
-        -------
-        list
-            A list of the residues in the structure
-        """
-        residues = []
-        for chain in self.chains:
-            residues.extend(chain.child_list)
-        return residues
 
     @property
     def seq(self) -> str:
@@ -81,36 +52,6 @@ class Scaffold(entity.BaseEntity):
             seqs[chain.get_id()] = "".join(ids)
 
         return seqs
-
-    def reindex(self) -> None:
-        """
-        Reindex the structure to ensure that the residue numbers are sequential
-        """
-        cdx = 65  # A
-        rdx = 1
-        adx = 1
-
-        res_chain_map = {
-            residue: chain for chain in self.chains for residue in chain.child_list
-        }
-
-        for chain in self.chains:
-            chain.id = chr(cdx)
-            cdx += 1
-
-            residues = list(chain.child_list)
-            for residue in residues:
-                residue.detach_parent()
-
-            for residue in residues:
-                residue.id = (residue.id[0], rdx, *residue.id[2:])
-                rdx += 1
-                for atom in residue.child_list:
-                    atom.serial_number = adx
-                    adx += 1
-                    atom.set_parent(residue)
-                residue.set_parent(chain)
-            chain.set_parent(self._model)
 
     def exclude_chain(self, chain: Union[str, bio.Chain.Chain]):
         """
@@ -193,19 +134,6 @@ class Scaffold(entity.BaseEntity):
                 if self.residues[idx] not in self._excluded_residues
             ]
         return _residues
-
-    def adjust_indexing(self, mol: "Molecule"):
-        """
-        Adjust the indexing of a molecule to match the scaffold index
-
-        Parameters
-        ----------
-        mol : Molecule
-            The molecule to adjust the indexing of
-        """
-        rdx = len(self.residues)
-        adx = len(self.atoms)
-        mol.reindex(rdx, adx)
 
     def add_residues(
         self,

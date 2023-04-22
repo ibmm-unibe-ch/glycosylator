@@ -70,17 +70,11 @@ class Connector:
         ref_atom_2 = self.source.get_atoms(_ref_atoms[1])
 
         if target_residue:
-            if isinstance(target_residue, int):
-                target_residue = self.target.get_residue(id=target_residue)
-            elif isinstance(target_residue, str):
-                target_residue = self.target.get_residue(name=target_residue)
+            target_residue = self.target.get_residue(target_residue)
             ref_atom_1 = [i for i in ref_atom_1 if i.get_parent() == target_residue]
 
         if source_residue:
-            if isinstance(source_residue, int):
-                source_residue = self.source.get_residue(id=source_residue)
-            elif isinstance(source_residue, str):
-                source_residue = self.source.get_residue(name=source_residue)
+            source_residue = self.source.get_residue(source_residue)
             ref_atom_2 = [i for i in ref_atom_2 if i.get_parent() == source_residue]
 
         if len(ref_atom_1) == 0:
