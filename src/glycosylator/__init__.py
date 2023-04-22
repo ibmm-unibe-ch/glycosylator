@@ -12,8 +12,10 @@ from glycosylator.core import *
 from glycosylator.utils import (
     get_default_parameters,
     get_default_topology,
+    get_default_compounds,
     set_default_topology,
     set_default_parameters,
+    set_default_compounds,
 )
 
 __all__ = [
