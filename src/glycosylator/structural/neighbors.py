@@ -405,22 +405,23 @@ def compute_triplets(bonds: list):
     >>> compute_triplets(bonds)
     [(2, 1, 3), (1, 2, 4), (1, 3, 5)]
     """
-    triplets = []
-    for i, bond1 in enumerate(bonds):
-        atom_11, atom_12 = bond1
-        for j, bond2 in enumerate(bonds[i + 1 :]):
-            atom_21, atom_22 = bond2
-            if atom_11 == atom_22:
-                continue
-            if atom_11 == atom_21:
-                triplets.append((atom_12, atom_11, atom_22))
-            elif atom_11 == atom_22:
-                triplets.append((atom_12, atom_11, atom_21))
-            elif atom_12 == atom_21:
-                triplets.append((atom_11, atom_12, atom_22))
-            elif atom_12 == atom_22:
-                triplets.append((atom_11, atom_12, atom_21))
-    return triplets
+    return list(generate_triplets(bonds))
+    # triplets = []
+    # for i, bond1 in enumerate(bonds):
+    #     atom_11, atom_12 = bond1
+    #     for j, bond2 in enumerate(bonds[i + 1 :]):
+    #         atom_21, atom_22 = bond2
+    #         if atom_11 == atom_22:
+    #             continue
+    #         if atom_11 == atom_21:
+    #             triplets.append((atom_12, atom_11, atom_22))
+    #         elif atom_11 == atom_22:
+    #             triplets.append((atom_12, atom_11, atom_21))
+    #         elif atom_12 == atom_21:
+    #             triplets.append((atom_11, atom_12, atom_22))
+    #         elif atom_12 == atom_22:
+    #             triplets.append((atom_11, atom_12, atom_21))
+    # return triplets
 
 
 def compute_quartets(bonds: list):
@@ -462,7 +463,7 @@ def compute_quartets(bonds: list):
             # decision tree to map atoms into quartets
             if all((atom_1 == atom_4, atom_2 == atom_5, atom_3 == atom_6)):
                 continue
-            
+
             quartet = None
             if atom_2 == atom_4:
                 if atom_1 == atom_5:
@@ -486,3 +487,51 @@ def compute_quartets(bonds: list):
                 quartets.add(quartet)
 
     return quartets
+
+
+def generate_triplets(bonds: list):
+    """
+    Compute all possible triplets of atoms from a list of bonds.
+
+    Parameters
+    ----------
+    bonds : list
+        A list of bonds
+
+    Returns
+    -------
+    triplets : generator
+        A generator of triplets
+
+    Examples
+    --------
+    ```
+    ( 1 )---( 2 )---( 4 )
+       \\
+       ( 3 )
+         |
+       ( 5 )
+    ```
+    >>> bonds = [(1, 2), (1, 3), (2, 4), (3, 5)]
+    >>> list(generate_triplets(bonds))
+    [(2, 1, 3), (1, 2, 4), (1, 3, 5)]
+    """
+    for i, bond1 in enumerate(bonds):
+        atom_11, atom_12 = bond1
+        for j, bond2 in enumerate(bonds[i + 1 :]):
+            atom_21, atom_22 = bond2
+
+            # we used to compare with == (Which works perfectly fine)
+            # but since we use this function to generate atom bond triplets
+            # where the atoms are not only supposed to be equal but should literally be the same object
+            # we can use the is operator to speed up the process (hopefully.)
+            if atom_11 is atom_22:
+                continue
+            if atom_11 is atom_21:
+                yield (atom_12, atom_11, atom_22)
+            elif atom_11 is atom_22:
+                yield (atom_12, atom_11, atom_21)
+            elif atom_12 is atom_21:
+                yield (atom_11, atom_12, atom_22)
+            elif atom_12 is atom_22:
+                yield (atom_11, atom_12, atom_21)
