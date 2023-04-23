@@ -80,7 +80,6 @@ class Neighborhood:
         self._ids_nodes = defaultdict(list)
 
         for node1, node2 in self._src.edges:
-
             self._idx_nodes.setdefault(self.__index_method__(node1), node1)
             self._idx_nodes.setdefault(self.__index_method__(node2), node2)
 
@@ -411,6 +410,8 @@ def compute_triplets(bonds: list):
         atom_11, atom_12 = bond1
         for j, bond2 in enumerate(bonds[i + 1 :]):
             atom_21, atom_22 = bond2
+            if atom_11 == atom_22:
+                continue
             if atom_11 == atom_21:
                 triplets.append((atom_12, atom_11, atom_22))
             elif atom_11 == atom_22:
@@ -459,12 +460,11 @@ def compute_quartets(bonds: list):
             atom_4, atom_5, atom_6 = triplet2
 
             # decision tree to map atoms into quartets
-            if all([atom_1 == atom_4, atom_2 == atom_5, atom_3 == atom_6]):
+            if all((atom_1 == atom_4, atom_2 == atom_5, atom_3 == atom_6)):
                 continue
-
+            
             quartet = None
             if atom_2 == atom_4:
-
                 if atom_1 == atom_5:
                     quartet = Quartet(atom_6, atom_1, atom_2, atom_3, False)
 
@@ -472,12 +472,10 @@ def compute_quartets(bonds: list):
                     quartet = Quartet(atom_1, atom_2, atom_3, atom_6, False)
 
             elif atom_2 == atom_5:
-
                 if atom_1 == atom_4 or atom_3 == atom_4:
                     quartet = Quartet(atom_1, atom_3, atom_2, atom_6, True)
 
             elif atom_2 == atom_6:
-
                 if atom_1 == atom_5:
                     quartet = Quartet(atom_6, atom_1, atom_2, atom_3, False)
 
