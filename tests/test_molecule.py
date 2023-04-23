@@ -176,6 +176,13 @@ def test_add_atoms():
     assert "C99" not in [i.id for i in mol.atoms]
 
 
+def test_remove_atoms():
+    glc = gl.Molecule.from_compound("GLC")
+    glc.remove_atoms("C1", "O4")
+    assert len(glc.atoms) == 22
+    assert len(glc.bonds) == 20
+
+
 def test_add_residues():
     mol = gl.Molecule.from_pdb(base.MANNOSE)
     mol.apply_standard_bonds()
