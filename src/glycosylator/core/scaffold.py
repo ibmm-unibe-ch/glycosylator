@@ -318,7 +318,7 @@ class Scaffold(entity.BaseEntity):
             chain = bio.Chain.Chain(chr(65 + len(scaffold.chains)))
             self._model.add(chain)
 
-        scaffold, _mol = s.stitch(
+        scaffold, _mol = s.apply(
             scaffold,
             mol,
             remove_atoms,
@@ -379,6 +379,6 @@ if __name__ == "__main__":
     )
     t2 = time.time()
     print("Oh yeah - it works!")
-    s.to_pdb("final_scaffold_superduper.pdb")
+    s.to_pdb("final_scaffold_superduper999.pdb")
     print(f"Time: {t2 - t1}")
     pass
