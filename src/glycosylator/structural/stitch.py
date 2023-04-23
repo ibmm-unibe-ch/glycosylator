@@ -209,8 +209,8 @@ class Stitcher(base.Connector):
         """
         Remove the atoms specified in the removals list
         """
-        # self.target.remove_atoms(*self._removals[0])
-        # self.source.remove_atoms(*self._removals[1])
+        # self.target._remove_atoms(*self._removals[0])
+        # self.source._remove_atoms(*self._removals[1])
         # return
         mapping = {
             0: self.target,
@@ -218,32 +218,24 @@ class Stitcher(base.Connector):
         }
         for i, removals in enumerate(self._removals):
             obj = mapping[i]
-            graph = obj._AtomGraph
 
             for atom in removals:
+                obj._AtomGraph.remove_node(atom)
                 bonds = (
                     i
-                    for i in obj.bonds
-                    # interestingly, using this approach, we can (seemingly) avoid
-                    # the problem of lost neighbors when calling the stitcher repeatedly...
-                    # don't really know why this works, but it seems to do...
+                    for i in obj._bonds
                     if atom.full_id == i[0].full_id or atom.full_id == i[1].full_id
                 )
                 for bond in bonds:
                     obj._bonds.remove(bond)
-                    if bond[::-1] in obj._bonds:
-                        obj._bonds.remove(bond[::-1])
-                    if graph.has_edge(*bond):
-                        graph.remove_edge(*bond)
-                    elif graph.has_edge(*bond[::-1]):
-                        graph.remove_edge(*bond[::-1])
-                graph.remove_node(atom)
-                atom.get_parent().detach_child(atom.id)
+                p = atom.get_parent()
+                p.detach_child(atom.id)
+                atom.set_parent(p)
 
-            adx = 0
-            for atom in obj.atoms:
-                adx += 1
-                atom.serial_number = adx
+            # adx = 1
+            # for atom in obj.atoms:
+            #     atom.set_serial_number(adx)
+            #     adx += 1
 
     def _optimize(self, steps: int = 1e4, **kwargs):
         """
@@ -278,7 +270,7 @@ class Stitcher(base.Connector):
         edges = sorted(tmp.get_residue_connections())
         env = optimizers.MultiBondRotatron(graph, edges)
 
-        best = optimizers.optimize(env, int(steps))
+        best = optimizers.optimize(env, int(steps), **kwargs)
         self._policy = edges, best
 
         # self.best.append(best)
