@@ -6,9 +6,9 @@ SMILES strings or reference compounds from the PDBECompounds database.
 
 To make a new molecule, the easiest way is to use the `Molecule.from_compound` classmethod.
 This method is linked to the PDBECompounds database, which contains a large number of reference
-compounds (currently restricted to sugars, due to the nature of "glycosylator", however). The database
+compounds (currently restricted to sugars and amino acids due to the nature of "glycosylator", however). The database
 is queried using the `by` parameter, which can be one of the following:
-- "id" for the PDB id
+- "id" for the PDB id (default)
 - "name" for the name of the compound (must match any known synonym of the iupac name)
 - "formula" for the chemical formula (usually ambiguous and will therefore often raise an error)
 - "smiles" for the SMILES string (also accepts InChI)
@@ -20,16 +20,26 @@ is queried using the `by` parameter, which can be one of the following:
     # create a new galactose molecule
     gal = Molecule.from_compound("GAL") # use the PDB id
 
-Alternatively, a molecule can be created from a PDB file using the `Molecule.from_pdb` classmethod. 
+    # create a new glucose molecule
+    glc = Molecule.from_compound("alpha-d-glucose", by="name") # use the name
+
+Alternatively, an existing structure can be loaded to a molecule from a PDB file using the `Molecule.from_pdb` classmethod. 
 In this case the molecule may be as large as the PDB format supports (currently 99999 atoms).
 
 .. code-block:: python
 
     my_glycan = Molecule.from_pdb("my_glycan.pdb")
 
-However, unless loaded from a PDB file, each `Molecule` starts of with a single chain and residue,
+Unless loaded from a PDB file, each `Molecule` starts with a single chain and residue,
 specifying a single compound, such as Galactose or Glucose. Starting from there, multiple molecules
-can be patched together to form complex structures. 
+can be assembled together to form complex structures. 
+
+From single molecules to complex structures
+-------------------------------------------
+
+The `Molecule` class provides a number of methods to easily assemble complex structures from small single residue molecules.
+The simplest way to generate a large structure is probably the `repeat` method, which will repeat the given molecule `n` times
+to form a homo-polymer.
 
 .. code-block:: python
 
@@ -110,11 +120,12 @@ import glycosylator.structural as structural
 class Molecule(entity.BaseEntity):
     """
     A molecule to add onto a scaffold.
+    A molecule consists of a single chain.
 
     Parameters
     ----------
     structure : bio.PDB.Structure
-        A biopython structure that stores the atomic structure
+        A biopython structure object
     root_atom : str or int or bio.PDB.Atom
         The id or the serial number of the root atom
         at which the molecule would be attached to a another
@@ -133,22 +144,18 @@ class Molecule(entity.BaseEntity):
         model: int = 0,
         chain: str = None,
     ):
-        super().__init__(structure)
+        super().__init__(structure, model)
 
-        model = structure.child_dict[model]
-
-        if len(model.child_list) == 0:
-            raise ValueError("The model is empty")
-        elif len(model.child_list) == 1:
-            self._chain = model.child_list[0]
+        if not chain or len(self._model.child_list) == 1:
+            self._working_chain = self._model.child_list[0]
         else:
-            if chain:
-                self._chain = model.child_dict[chain]
-            else:
-                self._chain = model.child_list[0]
+            self._working_chain = self._model.child_dict.get(chain)
+            if not self._working_chain:
+                raise ValueError("The chain {} is not in the structure".format(chain))
 
         if root_atom:
-            if not root_atom in self._chain.get_atoms():
+            self.set_root(root_atom)
+            if not root_atom in self._working_chain.get_atoms():
                 raise ValueError("The root atom is not in the structure")
         self._root_atom = root_atom
 
@@ -253,58 +260,7 @@ class Molecule(entity.BaseEntity):
         struct.id = id if id else smiles
         return cls(struct, root_atom)
 
-    @property
-    def chain(self):
-        return self._chain
-
-    @property
-    def residues(self):
-        return self._chain.child_list
-
-    def get_patch(self):
-        return self._patch
-
-    def set_patch(
-        self, patch: Union[str, utils.abstract.AbstractPatch] = None, _topology=None
-    ):
-        """
-        Set a patch to be used for attaching other molecules to this one
-
-        Parameters
-        ----------
-        patch : str or utils.abstract.AbstractPatch
-            The patch to be used. Can be either a string with the name of the patch or an instance of the patch
-            If None is given, the current patch is removed.
-        _topology
-            The topology to use for referencing the patch.
-        """
-        if not _topology:
-            _topology = utils.get_default_topology()
-        if patch is None:
-            self._patch = None
-        elif isinstance(patch, str):
-            self._patch = _topology.get_patch(patch)
-        elif isinstance(patch, utils.abstract.AbstractPatch):
-            self._patch = patch
-        else:
-            raise ValueError(f"Unknown patch type {type(patch)}")
-
-    def adjust_indexing(self, other: "Molecule"):
-        """
-        Adjust another Molecule's residue and atom indexing to continue this Molecule's indexing.
-        E.g. any residue with seqid 1 in the other molecule will be adjusted to have seqid 3 if this molecule
-        already has two residues. And correspondingly, the atom numbering will be adjusted.
-
-        Parameters
-        ----------
-        other : Molecule
-            The other molecule to adjust
-        """
-        rdx = len(self.residues)
-        adx = len(self.atoms)
-        other.reindex(rdx + 1, adx + 1)
-
-    def get_residue_connections(self, triplet: bool = True, direct_by: str = "serial"):
+    def get_residue_connections(self, triplet: bool = True, direct_by: str = "resid"):
         """
         Get bonds between atoms that connect different residues in the structure
         This method is different from `infer_residue_connections` in that it works
@@ -334,7 +290,16 @@ class Molecule(entity.BaseEntity):
         """
         bonds = super().get_residue_connections(triplet)
         if direct_by is not None:
-            bonds = self._direct_bonds(bonds, direct_by)
+            direct_connections = None
+            if direct_by == "resid":
+                direct_connections = self.get_residue_connections(
+                    triplet=False, direct_by=None
+                )
+                direct_connections1, direct_connections2 = set(
+                    a for a, b in direct_connections
+                ), set(b for a, b in direct_connections)
+                direct_connections = direct_connections1.union(direct_connections2)
+            bonds = self._direct_bonds(bonds, direct_by, direct_connections)
         return set(bonds)
 
     def attach(
@@ -364,8 +329,6 @@ class Molecule(entity.BaseEntity):
             A specific topology to use for referencing.
             If None, the default CHARMM topology is used.
         """
-        if not _topology:
-            _topology = utils.get_default_topology()
 
         if not patch:
             patch = self._patch
@@ -374,6 +337,8 @@ class Molecule(entity.BaseEntity):
                 "No patch was set for this molecule. Either set a default patch or provide a patch when attaching."
             )
         if isinstance(patch, str):
+            if not _topology:
+                _topology = utils.get_default_topology()
             patch = _topology.get_patch(patch)
         if not patch:
             raise ValueError(
@@ -427,150 +392,6 @@ class Molecule(entity.BaseEntity):
             obj % _patch
 
         return obj
-
-    def rotate_around_bond(
-        self,
-        atom1: Union[str, int, bio.Atom.Atom],
-        atom2: Union[str, int, bio.Atom.Atom],
-        angle: float,
-        descendants_only: bool = False,
-    ):
-        """
-        Rotate the structure around a bond
-
-        Parameters
-        ----------
-        atom1
-            The first atom
-        atom2
-            The second atom
-        angle
-            The angle to rotate by in degrees
-        descendants_only
-            Whether to only rotate the descendants of the bond
-            (sensible only for linear molecules, or bonds that are not part of a circular structure).
-        
-        Examples
-        --------
-        For a molecule starting as:
-        ```
-                     OH
-                    /
-        (1)CH3 --- CH 
-                    \\
-                    CH2 --- (2)CH3
-        ```
-        we can rotate around the bond `(1)CH3 --- CH` by 180° using
-
-        >>> import numpy as np
-        >>> angle = np.radians(180) # rotation angle needs to be in radians
-        >>> mol.rotate_around_bond("(1)CH3", "CH", angle)
-
-        and thus achieve the following:
-        ```
-                     CH2 --- (2)CH3
-                    /
-        (1)CH3 --- CH 
-                    \\
-                     OH
-        ```
-
-        """
-        atom1 = self.get_atom(atom1)
-        atom2 = self.get_atom(atom2)
-        if (atom1, atom2) in self.locked_bonds:
-            raise RuntimeError("Cannot rotate around a locked bond")
-
-        self._AtomGraph.rotate_around_edge(atom1, atom2, angle, descendants_only)
-
-    def get_descendants(
-        self,
-        atom1: Union[str, int, bio.Atom.Atom],
-        atom2: Union[str, int, bio.Atom.Atom],
-    ):
-        """
-        Get the atoms downstream of a bond. This will return the set
-        of all atoms that are connected after the bond atom1-atom2 in the direction of atom2,
-        the selection can be reversed by reversing the order of atoms (atom2-atom1).
-
-        Parameters
-        ----------
-        atom1
-            The first atom
-        atom2
-            The second atom
-
-        Returns
-        -------
-        set
-            A set of atoms
-
-        Examples
-        --------
-        For a molecule
-        ```
-                     OH
-                    /
-        (1)CH3 --- CH 
-                    \\
-                    CH2 --- (2)CH3
-        ```
-        >>> mol.get_descendants("(1)CH3", "CH")
-        {"OH", "CH2", "(2)CH3"}
-        >>> mol.get_descendants("CH", "CH2")
-        {"(2)CH3"}
-        >>> mol.get_descendants("CH2", "CH")
-        {"OH", "(1)CH3"}
-        """
-        atom1 = self.get_atom(atom1)
-        atom2 = self.get_atom(atom2)
-
-        return self._AtomGraph.get_descendants(atom1, atom2)
-
-    def get_neighbors(
-        self,
-        atom: Union[int, str, tuple, bio.Atom.Atom],
-        n: int = 1,
-        mode: str = "upto",
-    ):
-        """
-        Get the neighbors of an atom.
-
-        Parameters
-        ----------
-        atom
-            The atom
-        n
-            The number of bonds that may separate the atom from its neighbors.
-        mode
-            The mode to use. Can be "upto" or "at". If `upto`, all neighbors that are at most `n` bonds away
-            are returned. If `at`, only neighbors that are exactly `n` bonds away are returned.
-
-        Returns
-        -------
-        set
-            A set of atoms
-
-
-        Examples
-        --------
-        For a molecule
-        ```
-                     O --- (2)CH2
-                    /         \\
-        (1)CH3 --- CH          OH
-                    \\
-                    (1)CH2 --- (2)CH3
-        ```
-        >>> mol.get_neighbors("(2)CH2", n=1)
-        {"O", "OH"}
-        >>> mol.get_neighbors("(2)CH2", n=2, mode="upto")
-        {"O", "OH", "CH"}
-        >>> mol.get_neighbors("(2)CH2", n=2, mode="at")
-        {"CH"}
-        """
-        atom = self.get_atom(atom)
-        return self._AtomGraph.get_neighbors(atom, n, mode)
 
     def __add__(self, other) -> "Molecule":
         """

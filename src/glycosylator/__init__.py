@@ -7,13 +7,16 @@ import glycosylator.utils as utils
 import glycosylator.resources as resources
 import glycosylator.graphs as graphs
 import glycosylator.optimizers as optimizers
+import glycosylator.structural as structural
 
 from glycosylator.core import *
 from glycosylator.utils import (
     get_default_parameters,
     get_default_topology,
+    get_default_compounds,
     set_default_topology,
     set_default_parameters,
+    set_default_compounds,
 )
 
 __all__ = [
@@ -23,6 +26,7 @@ __all__ = [
     # Sampler,
     utils,
     resources,
+    structural,
     graphs,
     optimizers,
     Molecule,

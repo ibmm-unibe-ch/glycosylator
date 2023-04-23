@@ -59,7 +59,6 @@ def test_molecule_basic():
 
 
 def test_can_write_pdb():
-
     import os
 
     glc = gl.Molecule.from_compound("GLC")
@@ -77,7 +76,6 @@ def test_can_write_pdb():
 
 
 def test_molecule_from_compound():
-
     glc = gl.Molecule.from_compound("GLC")
     assert glc is not None
     assert len(glc.atoms) == 24
@@ -121,7 +119,6 @@ def test_angles():
     abstract = top.get_residue("MAN")
 
     for triplet, angle in mol.angles.items():
-
         triplet = [i.id for i in triplet]
 
         ics = abstract.get_internal_coordinates(*triplet, None, mode="partial")
@@ -145,7 +142,6 @@ def test_dihedrals():
     abstract = top.get_residue("MAN")
 
     for quartet, dihedral in mol.dihedrals.items():
-
         quartet = [i.id for i in quartet]
         ics = abstract.get_internal_coordinates(*quartet)
         if len(ics) == 0:
@@ -178,6 +174,13 @@ def test_add_atoms():
     assert len(mol.atoms) == pre
 
     assert "C99" not in [i.id for i in mol.atoms]
+
+
+def test_remove_atoms():
+    glc = gl.Molecule.from_compound("GLC")
+    glc.remove_atoms("C1", "O4")
+    assert len(glc.atoms) == 22
+    assert len(glc.bonds) == 20
 
 
 def test_add_residues():
@@ -292,7 +295,11 @@ def test_rotate_some():
 
     for i in range(5):
         current_coords = np.array(
-            [i.coord for i in mol.get_atoms() if i != first and i != second and i != anchor]
+            [
+                i.coord
+                for i in mol.get_atoms()
+                if i != first and i != second and i != anchor
+            ]
         )
         current_refs = np.array((first.coord, second.coord))
         current_anchor = anchor.coord
@@ -300,7 +307,11 @@ def test_rotate_some():
         mol.rotate_around_bond(first, second, angle, descendants_only=True)
 
         new_coords = np.array(
-            [i.coord for i in mol.get_atoms() if i != first and i != second and i != anchor]
+            [
+                i.coord
+                for i in mol.get_atoms()
+                if i != first and i != second and i != anchor
+            ]
         )
         new_refs = np.array((first.coord, second.coord))
         new_anchor = anchor.coord
@@ -347,7 +358,6 @@ def test_rotate_some_inverse():
 
 
 def test_adjust_indexing():
-
     mol = gl.Molecule.from_compound("MAN")
     other = deepcopy(mol)
 
@@ -364,7 +374,6 @@ def test_adjust_indexing():
 
 
 def test_adjust_indexing_with_add_residues():
-
     mol = gl.Molecule.from_compound("MAN")
     other = deepcopy(mol)
 
@@ -385,7 +394,6 @@ def test_adjust_indexing_with_add_residues():
 
 
 def test_set_patch():
-
     mol = gl.Molecule.from_compound("GLC")
     mol.set_patch("14bb")
 
@@ -412,7 +420,6 @@ def test_set_patch():
 
 
 def test_attach():
-
     glc = gl.Molecule.from_compound("GLC")
     glc.set_patch("14bb")
 
@@ -441,7 +448,6 @@ def test_attach():
 
 
 def test_multiply():
-
     man = gl.Molecule.from_compound("GLC")
     man.lock_all()
 
@@ -478,7 +484,6 @@ def test_multiply():
 
 
 def test_repeat():
-
     man = gl.Molecule.from_compound("GLC")
     man.lock_all()
 
@@ -514,7 +519,6 @@ def test_repeat():
 
 
 def test_make_mannose8():
-
     """
     Structure to build:
 
@@ -540,7 +544,8 @@ def test_make_mannose8():
 
     # make the NAG-NAG--BMA (we can always use the 14bb patch)
     nag % "14bb"
-    man8 = nag * 2 + bma
+    nag *= 2
+    man8 = nag + bma
 
     # now we attach the 13ab MAN to the BMA
     man8 % "13ab"
@@ -782,7 +787,6 @@ def test_make_mannose8_3():
     ]
     idx = 0
     for residue in man8.residues:
-
         for bond in man8.bonds:
             if bond[0].get_parent() == residue and bond[1].get_parent() == residue:
                 v.draw_edges([bond], color=colors[idx], linewidth=3)
@@ -792,7 +796,6 @@ def test_make_mannose8_3():
 
 
 def test_relabel():
-
     scrambled = gl.Molecule.from_compound("BMA")
 
     # relabel to elementwise order without specific connectivity
@@ -832,11 +835,9 @@ def test_relabel():
 
 
 def test_rotate_descendants_2():
-
     glc = gl.Molecule.from_compound("GLC")
     glc.lock_all()
     glc.repeat(4, "14bb")
-    glc.direct_connections(by="root")
     connections = glc.get_residue_connections()
 
     v = gl.utils.visual.MoleculeViewer3D(glc)
