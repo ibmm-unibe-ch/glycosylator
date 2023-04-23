@@ -66,6 +66,27 @@ def change_suffix(filename, suffix):
     return base + suffix
 
 
+def chain_id_maker(cdx: int):
+    """
+    Make a string chain id from a counting integer
+
+    Parameters
+    ----------
+    cdx : int
+        The counting integer
+
+    Returns
+    -------
+    str
+        The chain id
+    """
+    if cdx < 26:
+        return chr(cdx + 65)
+    else:
+        # recursive call
+        return chain_id_maker(cdx // 26 - 1) + chain_id_maker(cdx % 26)
+
+
 class DummyStructure:
     """
     A dummy pdb structure

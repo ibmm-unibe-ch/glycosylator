@@ -136,12 +136,9 @@ class Patcher(base.Connector):
         """
         # self.target.adjust_indexing(self.source)
         self.target.add_residues(*self.source.residues)
-        for bond in self.source.bonds:
-            self.target.add_bond(*bond)
-
-        for bond in self.source.locked_bonds:
-            self.target.lock_bond(*bond)
-
+        self.target._bonds.extend(self.source.bonds)
+        self.target.locked_bonds.update(self.source.locked_bonds)
+        self.target._AtomGraph.add_edges_from(self.source._AtomGraph.edges)
         self.target.add_bond(*self._anchors)
         return self.target
 

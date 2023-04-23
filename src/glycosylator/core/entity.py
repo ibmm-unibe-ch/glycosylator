@@ -14,14 +14,19 @@ import glycosylator.graphs as graphs
 
 
 class BaseEntity:
-    def __init__(self, structure):
+    def __init__(self, structure, model: int = 0):
         self._base_struct = structure
         self._id = structure.id
+
+        self._model = self._base_struct.child_dict[model]
+        if len(self._model.child_list) == 0:
+            raise ValueError("The model is empty")
 
         self._bonds = []
         # self._locked_bonds = set()
 
         self._AtomGraph = graphs.AtomGraph(self.id, [])
+        self._AtomGraph.add_nodes_from(self._model.get_atoms())
 
         # let the molecule store a patch to use for attaching other
         # molecules to it
@@ -82,10 +87,23 @@ class BaseEntity:
 
     @property
     def structure(self):
+        """
+        The biopython structure
+        """
         return self._base_struct
 
     @property
+    def model(self):
+        """
+        The biopython model
+        """
+        return self._model
+
+    @property
     def patch(self):
+        """
+        The patch to use for attaching other molecules to this one
+        """
         return self._patch
 
     @patch.setter
@@ -97,6 +115,9 @@ class BaseEntity:
 
     @property
     def bonds(self):
+        """
+        All bonds in the structure
+        """
         return self._bonds
         # return list(self._AtomGraph.edges)
 
@@ -111,6 +132,9 @@ class BaseEntity:
 
     @property
     def locked_bonds(self):
+        """
+        All bonds that are locked and cannot be rotated around.
+        """
         return self._AtomGraph._locked_edges
 
     @locked_bonds.setter
@@ -124,16 +148,25 @@ class BaseEntity:
 
     @property
     def chains(self):
-        return sorted(list(self._base_struct.get_chains()))
+        """
+        A sorted list of all chains in the structure
+        """
+        return sorted(self._model.get_chains(), key=lambda x: len(x.id))
 
     @property
     def residues(self):
-        return sorted(list(self._base_struct.get_residues()))
+        """
+        A sorted list of all residues in the structure
+        """
+        return sorted(self._model.get_residues(), key=lambda x: x.id[1])
 
     @property
     def atoms(self):
+        """
+        A sorted list of all atoms in the structure
+        """
         return sorted(self._AtomGraph.nodes)
-        # return list(self._base_struct.get_atoms())
+        # return list(self._model.get_atoms())
 
     @property
     def atom_triplets(self):
@@ -198,6 +231,9 @@ class BaseEntity:
 
     @property
     def root_atom(self):
+        """
+        The root atom of this molecule/scaffold at which it is attached to another molecule/scaffold
+        """
         return self._root_atom
 
     @root_atom.setter
@@ -209,11 +245,17 @@ class BaseEntity:
 
     @property
     def root_residue(self):
+        """
+        The residue of the root atom
+        """
         if self._root_atom:
             return self.root_atom.get_parent()
 
     @property
     def attach_residue(self):
+        """
+        The residue at which to attach other molecules to this one.
+        """
         return self._attach_residue
 
     @attach_residue.setter
@@ -223,15 +265,58 @@ class BaseEntity:
         else:
             self._attach_residue = self.get_residue(value)
 
-    def get_root(self):
+    def get_root(self) -> bio.Atom.Atom:
+        """
+        Get the root atom of the molecule
+        """
         return self.root_atom
 
     def set_root(self, atom):
+        """
+        Set the root atom of the molecule
+
+        Parameters
+        ----------
+        atom : Atom or int or str or tuple
+            The atom to be used as the root atom.
+            This may be an Atom object, an atom serial number, an atom id (must be unique), or the full-id tuple.
+        """
         self.root_atom = atom
+
+    def get_patch(self):
+        """
+        Get the patch that is currently set for this molecule
+        """
+        return self._patch
+
+    def set_patch(
+        self, patch: Union[str, utils.abstract.AbstractPatch] = None, _topology=None
+    ):
+        """
+        Set a patch to be used for attaching other molecules to this one
+
+        Parameters
+        ----------
+        patch : str or utils.abstract.AbstractPatch
+            The patch to be used. Can be either a string with the name of the patch or an instance of the patch
+            If None is given, the current patch is removed.
+        _topology
+            The topology to use for referencing the patch.
+        """
+        if not _topology:
+            _topology = utils.get_default_topology()
+        if patch is None:
+            self._patch = None
+        elif isinstance(patch, str):
+            self._patch = _topology.get_patch(patch)
+        elif isinstance(patch, utils.abstract.AbstractPatch):
+            self._patch = patch
+        else:
+            raise ValueError(f"Unknown patch type {type(patch)}")
 
     def save(self, filename: str):
         """
-        Save the molecule object to a pickle file
+        Save the object to a pickle file
 
         Parameters
         ----------
@@ -240,13 +325,24 @@ class BaseEntity:
         """
         utils.save_pickle(self, filename)
 
-    def view(self):
+    def show(self, residue_graph: bool = False):
         """
-        Open a browser window to view the molecule in 3D
+        Open a browser window to view the molecule/scaffold in 3D
+
+        Parameters
+        ----------
+        residue_graph : bool
+            If True, a residue graph is shown instead of the full structure.
         """
-        utils.visual.MoleculeViewer3D(self).show()
+        if residue_graph:
+            utils.visual.MoleculeViewer3D(self.make_residue_graph()).show()
+        else:
+            utils.visual.MoleculeViewer3D(self).show()
 
     def get_attach_residue(self):
+        """
+        Get the residue that is used for attaching other molecules to this one.
+        """
         return self._attach_residue
 
     def set_attach_residue(self, residue: Union[int, bio.Residue.Residue] = None):
@@ -258,9 +354,11 @@ class BaseEntity:
         residue
             The residue to be used for attaching other molecules to this one
         """
-        if isinstance(residue, int):
+        if residue is None:
+            self._attach_residue = None
+        else:
             residue = self.get_residue(residue)
-        self._attach_residue = residue
+            self._attach_residue = residue
 
     def rotate_around_bond(
         self,
@@ -447,40 +545,72 @@ class BaseEntity:
         atom = self.get_atom(atom)
         return self._AtomGraph.get_neighbors(atom, n, mode)
 
-    def reindex(self, start_resid: int = 1, start_atomid: int = 1):
+    def reindex(
+        self, start_chainid: int = 1, start_resid: int = 1, start_atomid: int = 1
+    ):
         """
-        Reindex the atoms and residues in the molecule.
+        Reindex the atoms and residues in the structure.
         You can use this method if you made substantial changes
         to the molecule and want to be sure that there are no gaps in the
         atom and residue numbering.
 
         Parameters
         ----------
+        start_chainid : int
+            The starting chain id (default: 1=A, 2=B, ..., 26=Z, 27=AA, 28=AB, ...)
         start_resid : int
             The starting residue id
         start_atomid : int
             The starting atom id
         """
-        j = start_atomid
-        idx = start_resid
+        cdx = start_chainid - 1
+        rdx = start_resid
+        adx = start_atomid
 
-        residues = list(self.residues)
-        parents = [i.get_parent() for i in residues]
-        for residue, parent in zip(residues, parents):
-            parent.detach_child(residue.id)
+        chains = list(self.chains)
+        for chain in chains:
+            self._model.detach_child(chain.id)
 
-        for residue, parent in zip(residues, parents):
-            # for residue in self.residues:
-            residue.id = (residue.id[0], idx, *residue.id[2:])
-            idx += 1
-            for atom in residue.get_atoms():
-                atom.serial_number = j
-                j += 1
-                atom.set_parent(residue)
-            parent.add(residue)
+        for chain in chains:
+            chain._id = utils.auxiliary.chain_id_maker(cdx)
+            cdx += 1
+
+            residues = list(chain.child_list)
+            for residue in residues:
+                chain.detach_child(residue.id)
+
+            for residue in residues:
+                residue._id = (residue.id[0], rdx, *residue.id[2:])
+                rdx += 1
+
+                chain.add(residue)
+
+                atoms = list(residue.child_list)
+                for atom in atoms:
+                    atom.serial_number = adx
+                    adx += 1
+
+            self._model.add(chain)
+
+    def adjust_indexing(self, mol: "Molecule"):
+        """
+        Adjust the indexing of a molecule to match the scaffold index
+
+        Parameters
+        ----------
+        mol : Molecule
+            The molecule to adjust the indexing of
+        """
+        cdx = len(self.chains)
+        rdx = len(self.residues)
+        adx = sum(1 for i in self._model.get_atoms())
+        mol.reindex(cdx + 1, rdx + 1, adx + 1)
+
+    def get_chains(self):
+        return self._model.get_chains()
 
     def get_residues(self):
-        return self._base_struct.get_residues()
+        return self._model.get_residues()
 
     def get_atoms(self, *atoms: Union[int, str, tuple], by: str = None) -> list:
         """
@@ -495,7 +625,8 @@ class BaseEntity:
         atoms
             The atom id, serial number or full_id tuple,
             this supports multiple atoms to search for. However,
-            only one type of parameter is supported per call.
+            only one type of parameter is supported per call. If left empty, the underlying generator is returned.
+
         by : str
             The type of parameter to search for. Can be either 'id', 'serial' or 'full_id'
             If None is given, the parameter is inferred from the datatype of the atoms argument
@@ -503,11 +634,11 @@ class BaseEntity:
 
         Returns
         -------
-        atom : list
+        atom : list or generator
             The atom(s)
         """
         if len(atoms) == 0:
-            return self._base_struct.get_atoms()
+            return self._model.get_atoms()
 
         if by is None:
             if isinstance(atoms[0], int):
@@ -524,13 +655,11 @@ class BaseEntity:
                 )
 
         if by == "id":
-            atoms = [i for i in self._base_struct.get_atoms() if i.id in atoms]
+            atoms = [i for i in self._model.get_atoms() if i.id in atoms]
         elif by == "serial":
-            atoms = [
-                i for i in self._base_struct.get_atoms() if i.serial_number in atoms
-            ]
+            atoms = [i for i in self._model.get_atoms() if i.serial_number in atoms]
         elif by == "full_id":
-            atoms = [i for i in self._base_struct.get_atoms() if i.full_id in atoms]
+            atoms = [i for i in self._model.get_atoms() if i.full_id in atoms]
         else:
             raise ValueError(
                 "Unknown search parameter, must be either 'id', 'serial' or 'full_id'"
@@ -562,10 +691,10 @@ class BaseEntity:
             The atom
         """
         if isinstance(atom, bio.Atom.Atom):
-            if atom in self.atoms:
+            if atom in self._model.get_atoms():
                 return atom
             else:
-                return self.get_atom(atom.serial_number, by="serial")
+                return self.get_atom(atom.full_id, by="full_id")
 
         if by is None:
             if isinstance(atom, int):
@@ -580,13 +709,11 @@ class BaseEntity:
                 )
 
         if by == "id":
-            atom = next(i for i in self._base_struct.get_atoms() if i.id == atom)
+            atom = next(i for i in self._model.get_atoms() if i.id == atom)
         elif by == "serial":
-            atom = next(
-                i for i in self._base_struct.get_atoms() if i.serial_number == atom
-            )
+            atom = next(i for i in self._model.get_atoms() if i.serial_number == atom)
         elif by == "full_id":
-            atom = next(i for i in self._base_struct.get_atoms() if i.full_id == atom)
+            atom = next(i for i in self._model.get_atoms() if i.full_id == atom)
         else:
             raise ValueError(
                 "Unknown search parameter, must be either 'id', 'serial' or 'full_id'"
@@ -643,28 +770,7 @@ class BaseEntity:
             atom1 = self.get_atom(atom1)
         if atom2:
             atom2 = self.get_atom(atom2)
-
-        if atom1 and atom2:
-            if either_way:
-                return [i for i in self.bonds if atom1 in i and atom2 in i]
-            else:
-                return [
-                    i
-                    for i in self.bonds
-                    if atom1 in i and atom2 in i and i[0] == atom1 and i[1] == atom2
-                ]
-        elif atom1:
-            if either_way:
-                return [i for i in self.bonds if atom1 in i]
-            else:
-                return [i for i in self.bonds if atom1 in i and i[0] == atom1]
-        elif atom2:
-            if either_way:
-                return [i for i in self.bonds if atom2 in i]
-            else:
-                return [i for i in self.bonds if atom2 in i and i[1] == atom2]
-        else:
-            raise ValueError("No atom provided")
+        return self._get_bonds(atom1, atom2, either_way)
 
     def get_residue(
         self,
@@ -705,29 +811,25 @@ class BaseEntity:
                 by = "full_id"
             else:
                 raise ValueError(
-                    "Unknown search parameter, must be either 'name', 'seqid' or 'full_id'"
+                    f"Cannot infer search parameter from residue query '{residue}', provide `by` manually: 'name', 'seqid' or 'full_id'"
                 )
 
         if by == "name":
-            residue = (
-                i for i in self._base_struct.get_residues() if i.resname == residue
-            )
+            _residue = (i for i in self._model.get_residues() if i.resname == residue)
         elif by == "seqid":
-            residue = (
-                i for i in self._base_struct.get_residues() if i.id[1] == residue
-            )
+            if residue < 0:
+                residue = len(self.residues) + residue + 1
+            _residue = (i for i in self._model.get_residues() if i.id[1] == residue)
         elif by == "full_id":
-            residue = (
-                i for i in self._base_struct.get_residues() if i.full_id == residue
-            )
+            _residue = (i for i in self._model.get_residues() if i.full_id == residue)
         else:
             raise ValueError(
                 "Unknown search parameter, must be either 'name', 'seqid' or 'full_id'"
             )
         if chain is not None:
             chain = self.get_chain(chain)
-            residue = (i for i in residue if i.get_parent() == chain)
-        return next(residue)
+            _residue = (i for i in _residue if i.get_parent() == chain)
+        return next(_residue)
 
     def get_chain(self, chain: str):
         """
@@ -774,7 +876,7 @@ class BaseEntity:
             them and their original parent structures intakt.
         """
         rdx = len(self.residues)
-        adx = len(self.atoms)
+        adx = sum(1 for i in self._model.get_atoms())
         for residue in residues:
             p = residue.get_parent()
             if p:
@@ -854,7 +956,7 @@ class BaseEntity:
         else:
             target = self._chain.child_list[-1]
 
-        _max_serial = len(self.atoms)
+        _max_serial = sum(1 for i in self._model.get_atoms())
         for atom in atoms:
             if _copy:
                 atom = deepcopy(atom)
@@ -882,7 +984,7 @@ class BaseEntity:
         for atom in atoms:
             atom = self.get_atom(atom)
             self._AtomGraph.remove_node(atom)
-            self.purge_bonds(atom)
+            self._purge_bonds(atom)
             atom.get_parent().detach_child(atom.id)
             _atoms.append(atom)
 
@@ -942,12 +1044,7 @@ class BaseEntity:
         atom1 = self.get_atom(atom1)
         atom2 = self.get_atom(atom2)
 
-        if (atom1, atom2) in self._bonds:
-            self._bonds.remove((atom1, atom2))
-        if self._AtomGraph.has_edge(atom1, atom2):
-            self._AtomGraph.remove_edge(atom1, atom2)
-        if (atom1, atom2) in self.locked_bonds:
-            self.locked_bonds.remove((atom1, atom2))
+        self._remove_bond(atom1, atom2)
 
     def purge_bonds(self, atom: Union[int, str, bio.Atom.Atom] = None):
         """
@@ -965,9 +1062,7 @@ class BaseEntity:
             return
 
         atom = self.get_atom(atom)
-        bonds = (i for i in self.bonds if atom in i)
-        for bond in bonds:
-            self.remove_bond(*bond)
+        self._purge_bonds(atom)
 
     def lock_all(self, both_ways: bool = True):
         """
@@ -1364,7 +1459,83 @@ class BaseEntity:
         """
         structural.fill_missing_atoms(self._base_struct, _topology, _compounds)
 
-    def _direct_bonds(self, bonds: list, by: str = "serial", save: bool = True):
+    def _get_bonds(
+        self,
+        atom1,
+        atom2,
+        either_way: bool = True,
+    ):
+        """
+        The core function of `get_bonds` which expects atoms to be provided as Atom objects
+        """
+        if atom1 and atom2:
+            if either_way:
+                return [i for i in self.bonds if atom1 in i and atom2 in i]
+            else:
+                return [
+                    i
+                    for i in self.bonds
+                    if atom1 in i and atom2 in i and i[0] == atom1 and i[1] == atom2
+                ]
+        elif atom1:
+            if either_way:
+                return [i for i in self.bonds if atom1 in i]
+            else:
+                return [i for i in self.bonds if atom1 in i and i[0] == atom1]
+        elif atom2:
+            if either_way:
+                return [i for i in self.bonds if atom2 in i]
+            else:
+                return [i for i in self.bonds if atom2 in i and i[1] == atom2]
+        else:
+            raise ValueError("No atom provided")
+
+    def _purge_bonds(self, atom):
+        """
+        The core function of `purge_bonds` which expects atoms to be provided as Atom objects.
+        """
+        # the full_id thing seems to prevent some memory leaky-ness
+        bonds = (
+            i
+            for i in self.bonds
+            if atom.full_id == i[0].full_id or atom.full_id == i[1].full_id
+        )
+        for bond in bonds:
+            self._remove_bond(*bond)
+
+    def _remove_bond(self, atom1, atom2):
+        """
+        The core function of `remove_bond` which expects atoms to be provided as Atom objects.
+        """
+        if (atom1, atom2) in self._bonds:
+            self._bonds.remove((atom1, atom2))
+        if self._AtomGraph.has_edge(atom1, atom2):
+            self._AtomGraph.remove_edge(atom1, atom2)
+        if (atom1, atom2) in self.locked_bonds:
+            self.locked_bonds.remove((atom1, atom2))
+
+    def _remove_atoms(self, *atoms):
+        """
+        The core alternative of `remove_atoms` which expects atoms to be provided as Atom objects.
+        """
+        for atom in atoms:
+            self._AtomGraph.remove_node(atom)
+            self._purge_bonds(atom)
+            atom.get_parent().detach_child(atom.id)
+
+        # reindex the atoms
+        adx = 0
+        for atom in self.atoms:
+            adx += 1
+            atom.serial_number = adx
+
+    def _direct_bonds(
+        self,
+        bonds: list,
+        by: str = "resid",
+        direct_connections: set = None,
+        save: bool = True,
+    ):
         """
         Sort a given list of bonds such that the first atom is the "earlier" atom
         in the bond.
@@ -1380,6 +1551,8 @@ class BaseEntity:
             In this case, bonds connecting atoms from the same residue are sorted by the serial number of the first atom.
             In the case of "root" the bonds are sorted based on the graph distances to the root atom,
             provided that the root atom is set (otherwise the atom with serial 1 is used).
+        direct_connections : set
+            A set of atom pairs that are bonded and connect different residues. Only used if by == "resid".
         save : bool
             Whether to save the sorted bonds as the new bonds in the Molecule.
 
@@ -1396,11 +1569,14 @@ class BaseEntity:
         elif by == "root":
             root = self._root_atom
             if root is None:
-                root = self.get_atom(1)
+                root = self.atoms[0]
             directed = self._AtomGraph.direct_edges(root, bonds)
         elif by == "resid":
+            if not direct_connections:
+                raise ValueError("direct_connections must be provided if by == 'resid'")
             directed = [
-                bond if not should_revert(bond) else bond[::-1] for bond in bonds
+                bond if not should_invert(bond, direct_connections) else bond[::-1]
+                for bond in bonds
             ]
         if save:
             for old, new in zip(bonds, directed):
@@ -1422,7 +1598,7 @@ class BaseEntity:
         self.set_root(atom)
         return self
 
-    def __matmul__(self, residue) -> "Molecule":
+    def __matmul__(self, residue):
         """
         Set the residue at which the molecule should be attached to another molecule
         using the @ operator (i.e. mol @ 1, for residue 1)
@@ -1431,13 +1607,34 @@ class BaseEntity:
         return self
 
 
-should_revert = lambda bond: (
-    bond[0].parent.id[1] > bond[1].parent.id[1]
-    or (
-        bond[0].parent.id[1] == bond[1].parent.id[1]
-        and bond[0].serial_number > bond[1].serial_number
-    )
-)
+def should_invert(bond, direct_connecting_atoms):
+    """
+    Check if a given bond should be inverted during bond direction
+
+    Parameters
+    ----------
+    bond : tuple
+        A tuple of two atoms that are bonded
+    direct_connecting_atoms : set
+        A set of atoms that directly participate in bonds connecting different residues
+
+    Returns
+    -------
+    bool
+        Whether the bond should be inverted
+    """
+    atom1, atom2 = bond
+    if atom1.parent.id[1] > atom2.parent.id[1]:
+        return True
+    elif atom1.parent.id[1] == atom2.parent.id[1]:
+        if atom1 in direct_connecting_atoms:
+            return False
+        elif atom1.serial_number > atom2.serial_number:
+            return True
+        elif atom2 in direct_connecting_atoms:
+            return True
+
+
 """
 A helper function to sort bonds and determine whether they should be reversed
 """

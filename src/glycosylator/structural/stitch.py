@@ -35,7 +35,7 @@ class Stitcher(base.Connector):
         self._removals = (None, None)
         self._policy = None, None
 
-    def stitch(
+    def apply(
         self,
         target: "Molecule",
         source: "Molecule",
@@ -44,6 +44,7 @@ class Stitcher(base.Connector):
         target_atom: Union[int, bio.Atom.Atom] = None,
         source_atom: Union[int, bio.Atom.Atom] = None,
         optimization_steps: int = 1e4,
+        **kwargs,
     ) -> "Molecule":
         """
         Stitch the source and target molecules together
@@ -65,8 +66,11 @@ class Stitcher(base.Connector):
             If none is provided, the molecule's "root atom" is used (if defined).
         source_atom : int or bio.Atom.Atom
             The atom on the source molecule to which the target molecule will be attached. This may either be the atom object directly or its serial number.
+            If none is provided, the molecule's "root atom" is used (if defined).
         optimization_steps : int, optional
             The number of steps to take in the optimization process, by default 1e4
+        **kwargs
+            Additional keyword arguments to pass to the optimizer. See the documentation for `glycosylator.optimizers.agents.optimize` for more details.
 
         Returns
         -------
@@ -93,7 +97,7 @@ class Stitcher(base.Connector):
         self._align_anchors()
 
         self._remove_atoms()
-        self._optimize()
+        self._optimize(optimization_steps, **kwargs)
 
         return self.target, self.source
 
@@ -205,8 +209,8 @@ class Stitcher(base.Connector):
         """
         Remove the atoms specified in the removals list
         """
-        # self.target.remove_atoms(*self._removals[0])
-        # self.source.remove_atoms(*self._removals[1])
+        # self.target._remove_atoms(*self._removals[0])
+        # self.source._remove_atoms(*self._removals[1])
         # return
         mapping = {
             0: self.target,
@@ -214,30 +218,24 @@ class Stitcher(base.Connector):
         }
         for i, removals in enumerate(self._removals):
             obj = mapping[i]
-            graph = obj._AtomGraph
 
             for atom in removals:
+                obj._AtomGraph.remove_node(atom)
                 bonds = (
                     i
-                    for i in obj.bonds
-                    # interestingly, using this approach, we can (seemingly) avoid
-                    # the problem of lost neighbors when calling the stitcher repeatedly...
-                    # don't really know why this works, but it seems to do...
+                    for i in obj._bonds
                     if atom.full_id == i[0].full_id or atom.full_id == i[1].full_id
                 )
                 for bond in bonds:
                     obj._bonds.remove(bond)
-                    if graph.has_edge(*bond):
-                        graph.remove_edge(*bond)
-                    elif graph.has_edge(*bond[::-1]):
-                        graph.remove_edge(*bond[::-1])
-                graph.remove_node(atom)
-                atom.detach_parent()
+                p = atom.get_parent()
+                p.detach_child(atom.id)
+                atom.set_parent(p)
 
-            adx = 0
-            for atom in obj.atoms:
-                adx += 1
-                atom.serial_number = adx
+            # adx = 1
+            # for atom in obj.atoms:
+            #     atom.set_serial_number(adx)
+            #     adx += 1
 
     def _optimize(self, steps: int = 1e4, **kwargs):
         """
@@ -249,7 +247,7 @@ class Stitcher(base.Connector):
             The number of optimization steps to perform
         """
 
-        tmp = molecule.Molecule.empty()
+        tmp = molecule.Molecule.empty(self.target.id)
         self.target.adjust_indexing(self.source)
 
         tmp.add_residues(
@@ -272,7 +270,7 @@ class Stitcher(base.Connector):
         edges = sorted(tmp.get_residue_connections())
         env = optimizers.MultiBondRotatron(graph, edges)
 
-        best = optimizers.optimize(env, int(steps))
+        best = optimizers.optimize(env, int(steps), **kwargs)
         self._policy = edges, best
 
         # self.best.append(best)
@@ -286,15 +284,12 @@ class Stitcher(base.Connector):
         Merge the source molecule into the target molecule
         """
         self.target.add_residues(*self.source.residues)
-
-        for bond in self.source.bonds:
-            b = (bond[0].full_id, bond[1].full_id)
-            self.target.add_bond(*b)
-            if self.source.is_locked(*bond):
-                self.target.lock_bond(*b)
+        self.target._bonds.extend(self.source.bonds)
+        self.target._AtomGraph.add_edges_from(self.source._AtomGraph.edges)
+        self.target.locked_bonds.update(self.source.locked_bonds)
 
         self.target.add_bond(self._anchors[0], self._anchors[1])
-        self.target.reindex()
+        # self.target.reindex()
 
         # v = gl.utils.visual.MoleculeViewer3D(self.target)
 
@@ -311,7 +306,7 @@ class Stitcher(base.Connector):
                 # v.draw_vector(
                 #     "rotation",
                 #     bond[0].coord,
-                #     bond[1].coord - bond[0].coord,
+                #     1.1 * (bond[1].coord - bond[0].coord),
                 #     color="orange",
                 # )
 
@@ -354,7 +349,7 @@ if __name__ == "__main__":
     mol.root_atom = 1
 
     S = __default_keep_copy_stitcher__
-    S.stitch(
+    S.apply(
         s,
         mol,
         ("HD22",),
@@ -377,7 +372,7 @@ if __name__ == "__main__":
 
     # res = prot.find()[0]
 
-    # s.stitch(prot, glc, target_removals=(""))
+    # s.apply(prot, glc, target_removals=(""))
 
     # # ---------------------------------------------
     # # This is a very nice code piece down here...
@@ -390,7 +385,7 @@ if __name__ == "__main__":
     # # with alive_progress.alive_bar(n) as bar:
     # #     for i in range(n):
     # #         s = Stitcher(True, True)
-    # #         s.stitch(glc, glc2, ("O1", "HO1"), ("HO4",), "C1", "O4", 1e4)
+    # #         s.apply(glc, glc2, ("O1", "HO1"), ("HO4",), "C1", "O4", 1e4)
     # #         new_glc = s.merge()
 
     # #         if v is None:

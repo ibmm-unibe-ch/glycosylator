@@ -2,12 +2,12 @@
 Tests to check the behaviour of the gl.AtomGraph and gl.ResidueGraph object
 """
 
+from copy import deepcopy
 import random
 import numpy as np
 import glycosylator as gl
 import base
 import timeit
-
 
 
 # =================================================================
@@ -16,7 +16,6 @@ import timeit
 
 
 def test_atom_graph_from_molecule():
-
     mol = gl.Molecule.from_pdb(base.MANNOSE)
     mol.infer_bonds()
     mol.lock_all()
@@ -177,13 +176,23 @@ def test_atom_graph_rotate_all():
     assert np.allclose(current_ref, new_ref), "Reference atoms have moved"
 
 
+def test_atom_graph_copy_neighbors():
+    mol = gl.Molecule.from_pdb(base.MANNOSE9)
+    mol.infer_bonds(restrict_residues=False)
+
+    _mol = deepcopy(mol)
+
+    _mol.remove_atoms(1, 2)
+
+    _mol.get_neighbors(2)
+
+
 # =================================================================
 # ResidueGraph tests
 # =================================================================
 
 
 def test_residue_graph_from_molecule():
-
     mol = gl.Molecule.from_pdb(base.MANNOSE9)
     mol.infer_bonds(restrict_residues=False)
     mol.lock_all()
@@ -368,11 +377,9 @@ def test_residue_graph_rotate_descendants_only_detailed():
 
     v = gl.utils.visual.MoleculeViewer3D(graph)
 
-
     t1 = timeit.timeit()
     cons = mol.get_residue_connections()
     for i in range(20):
-
         atom1, atom2 = cons.pop()
 
         v.draw_point(str(i) + " atom1", atom1.coord, color="red")
@@ -434,7 +441,6 @@ def test_residue_graph_rotate_all():
 
 
 def test_residue_graph_detailed():
-
     mol = gl.Molecule.from_pdb(base.MANNOSE9)
     mol.infer_bonds(restrict_residues=False)
     mol = gl.graphs.ResidueGraph.from_molecule(mol, detailed=False)
@@ -449,7 +455,6 @@ def test_residue_graph_detailed():
 
 
 def test_residue_graph_detailed_get_neighbors():
-
     mol = gl.Molecule.from_pdb(base.MANNOSE9)
     mol.infer_bonds(restrict_residues=False)
     mol = gl.graphs.ResidueGraph.from_molecule(mol, detailed=False)
@@ -481,7 +486,6 @@ def test_residue_graph_detailed_get_neighbors():
 
 
 def test_atom_graph_lock():
-
     glc = gl.Molecule.from_compound("GLC")
     glc.repeat(5, "14bb")
     glc.lock_all()
