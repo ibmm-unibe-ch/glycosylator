@@ -14,11 +14,9 @@ MANNOSE = bio.PDBParser().get_structure("MAN", base.MANNOSE)
 
 
 def test_missing_proper_1():
-
     to_deletes = {"C1", "C2", "C3", "C4", "C5", "O5"}
 
     for to_delete in to_deletes:
-
         _man = MANNOSE.copy()
         _man = next(_man.get_residues())
         true_coords = _man.child_dict.get(to_delete)
@@ -40,11 +38,9 @@ def test_missing_proper_1():
 
 
 def test_missing_proper_4():
-
     to_deletes = {"H1", "HO1", "HO2", "HO3", "HO4", "HO6", "O1"}
 
     for to_delete in to_deletes:
-
         _man = MANNOSE.copy()
         _man = next(_man.get_residues())
 
@@ -67,11 +63,9 @@ def test_missing_proper_4():
 
 
 def test_missing_improper_1():
-
     to_deletes = {"C6", "O3", "O4", "O6"}
 
     for to_delete in to_deletes:
-
         _man = MANNOSE.copy()
         _man = next(_man.get_residues())
 
@@ -100,11 +94,9 @@ def test_missing_improper_1():
 
 
 def test_missing_improper_4():
-
     to_deletes = {"H2", "H3", "H4", "H5", "H61", "H62"}
 
     for to_delete in to_deletes:
-
         _man = MANNOSE.copy()
         _man = next(_man.get_residues())
         top = deepcopy(gl.utils.defaults.get_default_topology())
@@ -132,7 +124,6 @@ def test_missing_improper_4():
 
 
 def test_missing_one_random_atom():
-
     _man = MANNOSE.copy()
     _man = next(_man.get_residues())
 
@@ -158,7 +149,6 @@ def test_missing_one_random_atom():
 
 
 def test_missing_multiple_random_atoms():
-
     _man = MANNOSE.copy()
     _man = next(_man.get_residues())
 
@@ -180,7 +170,6 @@ def test_missing_multiple_random_atoms():
 
 
 def test_missing_multiple_random_atoms_galactose():
-
     GALACTOSE = bio.PDBParser().get_structure("GAL", base.GALACTOSE)
 
     _gal = GALACTOSE.copy()
@@ -204,7 +193,6 @@ def test_missing_multiple_random_atoms_galactose():
 
 
 def test_missing_multiple_random_atoms_mannose9():
-
     _man = bio.PDBParser().get_structure("MAN9", base.MANNOSE9)
 
     atoms = list(_man.get_atoms())
@@ -220,7 +208,6 @@ def test_missing_multiple_random_atoms_mannose9():
     gl.structural.fill_missing_atoms(_man)
 
     for i, true_coord, parent in zip(to_delete, true_coords, parents):
-
         assert parent.child_dict.get(i.id) is not None, f"Atom {i} was not added again!"
 
         new_coords = i.coord
@@ -230,7 +217,6 @@ def test_missing_multiple_random_atoms_mannose9():
 
 
 def test_apply_standard_bonds():
-
     bonds = gl.structural.apply_standard_bonds(MANNOSE)
 
     _recieved = len(bonds)
@@ -316,7 +302,6 @@ def test_apply_standard_bonds():
 
 
 def test_apply_standard_bonds_one_atom():
-
     atom = {i.id: i for i in MANNOSE.get_atoms()}
     atom = atom.get("C1")
 
@@ -356,7 +341,6 @@ def test_apply_standard_bonds_one_atom():
 
 
 def test_infer_bonds():
-
     bonds = gl.structural.infer_bonds(MANNOSE)
 
     _recieved = len(bonds)
@@ -442,7 +426,6 @@ def test_infer_bonds():
 
 
 def test_infer_residue_connections():
-
     _man9 = bio.PDBParser().get_structure("MANNOSE9", base.MANNOSE9)
     bonds = gl.structural.infer_residue_connections(_man9)
 
@@ -497,7 +480,6 @@ def test_infer_residue_connections():
 
 
 def test_infer_residue_connections_triplet():
-
     _man9 = bio.PDBParser().get_structure("MANNOSE9", base.MANNOSE9)
     bonds = gl.structural.infer_residue_connections(_man9, triplet=True)
     _no_triplets = gl.structural.infer_residue_connections(_man9)
@@ -506,7 +488,6 @@ def test_infer_residue_connections_triplet():
 
 
 def test_atom_neighborhood_basic():
-
     mannose = gl.graphs.AtomGraph.from_biopython(MANNOSE)
 
     _recieved = len(mannose.bonds)
@@ -535,7 +516,6 @@ def test_atom_neighborhood_basic():
 
 
 def test_atom_neighborhood_get():
-
     mannose = gl.graphs.AtomGraph.from_biopython(MANNOSE)
     neighborhood = gl.structural.AtomNeighborhood(mannose)
 
@@ -563,7 +543,6 @@ def test_atom_neighborhood_get():
 
 
 def test_residue_neighborhood_basic():
-
     mannose = gl.Molecule.from_pdb(base.MANNOSE9)
     mannose.infer_bonds(restrict_residues=False)
     mannose = mannose.make_residue_graph()
@@ -593,7 +572,6 @@ def test_residue_neighborhood_basic():
 
 
 def test_residue_neighborhood_get():
-
     mannose = gl.Molecule.from_pdb(base.MANNOSE9)
     mannose.infer_bonds(restrict_residues=False)
     mannose = mannose.make_residue_graph()
@@ -645,7 +623,6 @@ def test_residue_neighborhood_get():
 
 
 def test_compute_angle():
-
     mannose = gl.utils.defaults.__bioPDBParser__.get_structure("MAN", base.MANNOSE)
     mannose = next(mannose.get_residues())
 
@@ -677,7 +654,6 @@ def test_compute_angle():
 
 
 def test_compute_dihedral():
-
     mannose = gl.utils.defaults.__bioPDBParser__.get_structure("MAN", base.MANNOSE)
     mannose = next(mannose.get_residues())
 
@@ -702,7 +678,6 @@ def test_compute_dihedral():
 
 
 def test_compute_triplets():
-
     bonds = [(1, 2), (1, 3), (2, 4), (3, 5)]
     triplets = gl.structural.compute_triplets(bonds)
     _expected = [(2, 1, 3), (1, 2, 4), (1, 3, 5)]
@@ -712,7 +687,6 @@ def test_compute_triplets():
 
 
 def test_quartet_class():
-
     a = gl.structural.neighbors.Quartet(1, 2, 3, 4, False)
     b = gl.structural.neighbors.Quartet(1, 2, 3, 4, False)
     c = gl.structural.neighbors.Quartet(5, 3, 4, 6, True)
@@ -728,7 +702,6 @@ def test_quartet_class():
 
 
 def test_compute_quartets():
-
     bonds = [(1, 2), (2, 3), (2, 4), (3, 5), (4, 6), (5, 7)]
     quartets = gl.structural.compute_quartets(bonds)
 
@@ -742,7 +715,6 @@ def test_compute_quartets():
 
 
 def test_patcher_anchors():
-
     man1 = gl.Molecule.from_pdb(base.MANNOSE)
     man1.infer_bonds()
     man2 = deepcopy(man1)
@@ -762,7 +734,6 @@ def test_patcher_anchors():
 
 
 def test_patcher_anchors_2():
-
     glc = gl.Molecule.from_compound("GLC")
 
     top = gl.get_default_topology()
@@ -850,7 +821,6 @@ def test_patcher_two_man():
 
 
 def test_patcher_multiple_man():
-
     man1 = gl.Molecule.from_compound("MAN")
     man1.lock_all()
 
@@ -912,7 +882,6 @@ def test_patcher_multiple_man():
 
 
 def test_keep_copy_patcher():
-
     glc = gl.Molecule.from_compound("GLC")
 
     patcher = gl.structural.Patcher(copy_target=True, copy_source=True)
@@ -924,3 +893,140 @@ def test_keep_copy_patcher():
     assert new is not glc
     assert len(new.atoms) == len(glc.atoms) * 2 - 3
     assert len(glc.atoms) == 24
+
+
+def test_stitcher_two_glucose():
+    glc = gl.Molecule.from_compound("GLC")
+    glc2 = gl.Molecule.from_compound("GLC")
+
+    glc2.rotate_around_bond(6, 5, 68)
+    glc2.rotate_around_bond(3, 4, 41)
+
+    s = gl.structural.Stitcher(True, True)
+
+    at_glc = "C1"
+    at_glc2 = "O4"
+    remove_on_glc = ("O1", "HO1")
+    remove_on_glc2 = ("HO4",)
+
+    old_glc_coords = np.array([at.coord for at in glc.atoms])
+    old_glc2_coords = np.array([at.coord for at in glc2.atoms])
+
+    new_glc, new_glc2 = s.apply(
+        target=glc,
+        source=glc2,
+        target_removals=remove_on_glc,
+        source_removals=remove_on_glc2,
+        target_atom=at_glc,
+        source_atom=at_glc2,
+        optimization_steps=1e6,
+    )
+
+    new_glc_coords = np.array([at.coord for at in new_glc.atoms])
+    new_glc2_coords = np.array([at.coord for at in new_glc2.atoms])
+
+    assert new_glc is not glc
+    assert new_glc2 is not glc2
+    assert len(new_glc.atoms) == len(glc.atoms) - len(remove_on_glc)
+    assert len(new_glc2.atoms) == len(glc2.atoms) - len(remove_on_glc2)
+
+    r_glc_1 = glc.get_atom(remove_on_glc[0])
+    r_glc_2 = glc.get_atom(remove_on_glc[1])
+    r_glc = r_glc_1 if r_glc_1.serial_number < r_glc_2.serial_number else r_glc_2
+    r_glc = r_glc.serial_number
+
+    r_glc2_1 = glc2.get_atom(remove_on_glc2[0])
+    r_glc2 = r_glc2_1.serial_number
+
+    assert np.allclose(old_glc_coords[:r_glc, :], new_glc_coords[:r_glc, :])
+    assert not np.allclose(old_glc2_coords[:r_glc2, :], new_glc2_coords[:r_glc2, :])
+
+    final = s.merge()
+    assert len(final.atoms) == len(glc.atoms) + len(glc2.atoms) - len(
+        remove_on_glc
+    ) - len(remove_on_glc2)
+    assert len(final.residues) == 2
+    assert len(final.bonds) == 47
+
+    for angle in final.angles.values():
+        assert 90 < angle < 130
+
+    for angle in final.dihedrals.values():
+        assert -180 < angle < 180
+
+    _seen_indices = set()
+    for atom in final.atoms:
+        assert atom.serial_number not in _seen_indices
+        _seen_indices.add(atom.serial_number)
+
+    final.show()
+
+
+def test_stitcher_two_glucose_root_atoms():
+    glc = gl.Molecule.from_compound("GLC")
+    glc2 = gl.Molecule.from_compound("GLC")
+
+    glc2.rotate_around_bond(6, 5, 68)
+    glc2.rotate_around_bond(3, 4, 41)
+
+    s = gl.structural.Stitcher(True, True)
+
+    at_glc = "C1"
+    at_glc2 = "O4"
+    remove_on_glc = ("O1", "HO1")
+    remove_on_glc2 = ("HO4",)
+
+    old_glc_coords = np.array([at.coord for at in glc.atoms])
+    old_glc2_coords = np.array([at.coord for at in glc2.atoms])
+
+    glc.set_root(at_glc)
+    glc2.set_root(at_glc2)
+
+    new_glc, new_glc2 = s.apply(
+        target=glc,
+        source=glc2,
+        target_removals=remove_on_glc,
+        source_removals=remove_on_glc2,
+        target_atom=None,
+        source_atom=None,
+        optimization_steps=1e6,
+    )
+
+    new_glc_coords = np.array([at.coord for at in new_glc.atoms])
+    new_glc2_coords = np.array([at.coord for at in new_glc2.atoms])
+
+    assert new_glc is not glc
+    assert new_glc2 is not glc2
+    assert len(new_glc.atoms) == len(glc.atoms) - len(remove_on_glc)
+    assert len(new_glc2.atoms) == len(glc2.atoms) - len(remove_on_glc2)
+
+    r_glc_1 = glc.get_atom(remove_on_glc[0])
+    r_glc_2 = glc.get_atom(remove_on_glc[1])
+    r_glc = r_glc_1 if r_glc_1.serial_number < r_glc_2.serial_number else r_glc_2
+    r_glc = r_glc.serial_number
+
+    r_glc2_1 = glc2.get_atom(remove_on_glc2[0])
+    r_glc2 = r_glc2_1.serial_number
+
+    assert np.allclose(old_glc_coords[:r_glc, :], new_glc_coords[:r_glc, :])
+    assert not np.allclose(old_glc2_coords[:r_glc2, :], new_glc2_coords[:r_glc2, :])
+
+    final = s.merge()
+    assert len(final.atoms) == len(glc.atoms) + len(glc2.atoms) - len(
+        remove_on_glc
+    ) - len(remove_on_glc2)
+    assert len(final.residues) == 2
+    assert len(final.bonds) == 47
+
+    for angle in final.angles.values():
+        assert 90 < angle < 130
+
+    for angle in final.dihedrals.values():
+        assert -180 < angle < 180
+
+    _seen_indices = set()
+    for atom in final.atoms:
+        assert atom.serial_number not in _seen_indices
+        _seen_indices.add(atom.serial_number)
+
+    final.show()
