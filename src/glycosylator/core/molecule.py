@@ -151,10 +151,8 @@ class Molecule(entity.BaseEntity):
         else:
             self._working_chain = self._model.child_dict.get(chain)
             if not self._working_chain:
-                raise ValueError(
-                    "The chain {} is not in the structure".format(chain)
-                )
-        
+                raise ValueError("The chain {} is not in the structure".format(chain))
+
         if root_atom:
             self.set_root(root_atom)
             if not root_atom in self._working_chain.get_atoms():
@@ -262,7 +260,7 @@ class Molecule(entity.BaseEntity):
         struct.id = id if id else smiles
         return cls(struct, root_atom)
 
-    def get_residue_connections(self, triplet: bool = True, direct_by: str = "serial"):
+    def get_residue_connections(self, triplet: bool = True, direct_by: str = "resid"):
         """
         Get bonds between atoms that connect different residues in the structure
         This method is different from `infer_residue_connections` in that it works
@@ -292,7 +290,16 @@ class Molecule(entity.BaseEntity):
         """
         bonds = super().get_residue_connections(triplet)
         if direct_by is not None:
-            bonds = self._direct_bonds(bonds, direct_by)
+            direct_connections = None
+            if direct_by == "resid":
+                direct_connections = self.get_residue_connections(
+                    triplet=False, direct_by=None
+                )
+                direct_connections1, direct_connections2 = set(
+                    a for a, b in direct_connections
+                ), set(b for a, b in direct_connections)
+                direct_connections = direct_connections1.union(direct_connections2)
+            bonds = self._direct_bonds(bonds, direct_by, direct_connections)
         return set(bonds)
 
     def attach(
