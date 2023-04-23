@@ -2,6 +2,7 @@
 Functions to infer structural data such as missing atom coordinates or bond connectivity
 """
 
+from collections import defaultdict
 from copy import deepcopy
 import warnings
 import numpy as np
@@ -680,42 +681,66 @@ def _prune_H_triplets(bonds):
     bonds : list of tuples
         The pruned bonds.
     """
-    bonds_with_H = [
-        set(bond) for bond in bonds if bond[0].element == "H" or bond[1].element == "H"
-    ]
-    bonds = [set(bond) for bond in bonds]
+    bonds_with_H = [bond for bond in bonds if bond[0].element == "H" or bond[1].element == "H"]
+    triplets = neighbors.generate_triplets(bonds_with_H)
+    bond_mappings = defaultdict(int)
+    for a, b in bonds_with_H:
+        bond_mappings[a] += 1
+        bond_mappings[b] += 1
 
-    for bond in bonds_with_H:
-        if bond not in bonds:
+    for triplet in triplets:
+        if triplet[1].element != "H":
             continue
-        partners = [
-            i
-            for i in bonds_with_H
-            if i != bond
-            and not i.isdisjoint(bond)
-            and i.intersection(bond).pop().element == "H"
-        ]
-        if len(partners) == 0:
-            continue
-        for partner in partners:
-            a, b = bond
-            not_H_1 = b if a.element == "H" else a
-            not_H_2 = partner.difference(bond).pop()
 
-            not_H_1_allowed = element_connectivity[not_H_1.element]
-            not_H_1_have = sum(1 for _b in bonds if not_H_1 in _b)
-            if not_H_1_have > not_H_1_allowed:
-                bonds.remove(bond)
-                continue
+        non_H1, H, non_H2 = triplet
 
-            not_H_2_allowed = element_connectivity[not_H_2.element]
-            not_H_2_have = sum(1 for _b in bonds if not_H_2 in _b)
-            if not_H_2_have > not_H_2_allowed:
-                bonds.remove(partner)
-                continue
+        e_non_H1 = non_H1.element
+        e_non_H2 = non_H2.element
 
-    bonds = [tuple(i) for i in bonds]
+        if bond_mappings[non_H1] > element_connectivity[e_non_H1]:
+            bonds.remove(triplet[:2])
+        elif bond_mappings[non_H2] > element_connectivity[e_non_H2]:
+            bonds.remove(triplet[1:])
+        else:
+            raise ValueError("Could not prune H triplet!")
     return bonds
+
+    # bonds_with_H = [
+    #     set(bond) for bond in bonds if bond[0].element == "H" or bond[1].element == "H"
+    # ]
+    # bonds = [set(bond) for bond in bonds]
+
+    # for bond in bonds_with_H:
+    #     if bond not in bonds:
+    #         continue
+    #     partners = [
+    #         i
+    #         for i in bonds_with_H
+    #         if i != bond
+    #         and not i.isdisjoint(bond)
+    #         and i.intersection(bond).pop().element == "H"
+    #     ]
+    #     if len(partners) == 0:
+    #         continue
+    #     for partner in partners:
+    #         a, b = bond
+    #         not_H_1 = b if a.element == "H" else a
+    #         not_H_2 = partner.difference(bond).pop()
+
+    #         not_H_1_allowed = element_connectivity[not_H_1.element]
+    #         not_H_1_have = sum(1 for _b in bonds if not_H_1 in _b)
+    #         if not_H_1_have > not_H_1_allowed:
+    #             bonds.remove(bond)
+    #             continue
+
+    #         not_H_2_allowed = element_connectivity[not_H_2.element]
+    #         not_H_2_have = sum(1 for _b in bonds if not_H_2 in _b)
+    #         if not_H_2_have > not_H_2_allowed:
+    #             bonds.remove(partner)
+    #             continue
+
+    # bonds = [tuple(i) for i in bonds]
+    # return bonds
 
 
 if __name__ == "__main__":
