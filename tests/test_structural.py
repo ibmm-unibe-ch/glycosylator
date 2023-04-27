@@ -962,6 +962,64 @@ def test_stitcher_two_glucose():
     final.show()
 
 
+def test_stitcher_three_glucose():
+    glc = gl.Molecule.from_compound("GLC")
+    glc2 = gl.Molecule.from_compound("GLC")
+
+    glc2.rotate_around_bond(6, 5, 68)
+    glc2.rotate_around_bond(3, 4, 41)
+
+    s = gl.structural.Stitcher(True, True)
+
+    at_glc = "C1"
+    at_glc2 = "O4"
+    remove_on_glc = ("O1", "HO1")
+    remove_on_glc2 = ("HO4",)
+
+    s.apply(
+        target=glc,
+        source=glc2,
+        target_removals=remove_on_glc,
+        source_removals=remove_on_glc2,
+        target_atom=at_glc,
+        source_atom=at_glc2,
+        optimization_steps=1e6,
+    )
+
+    new_glc = s.merge()
+
+    s.apply(
+        target=new_glc,
+        source=glc,
+        target_removals=remove_on_glc,
+        source_removals=remove_on_glc2,
+        target_atom=at_glc,
+        source_atom=at_glc2,
+        optimization_steps=1e6,
+    )
+    final = s.merge()
+
+    assert final is not glc and final is not new_glc
+    assert len(final.residues) == 3
+    assert len(final.atoms) == 3 * len(glc.atoms) - 2 * (
+        len(remove_on_glc) + len(remove_on_glc2)
+    )
+    assert len(final.bonds) == 70
+
+    for angle in final.angles.values():
+        assert 90 < angle < 130
+
+    for angle in final.dihedrals.values():
+        assert -180 < angle < 180
+
+    _seen_indices = set()
+    for atom in final.atoms:
+        assert atom.serial_number not in _seen_indices
+        _seen_indices.add(atom.serial_number)
+
+    final.show()
+
+
 def test_stitcher_two_glucose_root_atoms():
     glc = gl.Molecule.from_compound("GLC")
     glc2 = gl.Molecule.from_compound("GLC")
@@ -1017,6 +1075,55 @@ def test_stitcher_two_glucose_root_atoms():
     ) - len(remove_on_glc2)
     assert len(final.residues) == 2
     assert len(final.bonds) == 47
+
+    for angle in final.angles.values():
+        assert 90 < angle < 130
+
+    for angle in final.dihedrals.values():
+        assert -180 < angle < 180
+
+    _seen_indices = set()
+    for atom in final.atoms:
+        assert atom.serial_number not in _seen_indices
+        _seen_indices.add(atom.serial_number)
+
+    final.show()
+
+
+def test_patch_and_stich():
+    glc = gl.Molecule.from_compound("GLC")
+    man = gl.Molecule.from_compound("MAN")
+
+    # ------------------------------------------
+    # using the built-in patcher within molecule
+    # ------------------------------------------
+    # make a cellulose
+    glc.repeat(4, "14bb")
+
+    # make a mannose chain
+    man.repeat(3, "16ab")
+
+    # ------------------------------------------
+    # now stitch them together
+    # ------------------------------------------
+    stitcher = gl.structural.Stitcher()
+    stitcher.apply(
+        target=glc,
+        source=man,
+        target_removals=("HO3",),
+        source_removals=("O1", "HO1"),
+        target_atom="O3",
+        source_atom="C1",
+        target_residue=2,
+        source_residue=1,
+    )
+    final = stitcher.merge()
+    final.show()
+
+    # ------------------------------------------
+
+    assert final is glc
+    assert len(final.residues) == 7
 
     for angle in final.angles.values():
         assert 90 < angle < 130

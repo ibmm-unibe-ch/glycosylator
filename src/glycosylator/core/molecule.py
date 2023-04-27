@@ -302,7 +302,102 @@ class Molecule(entity.BaseEntity):
             bonds = self._direct_bonds(bonds, direct_by, direct_connections)
         return set(bonds)
 
+    def repeat(self, n: int, patch_or_recipe=None, inplace: bool = True):
+        """
+        Repeat the molecule n times into a homo-polymer.
+
+        Parameters
+        ----------
+        n : int
+            The number or units of the final polymer.
+        patch_or_recipe : str or Patch or Recipe
+            The patch or recipe to use when patching individual units together.
+            If noe is given, the default patch or recipe is used (if defined).
+        inplace : bool
+            If True the molecule is directly modified, otherwise a copy of the molecule is returned.
+
+        Returns
+        -------
+        molecule
+            The modified molecule (either the original object or a copy)
+        """
+        if not isinstance(n, int):
+            raise TypeError("Can only multiply a molecule by an integer")
+        if n <= 0:
+            raise ValueError("Can only multiply a molecule by a positive integer")
+        if not patch_or_recipe and not self._patch:
+            raise RuntimeError("Cannot multiply a molecule without a patch defined")
+
+        _other = deepcopy(self)
+        if not inplace:
+            obj = deepcopy(self)
+        else:
+            obj = self
+
+        _patch = obj._patch
+        if patch_or_recipe:
+            obj % patch_or_recipe
+
+        for i in range(n - 1):
+            obj += _other
+
+        if _patch:
+            obj % _patch
+
+        return obj
+
     def attach(
+        self,
+        other: "Molecule",
+        patch_or_recipe: Union[
+            utils.abstract.AbstractPatch, str, utils.abstract.AbstractRecipe
+        ] = None,
+        at_residue: Union[int, bio.Residue.Residue] = None,
+        other_residue: Union[int, bio.Residue.Residue] = None,
+        _topology=None,
+    ):
+        """
+        Attach another structure to this one using a Patch or a Recipe.
+
+        Parameters
+        ----------
+        other : Molecule
+            The other molecule to attach to this one
+        patch_or_recipe : str or Patch or Recipe
+            Either a Patch to apply when attaching or a Recipe to use when stitching.
+            If None is defined, the default patch or recipe that was set earlier on the molecule is used.
+        at_residue : int or Residue
+            The residue to attach the other molecule to. If None, the defined `attach_residue` is used.
+        other_residue : int or Residue
+            The residue in the other molecule to attach this molecule to. If None, the defined `attach_residue` of the other molecule is used.
+        _topology : Topology
+            The topology to use when attaching. If None, the topology of the molecule is used. Only used if the patch is a string.
+        """
+        if not isinstance(other, Molecule):
+            raise TypeError("Can only attach a Molecule to another Molecule")
+
+        if not patch_or_recipe:
+            patch_or_recipe = self._patch
+            if not patch_or_recipe:
+                raise ValueError("Cannot attach a molecule without a patch defined")
+
+        if isinstance(patch_or_recipe, utils.abstract.AbstractPatch):
+            self.patch(
+                other,
+                patch_or_recipe,
+                at_residue=at_residue,
+                other_residue=other_residue,
+                _topology=_topology,
+            )
+        elif isinstance(patch_or_recipe, utils.abstract.AbstractRecipe):
+            self.stitch(
+                other,
+                patch_or_recipe,
+                at_residue=at_residue,
+                other_residue=other_residue,
+            )
+
+    def patch(
         self,
         other: "Molecule",
         patch: Union[utils.abstract.AbstractPatch, str] = None,
@@ -311,7 +406,7 @@ class Molecule(entity.BaseEntity):
         _topology=None,
     ):
         """
-        Attach another structure to this one.
+        Attach another structure to this one using a Patch.
 
         Parameters
         ----------
@@ -350,48 +445,72 @@ class Molecule(entity.BaseEntity):
         p.merge()
         return self
 
-    def repeat(self, n: int, patch=None, inplace: bool = True):
+    def stitch(
+        self,
+        other: "Molecule",
+        recipe: utils.abstract.AbstractRecipe = None,
+        remove_atoms=None,
+        other_remove_atoms=None,
+        at_atom=None,
+        other_at_atom=None,
+        at_residue=None,
+        other_residue=None,
+    ):
         """
-        Repeat the molecule n times into a homo-polymer.
+        Stitch two molecules together by removing atoms and connecting them with a bond. This works without a pre-defined patch.
 
         Parameters
         ----------
-        n : int
-            The number or units of the final polymer.
-        patch : str or AbstractPatch
-            The patch to use when patching individual units together.
-        inplace : bool
-            If True the molecule is directly modified, otherwise a copy of the molecule is returned.
-
-        Returns
-        -------
-        molecule
-            The modified molecule (either the original object or a copy)
+        other : Molecule
+            The other molecule to attach to this one
+        recipe : Recipe
+            The recipe to use when stitching. If None, the default recipe that was set earlier on the molecule is used (if defined).
+        remove_atoms : list of int
+            The atoms to remove from this molecule. Only used if no recipe is provided.
+        other_remove_atoms : list of int
+            The atoms to remove from the other molecule. Only used if no recipe is provided.
+        at_atom : int or str or Bio.PDB.Atom
+            The atom forming the bond in this molecule. If a string is provided, an `at_residue` needs to be defined from which to get the atom. If None is provided, the root atom is used (if defined). Only used if no recipe is provided.
+        other_at_atom : int or str or Bio.PDB.Atom
+            The atom to attach to in the other molecule. If a string is provided, an `other_residue` needs to be defined from which to get the atom. If None is provided, the root atom is used (if defined). Only used if no recipe is provided.
+        at_residue : int or Residue
+            The residue to attach the other molecule to. If None, the `attach_residue` is used. Only used if a recipe is provided and the atoms
         """
-        if not isinstance(n, int):
-            raise TypeError("Can only multiply a molecule by an integer")
-        if n <= 0:
-            raise ValueError("Can only multiply a molecule by a positive integer")
-        if not patch and not self._patch:
-            raise RuntimeError("Cannot multiply a molecule without a patch defined")
+        if recipe:
+            return self.stitch(
+                other,
+                remove_atoms=recipe.deletes[0],
+                other_remove_atoms=recipe.deletes[1],
+                at_atom=recipe.bonds[0][0],
+                other_at_atom=recipe.bonds[0][1],
+                at_residue=at_residue,
+                other_residue=other_residue,
+            )
 
-        _other = deepcopy(self)
-        if not inplace:
-            obj = deepcopy(self)
-        else:
-            obj = self
+        if not isinstance(other, Molecule):
+            raise TypeError("Can only stitch two molecules together")
 
-        _patch = obj._patch
-        if patch:
-            obj % patch
+        if not at_atom:
+            at_atom = self._root_atom
+            if not at_atom:
+                raise ValueError(
+                    "No atom to attach to was provided and no root atom was defined in this molecule"
+                )
 
-        for i in range(n - 1):
-            obj += _other
+        if not other_at_atom:
+            other_at_atom = other._root_atom
+            if not other_at_atom:
+                raise ValueError(
+                    "No atom to attach to was provided and no root atom was defined in the other molecule"
+                )
 
-        if _patch:
-            obj % _patch
+        # at_atom = self.get_atom(at_atom, residue=at_residue)
+        # other_at_atom = other.get_atom(other_at_atom, residue=other_residue)
 
-        return obj
+        p = structural.__default_keep_copy_stitcher__
+        p.apply(self, other, remove_atoms, other_remove_atoms, at_atom, other_at_atom)
+        self = p.merge()
+        return self
 
     def __add__(self, other) -> "Molecule":
         """
@@ -402,14 +521,25 @@ class Molecule(entity.BaseEntity):
 
         patch = self._patch
         if not patch:
-            patch = other._patch_to_use
+            patch = other._patch
         if not patch:
             raise RuntimeError(
                 "Cannot add two molecules together without a patch, set a default patch on either of them (preferably on the one you are adding to, i.e. mol1 in mol1 + mol2)"
             )
 
-        p = structural.__default_copy_copy_patcher__
-        p.apply(patch, self, other)
+        if isinstance(patch, utils.abstract.AbstractPatch):
+            p = structural.__default_copy_copy_patcher__
+            p.apply(patch, self, other)
+        elif isinstance(patch, utils.abstract.AbstractRecipe):
+            p = structural.__default_copy_copy_stitcher__
+            p.apply(
+                self,
+                other,
+                patch.deletes[0],
+                patch.deletes[1],
+                patch.bonds[0][0],
+                patch.bonds[0][1],
+            )
         new = p.merge()
         return new
 
@@ -422,7 +552,7 @@ class Molecule(entity.BaseEntity):
 
         patch = self._patch
         if not patch:
-            patch = other._patch_to_use
+            patch = other._patch
         if not patch:
             raise RuntimeError(
                 "Cannot add two molecules together without a patch, set a default patch on either of them (preferably on the one you are adding to, i.e. mol1 in mol1 += mol2)"
@@ -466,11 +596,27 @@ class Molecule(entity.BaseEntity):
 
 
 if __name__ == "__main__":
-    import pickle
+    from glycosylator import Recipe
 
-    tmp = pickle.load(open("/Users/noahhk/GIT/glycosylator/tmp.pickle", "rb"))
-    tmp.get_residue_connections()
-    exit()
+    recipe = Recipe()
+    recipe.add_delete("O1", "target")
+    recipe.add_delete("HO1", "target")
+    recipe.add_delete("HO4", "source")
+    recipe.add_bond(("C1", "O4"))
+
+    glc = Molecule.from_compound("GLC")
+    glc.set_patch_or_recipe(recipe)
+
+    glc2 = deepcopy(glc)
+
+    _current_residues = len(glc.residues)
+    glc.attach(glc2)
+    pass
+    # import pickle
+
+    # tmp = pickle.load(open("/Users/noahhk/GIT/glycosylator/tmp.pickle", "rb"))
+    # tmp.get_residue_connections()
+    # exit()
     # from timeit import timeit
 
     # # man = Molecule.from_compound("MAN")

@@ -478,8 +478,8 @@ if __name__ == "__main__":
         # v2 = gl.utils.visual.MoleculeViewer3D(man1)
         # patcher._v = v2
 
-        patch = top.get_patch(i)
-        patcher.apply(patch, man1, man2)
+        patch_or_recipe = top.get_patch(i)
+        patcher.apply(patch_or_recipe, man1, man2)
         man1 = patcher.merge()
 
         new = man1
