@@ -396,6 +396,7 @@ class Molecule(entity.BaseEntity):
                 at_residue=at_residue,
                 other_residue=other_residue,
             )
+        return self
 
     def patch(
         self,

@@ -393,14 +393,14 @@ def test_adjust_indexing_with_add_residues():
     assert len(mol.residues) == 2
 
 
-def test_set_patch():
+def test_set_patch_or_recipe():
     mol = gl.Molecule.from_compound("GLC")
-    mol.set_patch("14bb")
+    mol.set_patch_or_recipe_or_recipe("14bb")
 
     assert mol._patch is not None
     assert not isinstance(mol._patch, str)
 
-    mol.set_patch()
+    mol.set_patch_or_recipe_or_recipe()
     assert mol._patch is None
 
     # set the patch with fancy dunder methods
@@ -421,7 +421,7 @@ def test_set_patch():
 
 def test_attach_with_patch():
     glc = gl.Molecule.from_compound("GLC")
-    glc.set_patch_or_recipe("14bb")
+    glc.set_patch_or_recipe_or_recipe("14bb")
 
     glc2 = deepcopy(glc)
 
@@ -455,7 +455,7 @@ def test_attach_with_recipe():
     recipe.add_bond(("C1", "O4"))
 
     glc = gl.Molecule.from_compound("GLC")
-    glc.set_patch_or_recipe(recipe)
+    glc.set_patch_or_recipe_or_recipe(recipe)
 
     glc2 = deepcopy(glc)
 
@@ -847,34 +847,34 @@ def test_make_mannose8_3():
     man = gl.Molecule.from_compound("MAN")
 
     # make the NAG-NAG--BMA (we can always use the 14bb patch)
-    nag.set_patch("14bb")
+    nag.set_patch_or_recipe("14bb")
     nag2 = nag + nag
 
     man8 = nag2.attach(bma)
 
     # now we attach the 13ab MAN to the BMA
-    man8.set_patch("13ab")
+    man8.set_patch_or_recipe("13ab")
     man8.attach(man)
 
     # now we make the mannose branch
     # MAN --- MAN
     #  \
     #  MAN --- MAN
-    man.set_patch("16ab")
+    man.set_patch_or_recipe("16ab")
     man_branch = man * 2
 
     man_branch.set_attach_residue(1)
-    man_branch.set_patch("13ab")
+    man_branch.set_patch_or_recipe("13ab")
     man_branch.attach(man)
 
-    man_branch.set_patch("12aa")
+    man_branch.set_patch_or_recipe("12aa")
     man_branch.set_attach_residue()
     man_branch += man
 
     # and now we attach the man branch to the NAG-NAG--BMA---MAN
     # but at the second last residue (BMA), not the last one
     man8.set_attach_residue(-2)
-    man8.set_patch("16ab")
+    man8.set_patch_or_recipe("16ab")
     man_branch.set_attach_residue(1)
     man8.attach(man_branch)
 
