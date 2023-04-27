@@ -43,6 +43,8 @@ class Stitcher(base.Connector):
         source_removals: tuple,
         target_atom: Union[int, bio.Atom.Atom] = None,
         source_atom: Union[int, bio.Atom.Atom] = None,
+        target_residue: Union[int, bio.Residue.Residue] = None,
+        source_residue: Union[int, bio.Residue.Residue] = None,
         optimization_steps: int = 1e4,
         **kwargs,
     ) -> "Molecule":
@@ -67,6 +69,10 @@ class Stitcher(base.Connector):
         source_atom : int or bio.Atom.Atom
             The atom on the source molecule to which the target molecule will be attached. This may either be the atom object directly or its serial number.
             If none is provided, the molecule's "root atom" is used (if defined).
+        target_residue : int or Residue
+            The residue hosting the target atom. This is only required if the target atom is not given directly or specified by name.
+        source_residue : int or Residue
+            The residue hosting the source atom. This is only required if the source atom is not given directly or specified by name.
         optimization_steps : int, optional
             The number of steps to take in the optimization process, by default 1e4
         **kwargs
@@ -91,7 +97,9 @@ class Stitcher(base.Connector):
         self.target = target
         self.source = source
 
-        self._anchors = self.get_anchors(target_atom, source_atom)
+        self._anchors = self.get_anchors(
+            (target_atom, source_atom), target_residue, source_residue
+        )
         self._removals = self._find_removals(target_removals, source_removals)
 
         self._align_anchors()
@@ -159,51 +167,22 @@ class Stitcher(base.Connector):
         # self._v.draw_edges(self.source.bonds, color="orange", opacity=0.5)
         # self._v.draw_point("anchor source (new)", self._anchors[1].coord, color="teal")
 
-    def get_anchors(
-        self,
-        target_atom=None,
-        source_atom=None,
-    ):
-        """
-        Find the anchor atoms for the target and source molecules
-
-        Parameters
-        ----------
-        target_atom : int or bio.Atom.Atom
-            The atom on the target molecule to which the source molecule will be attached. This may either be the atom object directly or its serial number.
-            If none is provided, the molecule's "root atom" is used (if defined).
-        source_atom : int or bio.Atom.Atom
-            The atom on the source molecule to which the target molecule will be attached. This may either be the atom object directly or its serial number.
-        """
-        if target_atom is None:
-            target_atom = self.target.root_atom
-        if source_atom is None:
-            source_atom = self.source.root_atom
-
-        target_atom = self.target.get_atom(target_atom)
-        source_atom = self.source.get_atom(source_atom)
-
-        self._anchors = (target_atom, source_atom)
-        self._target_residue = target_atom.get_parent()
-        self._source_residue = source_atom.get_parent()
-        return self._anchors
-
     def _find_removals(self, target_removals, source_removals):
         """
         Find the atoms to remove from the target and source molecules
         while stitching them together
         """
-        target_removals = [
+        _target_removals = [
             self._target_residue.child_dict[atom]
             for atom in target_removals
             if atom in self._target_residue.child_dict
         ]
-        source_removals = [
+        _source_removals = [
             self._source_residue.child_dict[atom]
             for atom in source_removals
             if atom in self._source_residue.child_dict
         ]
-        return (set(target_removals), set(source_removals))
+        return (set(_target_removals), set(_source_removals))
 
     def _remove_atoms(self):
         """
@@ -233,7 +212,7 @@ class Stitcher(base.Connector):
                 atom.set_parent(p)
 
             adx = 1
-            for atom in obj.atoms:
+            for atom in obj._model.get_atoms():
                 atom.set_serial_number(adx)
                 adx += 1
 

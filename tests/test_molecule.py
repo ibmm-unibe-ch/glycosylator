@@ -419,9 +419,9 @@ def test_set_patch():
     assert not isinstance(mol._patch, str)
 
 
-def test_attach():
+def test_attach_with_patch():
     glc = gl.Molecule.from_compound("GLC")
-    glc.set_patch("14bb")
+    glc.set_patch_or_recipe("14bb")
 
     glc2 = deepcopy(glc)
 
@@ -447,7 +447,41 @@ def test_attach():
     assert len(glc2.residues) == _current_residues
 
 
-def test_multiply():
+def test_attach_with_recipe():
+    recipe = gl.Recipe()
+    recipe.add_delete("O1", "target")
+    recipe.add_delete("HO1", "target")
+    recipe.add_delete("HO4", "source")
+    recipe.add_bond(("C1", "O4"))
+
+    glc = gl.Molecule.from_compound("GLC")
+    glc.set_patch_or_recipe(recipe)
+
+    glc2 = deepcopy(glc)
+
+    _current_residues = len(glc.residues)
+    glc.attach(glc2)
+
+    assert len(glc.residues) == _current_residues * 2
+
+    # glc2 should not have been affected since it was a copy
+    assert len(glc2.residues) == _current_residues
+
+    # attach with fancy dunder methods
+    glc = deepcopy(glc2)
+
+    new = glc + glc2
+    assert new is not glc
+    assert len(new.residues) == _current_residues * 2
+    assert len(glc.residues) == _current_residues
+    assert len(glc2.residues) == _current_residues
+
+    glc += glc2
+    assert len(glc.residues) == _current_residues * 2
+    assert len(glc2.residues) == _current_residues
+
+
+def test_multiply_with_patch():
     man = gl.Molecule.from_compound("GLC")
     man.lock_all()
 
@@ -456,6 +490,7 @@ def test_multiply():
     pre_bonds = len(man.bonds)
     pre_locked = len(man.locked_bonds)
 
+    # set 14bb patch
     n = 10
     man % "14bb"
     man = man * n
@@ -469,6 +504,50 @@ def test_multiply():
     assert n * 0.75 * pre_atoms < new_atoms < pre_atoms * n
     assert n * 0.75 * pre_bonds < new_bonds < pre_bonds * n
     assert n * 0.75 * pre_locked < new_locked < pre_locked * n
+
+    # test that the new molecule has no weird bond lengths
+    for atom1, atom2 in man.bonds:
+        dist = np.linalg.norm(atom1.coord - atom2.coord)
+        assert 0.95 < dist < 1.8
+
+    # test that the new molecule has no weird bond angles
+    for angle in man.angles.values():
+        assert 100 < angle < 130
+
+    v = gl.utils.visual.MoleculeViewer3D(man)
+    v.show()
+
+
+def test_multiply_with_recipe():
+    man = gl.Molecule.from_compound("GLC")
+    man.lock_all()
+
+    pre_residues = len(man.residues)
+    pre_atoms = len(man.atoms)
+    pre_bonds = len(man.bonds)
+    pre_locked = len(man.locked_bonds)
+
+    # make recipe for 14bb
+    recipe = gl.Recipe()
+    recipe.add_delete("O1", "target")
+    recipe.add_delete("HO1", "target")
+    recipe.add_delete("HO4", "source")
+    recipe.add_bond(("C1", "O4"))
+
+    # set 14bb recipe
+    n = 10
+    man % recipe
+    man = man * n
+
+    new_residues = len(man.residues)
+    new_atoms = len(man.atoms)
+    new_bonds = len(man.bonds)
+    new_locked = len(man.locked_bonds)
+
+    assert new_residues == pre_residues * n
+    assert n * 0.75 * pre_atoms < new_atoms < pre_atoms * n
+    assert n * 0.75 * pre_bonds < new_bonds < pre_bonds * n
+    assert pre_locked < new_locked
 
     # test that the new molecule has no weird bond lengths
     for atom1, atom2 in man.bonds:
@@ -504,6 +583,48 @@ def test_repeat():
     assert n * 0.75 * pre_atoms < new_atoms < pre_atoms * n
     assert n * 0.75 * pre_bonds < new_bonds < pre_bonds * n
     assert n * 0.75 * pre_locked < new_locked < pre_locked * n
+
+    # test that the new molecule has no weird bond lengths
+    for atom1, atom2 in man.bonds:
+        dist = np.linalg.norm(atom1.coord - atom2.coord)
+        assert 0.95 < dist < 1.8
+
+    # test that the new molecule has no weird bond angles
+    for angle in man.angles.values():
+        assert 100 < angle < 130
+
+    v = gl.utils.visual.MoleculeViewer3D(man)
+    v.show()
+
+
+def test_repeat_with_recipe():
+    man = gl.Molecule.from_compound("GLC")
+    man.lock_all()
+
+    # make recipe for 14bb
+    recipe = gl.Recipe()
+    recipe.add_delete("O1", "target")
+    recipe.add_delete("HO1", "target")
+    recipe.add_delete("HO4", "source")
+    recipe.add_bond(("C1", "O4"))
+
+    pre_residues = len(man.residues)
+    pre_atoms = len(man.atoms)
+    pre_bonds = len(man.bonds)
+    pre_locked = len(man.locked_bonds)
+
+    n = 10
+    man = man.repeat(n, recipe)
+
+    new_residues = len(man.residues)
+    new_atoms = len(man.atoms)
+    new_bonds = len(man.bonds)
+    new_locked = len(man.locked_bonds)
+
+    assert new_residues == pre_residues * n
+    assert n * 0.75 * pre_atoms < new_atoms < pre_atoms * n
+    assert n * 0.75 * pre_bonds < new_bonds < pre_bonds * n
+    assert pre_locked < new_locked
 
     # test that the new molecule has no weird bond lengths
     for atom1, atom2 in man.bonds:
@@ -756,6 +877,98 @@ def test_make_mannose8_3():
     man8.set_patch("16ab")
     man_branch.set_attach_residue(1)
     man8.attach(man_branch)
+
+    for bond in man8.bonds:
+        assert bond[0] in man8.atoms
+        assert bond[1] in man8.atoms
+        length = 0.95 < np.linalg.norm(bond[1].coord - bond[0].coord) < 1.8
+        assert length, "Bond length is not in range 0.95 - 1.8"
+
+    for angle in man8.angles.values():
+        assert 100 < angle < 130
+
+    _seen_serials = set()
+    for atom in man8.atoms:
+        assert atom.get_serial_number() not in _seen_serials
+        _seen_serials.add(atom.get_serial_number())
+
+    v = gl.utils.visual.MoleculeViewer3D(man8)
+    colors = [
+        "red",
+        "green",
+        "blue",
+        "magenta",
+        "cyan",
+        "orange",
+        "purple",
+        "pink",
+        "brown",
+        "grey",
+        "black",
+    ]
+    idx = 0
+    for residue in man8.residues:
+        for bond in man8.bonds:
+            if bond[0].get_parent() == residue and bond[1].get_parent() == residue:
+                v.draw_edges([bond], color=colors[idx], linewidth=3)
+        idx += 1
+
+    v.show()
+
+
+def test_make_mannose8_with_recipe():
+    """
+    Structure to build:
+
+    ```
+                               MAN
+                                |
+                              (16ab)
+                                |
+    ~ --- NAG                  MAN -(13ab)- MAN -(12aa)- MAN
+            \\                  /
+            (14bb)          (16ab)
+              \\              /
+              NAG -(14bb)- BMA
+                            \\
+                            (13ab)
+                               \\
+                               MAN
+
+    """
+
+    bma = gl.Molecule.from_compound("BMA")
+    nag = gl.Molecule.from_compound("NAG")
+    man = gl.Molecule.from_compound("MAN")
+
+    # make the NAG-NAG--BMA (we can always use the 14bb patch)
+    nag % "14bb"
+    nag.repeat(2)
+    man8 = nag + bma
+
+    # now we make the mannose branch
+    # MAN --- MAN
+    #  \
+    #  MAN --- MAN
+    man % "16ab"
+    man_branch = man * 2
+    man_branch @ 1 % "13ab"
+    man_branch += man
+
+    man_branch % "12aa" @ None
+    man_branch += man
+
+    man8 @ -2
+    man_branch @ 1
+
+    recipe_16ab = gl.Recipe("16ab")
+    recipe_16ab.add_bond(("O6", "C1"))
+    recipe_16ab.add_delete("HO6", "target")
+    recipe_16ab.add_delete("HO1", "source")
+    recipe_16ab.add_delete("O1", "source")
+
+    man8 % recipe_16ab
+    man8 += man_branch
 
     for bond in man8.bonds:
         assert bond[0] in man8.atoms
