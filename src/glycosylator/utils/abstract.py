@@ -141,7 +141,6 @@ class AbstractEntity:
         ids = tuple(i.id if hasattr(i, "id") else i for i in ids)
 
         if mode == "exact":
-
             if len(ids) != 4:
                 raise ValueError(
                     "Exact mode requires that four ids are given to match the internal coordinates"
@@ -153,7 +152,6 @@ class AbstractEntity:
             return []
 
         elif mode == "partial":
-
             if len(ids) != 4:
                 raise ValueError(
                     "Partial mode requires that four ids or None are given to match the internal coordinates"
@@ -170,13 +168,11 @@ class AbstractEntity:
             return ics
 
         elif mode == "anywhere":
-
             ids = set(ids)
             ics = [ic for ic in self.internal_coordinates if ids.issubset(set(ic.ids))]
             return ics
 
         elif mode == "anywhere_partial":
-
             ids = set(ids)
             ics = [
                 ic
@@ -186,7 +182,6 @@ class AbstractEntity:
             return ics
 
         elif mode == "multi_partial":
-
             if len(ids) != 4:
                 raise ValueError(
                     "Multi partial mode requires that four ids or None are given to match the internal coordinates"
@@ -574,9 +569,45 @@ class AbstractPatch(AbstractEntity):
     add_id_to_delete = add_delete
 
 
+class AbstractRecipe(AbstractEntity):
+    """
+    A premade recipe for stitching molecules together. Can be used instead of Patches.
+    """
+
+    def __init__(self, id=None) -> None:
+        super().__init__(id)
+        self._delete_ids = {"target": [], "source": []}
+
+    @property
+    def deletes(self):
+        """
+        Returns the atom IDs to delete
+        in a tuple of lists where the first list
+        contains the atom IDs to delete from the
+        first structure and the second one from the second structure
+        """
+        deletes = (
+            self._delete_ids["target"],
+            self._delete_ids["source"],
+        )
+        return deletes
+
+    def add_delete(self, id, target):
+        """
+        Add an atom ID to delete
+
+        Parameters
+        ----------
+        id : str
+            The atom ID to delete
+        target : str
+            The target structure to delete the atom from. Can be either "target" or "source"
+        """
+        self._delete_ids[target].append(id)
+
+
 @attr.s
 class AbstractAngle:
-
     atom1 = attr.ib(type=str)
     atom2 = attr.ib(type=str)
     atom3 = attr.ib(type=str)
@@ -597,7 +628,6 @@ class AbstractAngle:
 
 @attr.s
 class AbstractDihedral:
-
     atom1 = attr.ib(type=str)
     atom2 = attr.ib(type=str)
     atom3 = attr.ib(type=str)
@@ -618,7 +648,6 @@ class AbstractDihedral:
 
 @attr.s
 class AbstractImproper:
-
     atom1 = attr.ib(type=str)
     atom2 = attr.ib(type=str)
     atom3 = attr.ib(type=str)
@@ -632,7 +661,6 @@ class AbstractImproper:
 
 
 class AbstractNonBonded(NamedTuple):
-
     atom: str
     epsilon: float
     min_radius: float
