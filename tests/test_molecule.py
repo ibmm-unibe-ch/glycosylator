@@ -395,12 +395,12 @@ def test_adjust_indexing_with_add_residues():
 
 def test_set_patch_or_recipe():
     mol = gl.Molecule.from_compound("GLC")
-    mol.set_patch_or_recipe_or_recipe("14bb")
+    mol.set_patch_or_recipe("14bb")
 
     assert mol._patch is not None
     assert not isinstance(mol._patch, str)
 
-    mol.set_patch_or_recipe_or_recipe()
+    mol.set_patch_or_recipe()
     assert mol._patch is None
 
     # set the patch with fancy dunder methods
@@ -421,7 +421,7 @@ def test_set_patch_or_recipe():
 
 def test_attach_with_patch():
     glc = gl.Molecule.from_compound("GLC")
-    glc.set_patch_or_recipe_or_recipe("14bb")
+    glc.set_patch_or_recipe("14bb")
 
     glc2 = deepcopy(glc)
 
@@ -455,7 +455,7 @@ def test_attach_with_recipe():
     recipe.add_bond(("C1", "O4"))
 
     glc = gl.Molecule.from_compound("GLC")
-    glc.set_patch_or_recipe_or_recipe(recipe)
+    glc.set_patch_or_recipe(recipe)
 
     glc2 = deepcopy(glc)
 
