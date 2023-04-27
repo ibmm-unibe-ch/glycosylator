@@ -681,7 +681,9 @@ def _prune_H_triplets(bonds):
     bonds : list of tuples
         The pruned bonds.
     """
-    bonds_with_H = [bond for bond in bonds if bond[0].element == "H" or bond[1].element == "H"]
+    bonds_with_H = [
+        bond for bond in bonds if bond[0].element == "H" or bond[1].element == "H"
+    ]
     triplets = neighbors.generate_triplets(bonds_with_H)
     bond_mappings = defaultdict(int)
     for a, b in bonds_with_H:
@@ -699,8 +701,10 @@ def _prune_H_triplets(bonds):
 
         if bond_mappings[non_H1] > element_connectivity[e_non_H1]:
             bonds.remove(triplet[:2])
+            bond_mappings[non_H1] -= 1
         elif bond_mappings[non_H2] > element_connectivity[e_non_H2]:
             bonds.remove(triplet[1:])
+            bond_mappings[non_H2] -= 1
         else:
             raise ValueError("Could not prune H triplet!")
     return bonds
