@@ -12,7 +12,6 @@ from Bio import SVDSuperimposer
 
 import glycosylator.utils.auxiliary as aux
 import glycosylator.core.molecule as molecule
-import glycosylator.structural.infer as infer
 
 __to_float__ = {
     "_chem_comp": set(
@@ -66,7 +65,6 @@ class PDBECompounds:
     """
 
     def __init__(self, compounds: dict) -> None:
-
         self._compounds = {k: None for k in compounds.keys()}
         self._pdb = dict(self._compounds)
         self._setup_dictionaries(compounds)
@@ -236,8 +234,7 @@ class PDBECompounds:
         """
         _dict = self._get(query, by)
         return len(_dict.keys()) > 0
-    
-    
+
     def translate_ids_3_to_1(self, ids: list) -> list:
         """
         Translate a list of 3-letter compound ids to 1-letter ids.
@@ -302,7 +299,6 @@ class PDBECompounds:
         """
         imposer = SVDSuperimposer.SVDSuperimposer()
         for residue in structure.get_residues():
-
             # get a reference
             name = residue.resname
             ref = self.get(name, "id", "residue")
@@ -374,7 +370,6 @@ class PDBECompounds:
             A dictionary of data from the cif file.
         """
         for key, value in data_dict.items():
-
             comp = value["_chem_comp"]
 
             for k in __to_delete__["_chem_comp"]:
@@ -572,9 +567,6 @@ class PDBECompounds:
 
 
 if __name__ == "__main__":
-
-    import glycosylator.utils.defaults as defaults
-
     f = "support/pdbe_compounds/test.cif"
     compounds = PDBECompounds.from_file(f)
 

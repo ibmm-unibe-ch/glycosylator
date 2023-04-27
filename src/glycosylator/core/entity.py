@@ -7,6 +7,7 @@ from typing import Union
 import warnings
 
 import Bio.PDB as bio
+import numpy as np
 
 import glycosylator.structural as structural
 import glycosylator.utils as utils
@@ -29,7 +30,8 @@ class BaseEntity:
         self._AtomGraph.add_nodes_from(self._model.get_atoms())
 
         # let the molecule store a patch to use for attaching other
-        # molecules to it
+        # molecules to it, or which Recipe to use by default for stitching
+        # we use the same attribute for this since they are mutually exclusive and equivalent
         self._patch = None
 
         self._working_chain = None
@@ -102,16 +104,24 @@ class BaseEntity:
     @property
     def patch(self):
         """
-        The patch to use for attaching other molecules to this one
+        The patch to use for attaching other molecules to this one (synonym for recipe)
         """
         return self._patch
 
+    @property
+    def recipe(self):
+        """
+        The recipe to use for stitching other molecules to this one (synonym for patch)
+        """
+        return self._patch
+
+    @recipe.setter
+    def recipe(self, value):
+        self._patch = value
+
     @patch.setter
     def patch(self, value):
-        if value is None:
-            self._patch = None
-        else:
-            self._patch = self.get_residue(value)
+        self._patch = value
 
     @property
     def bonds(self):
@@ -283,33 +293,41 @@ class BaseEntity:
         """
         self.root_atom = atom
 
-    def get_patch(self):
+    def get_patch_or_recipe(self):
         """
-        Get the patch that is currently set for this molecule
+        Get the patch or recipe that is currently set as default attachment specication for this molecule
         """
         return self._patch
 
-    def set_patch(
-        self, patch: Union[str, utils.abstract.AbstractPatch] = None, _topology=None
+    def set_patch_or_recipe(
+        self,
+        patch: Union[
+            str, utils.abstract.AbstractPatch, utils.abstract.AbstractRecipe
+        ] = None,
+        _topology=None,
     ):
         """
-        Set a patch to be used for attaching other molecules to this one
+        Set a patch or recipe to be used for attaching other molecules to this one
 
         Parameters
         ----------
-        patch : str or utils.abstract.AbstractPatch
+        patch : str or Patch or Recipe
             The patch to be used. Can be either a string with the name of the patch or an instance of the patch
             If None is given, the current patch is removed.
         _topology
             The topology to use for referencing the patch.
         """
-        if not _topology:
-            _topology = utils.get_default_topology()
         if patch is None:
             self._patch = None
-        elif isinstance(patch, str):
+            return
+
+        if isinstance(patch, str):
+            if not _topology:
+                _topology = utils.get_default_topology()
             self._patch = _topology.get_patch(patch)
-        elif isinstance(patch, utils.abstract.AbstractPatch):
+        elif isinstance(
+            patch, (utils.abstract.AbstractPatch, utils.abstract.AbstractRecipe)
+        ):
             self._patch = patch
         else:
             raise ValueError(f"Unknown patch type {type(patch)}")
@@ -589,6 +607,7 @@ class BaseEntity:
                 for atom in atoms:
                     atom.serial_number = adx
                     adx += 1
+                    atom.set_parent(residue)
 
             self._model.add(chain)
 
@@ -667,7 +686,12 @@ class BaseEntity:
 
         return atoms
 
-    def get_atom(self, atom: Union[int, str, tuple], by: str = None):
+    def get_atom(
+        self,
+        atom: Union[int, str, tuple],
+        by: str = None,
+        residue: Union[int, bio.Residue.Residue] = None,
+    ):
         """
         Get an atom from the structure either based on its
         id, serial number or full_id. Note, if multiple atoms match the requested criteria,
@@ -684,20 +708,28 @@ class BaseEntity:
             of the atom parameter. If it is an integer, it is assumed to be the serial number,
             if it is a string, it is assumed to be the atom id and if it is a tuple, it is assumed
             to be the full_id.
+        residue: int or Residue
+            A specific residue to search in. If None, the entire structure is searched.
 
         Returns
         -------
         atom : bio.Atom.Atom
             The atom
         """
+        if residue is not None:
+            residue = self.get_residue(residue)
+            atom_gen = residue.get_atoms
+        else:
+            atom_gen = self._model.get_atoms
+
         if isinstance(atom, bio.Atom.Atom):
-            if atom in self._model.get_atoms():
+            if atom in atom_gen():
                 return atom
             else:
                 return self.get_atom(atom.full_id, by="full_id")
 
         if by is None:
-            if isinstance(atom, int):
+            if isinstance(atom, (int, np.int64)):
                 by = "serial"
             elif isinstance(atom, str):
                 by = "id"
@@ -709,17 +741,17 @@ class BaseEntity:
                 )
 
         if by == "id":
-            atom = next(i for i in self._model.get_atoms() if i.id == atom)
+            _atom = (i for i in atom_gen() if i.id == atom)
         elif by == "serial":
-            atom = next(i for i in self._model.get_atoms() if i.serial_number == atom)
+            _atom = (i for i in atom_gen() if i.serial_number == atom)
         elif by == "full_id":
-            atom = next(i for i in self._model.get_atoms() if i.full_id == atom)
+            _atom = (i for i in atom_gen() if i.full_id == atom)
         else:
             raise ValueError(
                 "Unknown search parameter, must be either 'id', 'serial' or 'full_id'"
             )
 
-        return atom
+        return next(_atom)
 
     def get_bonds(
         self,
@@ -1588,7 +1620,7 @@ class BaseEntity:
         """
         Add a patch to the molecule using the % operator (i.e. mol % patch)
         """
-        self.set_patch(patch)
+        self.set_patch_or_recipe(patch)
         return self
 
     def __xor__(self, atom):

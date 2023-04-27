@@ -379,6 +379,6 @@ if __name__ == "__main__":
     )
     t2 = time.time()
     print("Oh yeah - it works!")
-    s.to_pdb("final_scaffold_superduper999.pdb")
+    s.to_pdb("final_scaffold_superduper999_.pdb")
     print(f"Time: {t2 - t1}")
     pass
