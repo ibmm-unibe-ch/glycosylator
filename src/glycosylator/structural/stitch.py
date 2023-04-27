@@ -232,10 +232,10 @@ class Stitcher(base.Connector):
                 p.detach_child(atom.id)
                 atom.set_parent(p)
 
-            # adx = 1
-            # for atom in obj.atoms:
-            #     atom.set_serial_number(adx)
-            #     adx += 1
+            adx = 1
+            for atom in obj.atoms:
+                atom.set_serial_number(adx)
+                adx += 1
 
     def _optimize(self, steps: int = 1e4, **kwargs):
         """
