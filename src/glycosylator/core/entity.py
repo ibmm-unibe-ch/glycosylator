@@ -221,7 +221,7 @@ class BaseEntity:
         """
         return {
             triplet: structural.compute_angle(*triplet)
-            for triplet in self.atom_triplets
+            for triplet in structural.generate_triplets(self.bonds)
         }
 
     @property
@@ -1083,12 +1083,17 @@ class BaseEntity:
             atom = self.get_atom(atom)
             self._AtomGraph.remove_node(atom)
             self._purge_bonds(atom)
-            atom.get_parent().detach_child(atom.id)
+            p = atom.get_parent()
+            if p:
+                p.detach_child(atom.id)
+                atom.set_parent(
+                    p
+                )  # this is necessary to avoid a bug where atoms remain longer in the memory atoms list than they should
             _atoms.append(atom)
 
         # reindex the atoms
         adx = 0
-        for atom in self.atoms:
+        for atom in self._model.get_atoms():
             adx += 1
             atom.serial_number = adx
 
@@ -1391,7 +1396,7 @@ class BaseEntity:
         bonds = structural.infer_residue_connections(
             self._base_struct, bond_length, triplet
         )
-        self._bonds.extend(bonds)
+        self._bonds.extend(b for b in bonds if b not in self._bonds)
         self._AtomGraph.add_edges_from(bonds)
         return bonds
 
@@ -1568,23 +1573,31 @@ class BaseEntity:
         """
         if atom1 and atom2:
             if either_way:
-                return [i for i in self.bonds if atom1 in i and atom2 in i]
+                return [
+                    i
+                    for i in self.bonds
+                    if (atom1 is i[0] and atom2 is i[1])
+                    or (atom1 is i[1] and atom2 is i[0])
+                    # if (atom1.full_id == i[0].full_id and atom2.full_id == i[1].full_id)
+                    # or (atom1.full_id == i[1].full_id and atom2.full_id == i[0].full_id)
+                ]
             else:
                 return [
                     i
                     for i in self.bonds
-                    if atom1 in i and atom2 in i and i[0] == atom1 and i[1] == atom2
+                    if (atom1 is i[0] and atom2 is i[1])
+                    # if (atom1.full_id == i[0].full_id and atom2.full_id == i[1].full_id)
                 ]
         elif atom1:
             if either_way:
-                return [i for i in self.bonds if atom1 in i]
+                return [i for i in self.bonds if (atom1 is i[0] or atom1 is i[1])]
             else:
-                return [i for i in self.bonds if atom1 in i and i[0] == atom1]
+                return [i for i in self.bonds if atom1 is i[0]]
         elif atom2:
             if either_way:
-                return [i for i in self.bonds if atom2 in i]
+                return [i for i in self.bonds if (atom2 is i[0] or atom2 is i[1])]
             else:
-                return [i for i in self.bonds if atom2 in i and i[1] == atom2]
+                return [i for i in self.bonds if atom2 is i[1]]
         else:
             raise ValueError("No atom provided")
 
@@ -1593,11 +1606,12 @@ class BaseEntity:
         The core function of `purge_bonds` which expects atoms to be provided as Atom objects.
         """
         # the full_id thing seems to prevent some memory leaky-ness
-        bonds = (
+        bonds = [
             i
-            for i in self.bonds
-            if atom.full_id == i[0].full_id or atom.full_id == i[1].full_id
-        )
+            for i in self._bonds
+            if atom is i[0] or atom is i[1]
+            # if atom.full_id == i[0].full_id or atom.full_id == i[1].full_id
+        ]
         for bond in bonds:
             self._remove_bond(*bond)
 
@@ -1605,12 +1619,19 @@ class BaseEntity:
         """
         The core function of `remove_bond` which expects atoms to be provided as Atom objects.
         """
-        if (atom1, atom2) in self._bonds:
-            self._bonds.remove((atom1, atom2))
+        b = (atom1, atom2)
+        if b in self._bonds:
+            self._bonds.remove(b)
+        if b[::-1] in self._bonds:
+            self._bonds.remove(b[::-1])
         if self._AtomGraph.has_edge(atom1, atom2):
             self._AtomGraph.remove_edge(atom1, atom2)
-        if (atom1, atom2) in self.locked_bonds:
-            self.locked_bonds.remove((atom1, atom2))
+        if self._AtomGraph.has_edge(atom2, atom1):
+            self._AtomGraph.remove_edge(atom2, atom1)
+        if b in self.locked_bonds:
+            self.locked_bonds.remove(b)
+        if b[::-1] in self.locked_bonds:
+            self.locked_bonds.remove(b[::-1])
 
     def _remove_atoms(self, *atoms):
         """
@@ -1619,11 +1640,13 @@ class BaseEntity:
         for atom in atoms:
             self._AtomGraph.remove_node(atom)
             self._purge_bonds(atom)
-            atom.get_parent().detach_child(atom.id)
+            p = atom.get_parent()
+            p.detach_child(atom.id)
+            atom.set_parent(p)
 
         # reindex the atoms
         adx = 0
-        for atom in self.atoms:
+        for atom in self._model.get_atoms():
             adx += 1
             atom.serial_number = adx
 

@@ -378,7 +378,7 @@ class Quartet:
         return self._atoms[item]
 
 
-def compute_triplets(bonds: list):
+def compute_triplets(bonds: list, unique: bool = True):
     """
     Compute all possible triplets of atoms from a list of bonds.
 
@@ -386,6 +386,9 @@ def compute_triplets(bonds: list):
     ----------
     bonds : list
         A list of bonds
+    unique : bool
+        Whether to return only unique triplets. If False, triplets (1,2,3) and (3,2,1) will be returned.
+        Otherwise only one of them will be returned.
 
     Returns
     -------
@@ -405,7 +408,17 @@ def compute_triplets(bonds: list):
     >>> compute_triplets(bonds)
     [(2, 1, 3), (1, 2, 4), (1, 3, 5)]
     """
-    return list(generate_triplets(bonds))
+    triplets = list(generate_triplets(bonds))
+    if unique:
+        half_length = len(triplets) // 2
+        while len(triplets) != half_length:
+            triplet = triplets.pop()
+            if triplet[::-1] in triplets:
+                continue
+            else:
+                triplets.insert(0, triplet)
+    return triplets
+
     # triplets = []
     # for i, bond1 in enumerate(bonds):
     #     atom_11, atom_12 = bond1
@@ -457,30 +470,32 @@ def compute_quartets(bonds: list):
     for idx, triplet1 in enumerate(triplets):
         atom_1, atom_2, atom_3 = triplet1
 
-        for triplet2 in triplets[idx + 1 :]:
+        for triplet2 in triplets:  # [idx + 1 :]:
             atom_4, atom_5, atom_6 = triplet2
 
             # decision tree to map atoms into quartets
-            if all((atom_1 == atom_4, atom_2 == atom_5, atom_3 == atom_6)):
+            if (
+                triplet1 is triplet2
+            ):  # all((atom_1 is atom_4, atom_2 is atom_5, atom_3 is atom_6)):
                 continue
 
             quartet = None
-            if atom_2 == atom_4:
-                if atom_1 == atom_5:
+            if atom_2 is atom_4:
+                if atom_1 is atom_5:
                     quartet = Quartet(atom_6, atom_1, atom_2, atom_3, False)
 
-                elif atom_3 == atom_5:
+                elif atom_3 is atom_5:
                     quartet = Quartet(atom_1, atom_2, atom_3, atom_6, False)
 
-            elif atom_2 == atom_5:
-                if atom_1 == atom_4 or atom_3 == atom_4:
+            elif atom_2 is atom_5:
+                if atom_1 is atom_4 or atom_3 is atom_4:
                     quartet = Quartet(atom_1, atom_3, atom_2, atom_6, True)
 
-            elif atom_2 == atom_6:
-                if atom_1 == atom_5:
-                    quartet = Quartet(atom_6, atom_1, atom_2, atom_3, False)
+            elif atom_2 is atom_6:
+                if atom_1 is atom_5:
+                    quartet = Quartet(atom_6, atom_1, atom_4, atom_3, False)
 
-                elif atom_3 == atom_5:
+                elif atom_3 is atom_5:
                     quartet = Quartet(atom_1, atom_2, atom_3, atom_6, False)
 
             if quartet:
@@ -514,7 +529,7 @@ def generate_triplets(bonds: list):
     ```
     >>> bonds = [(1, 2), (1, 3), (2, 4), (3, 5)]
     >>> list(generate_triplets(bonds))
-    [(2, 1, 3), (1, 2, 4), (1, 3, 5)]
+    [(2, 1, 3), (3, 1, 2), (1, 2, 4), (4, 2, 1), (1, 2, 4)]
     """
     for i, bond1 in enumerate(bonds):
         atom_11, atom_12 = bond1
