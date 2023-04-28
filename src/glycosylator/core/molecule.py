@@ -477,6 +477,13 @@ class Molecule(entity.BaseEntity):
         at_residue : int or Residue
             The residue to attach the other molecule to. If None, the `attach_residue` is used. Only used if a recipe is provided and the atoms
         """
+        if not recipe and not remove_atoms:
+            if not self._patch:
+                raise AttributeError(
+                    "No recipe was set for this molecule and no manual instructions were found. Either set a default recipe, provide a recipe when stitching, or provide the information about removed and bonded atoms directly."
+                )
+            recipe = self._patch
+
         if recipe:
             return self.stitch(
                 other,
