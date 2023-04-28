@@ -66,8 +66,15 @@ class Connector:
         if not self.source:
             raise AttributeError("No source set")
 
-        ref_atom_1 = self.target.get_atoms(_ref_atoms[0])
-        ref_atom_2 = self.source.get_atoms(_ref_atoms[1])
+        if not _ref_atoms[0]:
+            ref_atom_1 = [self.target.root_atom]
+        else:
+            ref_atom_1 = self.target.get_atoms(_ref_atoms[0])
+
+        if not _ref_atoms[1]:
+            ref_atom_2 = [self.source.root_atom]
+        else:
+            ref_atom_2 = self.source.get_atoms(_ref_atoms[1])
 
         if target_residue:
             target_residue = self.target.get_residue(target_residue)

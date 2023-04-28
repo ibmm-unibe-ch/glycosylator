@@ -137,7 +137,9 @@ class Patcher(base.Connector):
         # self.target.adjust_indexing(self.source)
         self.target.add_residues(*self.source.residues)
         self.target._bonds.extend(self.source.bonds)
-        self.target.locked_bonds.update(self.source.locked_bonds)
+        self.target.locked_bonds.update(
+            i for i in self.source.locked_bonds if i in self.target.bonds
+        )
         self.target._AtomGraph.add_edges_from(self.source._AtomGraph.edges)
         self.target.add_bond(*self._anchors)
         return self.target
@@ -400,8 +402,8 @@ class Patcher(base.Connector):
             delete_from_source = [
                 i for i in self._source_residue.child_list if i.id in delete_from_source
             ]
-        self.target.remove_atoms(*delete_from_target)
-        self.source.remove_atoms(*delete_from_source)
+        self.target._remove_atoms(*delete_from_target)
+        self.source._remove_atoms(*delete_from_source)
 
     @property
     def _objs(self):
