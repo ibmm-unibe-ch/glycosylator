@@ -18,4 +18,5 @@ from glycosylator.structural.neighbors import (
     ResidueNeighborhood,
     compute_quartets,
     compute_triplets,
+    generate_triplets,
 )
