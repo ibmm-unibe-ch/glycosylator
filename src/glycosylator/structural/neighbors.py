@@ -518,7 +518,7 @@ def generate_triplets(bonds: list):
     """
     for i, bond1 in enumerate(bonds):
         atom_11, atom_12 = bond1
-        for j, bond2 in enumerate(bonds[i + 1 :]):
+        for j, bond2 in enumerate(bonds):  # [i + 1 :]):
             atom_21, atom_22 = bond2
 
             # we used to compare with == (Which works perfectly fine)
