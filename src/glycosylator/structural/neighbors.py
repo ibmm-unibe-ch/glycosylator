@@ -525,7 +525,7 @@ def generate_triplets(bonds: list):
             # but since we use this function to generate atom bond triplets
             # where the atoms are not only supposed to be equal but should literally be the same object
             # we can use the is operator to speed up the process (hopefully.)
-            if atom_11 is atom_22:
+            if bond1 is bond2:
                 continue
             if atom_11 is atom_21:
                 yield (atom_12, atom_11, atom_22)
