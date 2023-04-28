@@ -210,20 +210,23 @@ class Scaffold(entity.BaseEntity):
     def attach(
         self,
         mol: "Molecule",
-        remove_atoms: tuple,
-        mol_remove_atoms: tuple,
+        recipe: "AbstractRecipe" = None,
+        remove_atoms: tuple = None,
+        mol_remove_atoms: tuple = None,
         sequon: str = None,
         at_atom: str = None,
         chain=None,
         _copy: bool = False,
     ):
         """
-        Attach a molecule to the scaffold via the root atoms.
+        Attach a molecule to the scaffold via their root atoms.
 
         Parameters
         ----------
         mol : Molecule
             The molecule to attach
+        recipe : Recipe
+            The recipe to use when stitching. If None, the default recipe that was set earlier on the molecule is used (if defined).
         remove_atoms : tuple
             The atoms to remove from the scaffold while stitching the molecule to it. These must be the atom ids (e.g. "HO4")
             and they must be part of the scaffold's root residue.
@@ -236,7 +239,6 @@ class Scaffold(entity.BaseEntity):
         at_atom: str
             In case a sequon is provided, this specifies the atom of the matching residues that shall be used for stitching.
             This must be the atom's id (e.g. "CA").
-
         chain : str or int or bio.PDB.Chain.Chain
             The chain to which the molecule should be attached. If None, the molecule is attached to the same chain as the root residue.
             This can be set to "new" to create a new chain for the molecule, or "each" to create a new chain for each molecule that is attached
@@ -250,6 +252,22 @@ class Scaffold(entity.BaseEntity):
         scaffold
             The scaffold with the molecule(s) attached, which is either a copy of the original scaffold or the original.
         """
+        if not recipe and not remove_atoms:
+            if not self._patch:
+                raise AttributeError(
+                    "No recipe was set for this molecule and no manual instructions were found. Either set a default recipe, provide a recipe when stitching, or provide the information about removed and bonded atoms directly."
+                )
+            recipe = self._patch
+        if recipe:
+            return self.attach(
+                mol,
+                remove_atoms=recipe.deletes[0],
+                mol_remove_atoms=recipe.deletes[1],
+                sequon=sequon,
+                at_atom=at_atom,
+                chain=chain,
+                _copy=_copy,
+            )
 
         if _copy:
             scaffold = deepcopy(self)
