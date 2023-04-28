@@ -230,6 +230,17 @@ class BaseGraph(nx.Graph):
         """
         return self._locked_edges
 
+    def get_unlocked_edges(self):
+        """
+        Get all unlocked edges
+
+        Returns
+        -------
+        set
+            The unlocked edges
+        """
+        return set(self.edges) - self._locked_edges
+
     def lock_all(self):
         """
         Lock all edges
