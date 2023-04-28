@@ -9,6 +9,7 @@ import Bio.PDB as bio
 import networkx as nx
 import numpy as np
 from scipy.spatial.transform import Rotation
+import glycosylator.utils.visual as vis
 
 
 class BaseGraph(nx.Graph):
@@ -68,27 +69,22 @@ class BaseGraph(nx.Graph):
         """
         return list(self.edges)
 
-    def to_pdb(self, filename: str):
+    def show(self):
         """
-        Save to a PDB file
-
-        Parameters
-        ----------
-        filename : str
-            Path to the PDB file
+        Show the graph
         """
-        structure = bio.Structure.Structure(self.id)
-        model = bio.Model.Model(0)
-        chain = bio.Chain.Chain("A")
-        structure.add(model)
-        model.add(chain)
+        self.draw().show()
 
-        for atom in self._structure:
-            chain.add(atom)
+    def draw(self):
+        """
+        Prepare a 3D view of the graph but do not show it yet
 
-        io = bio.PDBIO()
-        io.set_structure(structure)
-        io.save(filename)
+        Returns
+        -------
+        MoleculeViewer3D
+            The 3D viewer
+        """
+        return vis.MoleculeViewer3D(self)
 
     @abstractmethod
     def get_neighbors(self, node, n: int = 1, mode="upto"):
@@ -164,7 +160,6 @@ class BaseGraph(nx.Graph):
         _seen = set((node_1, node_2))
 
         while len(_new_neighbors) > 0:
-
             neighbor = _new_neighbors.pop()
             descendants = self.get_neighbors(neighbor)
 

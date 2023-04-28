@@ -363,10 +363,28 @@ class BaseEntity:
         residue_graph : bool
             If True, a residue graph is shown instead of the full structure.
         """
+        v = self.draw(residue_graph)
+        v.show()
+
+    def draw(self, residue_graph: bool = False):
+        """
+        Prepare a view of the molecule/scaffold in 3D
+        but do not open a browser window.
+
+        Parameters
+        ----------
+        residue_graph : bool
+            If True, a residue graph is shown instead of the full structure.
+
+        Returns
+        -------
+        viewer : MoleculeViewer3D
+            The viewer object
+        """
         if residue_graph:
-            utils.visual.MoleculeViewer3D(self.make_residue_graph()).show()
+            return utils.visual.MoleculeViewer3D(self.make_residue_graph())
         else:
-            utils.visual.MoleculeViewer3D(self).show()
+            return utils.visual.MoleculeViewer3D(self)
 
     def get_attach_residue(self):
         """
