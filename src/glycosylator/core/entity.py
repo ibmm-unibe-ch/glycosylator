@@ -15,6 +15,17 @@ import glycosylator.graphs as graphs
 
 
 class BaseEntity:
+    """
+    THe Base class for all classes that store and handle biopython structures, namely the Molecule and Scaffold classes.
+
+    Parameters
+    ----------
+    structure : Bio.PDB.Structure
+        The biopython structure
+    model : int
+        The index of the model to use (default: 0)
+    """
+
     def __init__(self, structure, model: int = 0):
         self._base_struct = structure
         self._id = structure.id
@@ -628,8 +639,41 @@ class BaseEntity:
     def get_chains(self):
         return self._model.get_chains()
 
-    def get_residues(self):
-        return self._model.get_residues()
+    def get_residues(
+        self,
+        *residues: Union[int, str, tuple, bio.Residue.Residue],
+        by: str = None,
+        chain=None,
+    ):
+        """
+        Get residues from the structure either based on their
+        name, serial number or full_id.
+
+        Parameters
+        ----------
+        residues
+            The residues' id, seqid or full_id tuple. If None is passed, the iterator over all residues is returned.
+        by : str
+            The type of parameter to search for. Can be either 'name', 'seqid' or 'full_id'
+            By default, this is inferred from the datatype of the residue parameter.
+            If it is an integer, it is assumed to be the sequence identifying number,
+            if it is a string, it is assumed to be the residue name and if it is a tuple, it is assumed
+            to be the full_id.
+        chain : str
+            Further restrict to residues from a specific chain.
+
+        Returns
+        -------
+        list or generator
+            The residue(s)
+        """
+        if len(residues) == 0:
+            if chain is not None:
+                chain = self.get_chain(chain)
+                return chain.get_residues()
+            return self._model.get_residues()
+
+        return [self.get_residue(i, by=by, chain=chain) for i in residues]
 
     def get_atoms(self, *atoms: Union[int, str, tuple], by: str = None) -> list:
         """
@@ -827,6 +871,11 @@ class BaseEntity:
             to be the full_id.
         chain : str
             Further restrict to a residue from a specific chain.
+
+        Returns
+        -------
+        residue : bio.Residue.Residue
+            The residue
         """
         if isinstance(residue, bio.Residue.Residue):
             if residue in self.residues:
