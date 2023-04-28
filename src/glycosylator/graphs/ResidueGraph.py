@@ -31,7 +31,7 @@ class ResidueGraph(BaseGraph):
         )
 
     @classmethod
-    def from_molecule(cls, mol, detailed: bool = True, locked: bool = True):
+    def from_molecule(cls, mol, detailed: bool = False, locked: bool = True):
         """
         Create a ResidueGraph from a molecule object.
 
@@ -179,7 +179,7 @@ class ResidueGraph(BaseGraph):
             self.add_edge(*edge)
             _added_nodes.update(edge)
 
-        triplets = struct.compute_triplets(self._atomic_bonds_list)
+        triplets = struct.generate_triplets(self._atomic_bonds_list)
         for triplet in triplets:
             e1 = (triplet[0], triplet[0].get_parent())
             e3 = (triplet[2], triplet[2].get_parent())
@@ -330,8 +330,8 @@ class ResidueGraph(BaseGraph):
 if __name__ == "__main__":
     import glycosylator as gl
 
-    f = "support/examples/4tvp.prot.pdb"
-    mol = gl.Scaffold.from_pdb(f)
+    f = "support/examples/man9.pdb"
+    mol = gl.Molecule.from_pdb(f)
     mol.infer_bonds(restrict_residues=False)
     man = ResidueGraph.from_molecule(mol)
 
