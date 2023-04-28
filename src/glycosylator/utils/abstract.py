@@ -233,7 +233,7 @@ class AbstractEntity_with_IC(AbstractEntity):
             raise ValueError(f"Unknown mode {mode}")
 
 
-class AbstractResidue(AbstractEntity):
+class AbstractResidue(AbstractEntity_with_IC):
     """
     A representation of a single Residue (compound)
     """
