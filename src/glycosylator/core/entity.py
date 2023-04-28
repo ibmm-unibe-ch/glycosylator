@@ -603,6 +603,7 @@ class BaseEntity:
         for chain in chains:
             chain._id = utils.auxiliary.chain_id_maker(cdx)
             cdx += 1
+            self._model.add(chain)
 
             residues = list(chain.child_list)
             for residue in residues:
@@ -619,8 +620,6 @@ class BaseEntity:
                     atom.serial_number = adx
                     adx += 1
                     atom.set_parent(residue)
-
-            self._model.add(chain)
 
     def adjust_indexing(self, mol: "Molecule"):
         """
@@ -1709,11 +1708,12 @@ def should_invert(bond, direct_connecting_atoms):
         return True
     elif atom1.parent.id[1] == atom2.parent.id[1]:
         if atom1 in direct_connecting_atoms:
+            return True
+        elif atom2 not in direct_connecting_atoms:
             return False
         elif atom1.serial_number > atom2.serial_number:
             return True
-        elif atom2 in direct_connecting_atoms:
-            return True
+    return False
 
 
 """
@@ -1725,4 +1725,21 @@ if __name__ == "__main__":
     # e = BaseEntity.from_pdb(f)
     # e.infer_bonds(restrict_residues=False)
     # e.get_residue_connections()
+    pass
+
+    import glycosylator as gl
+
+    man = gl.Molecule.from_compound("MAN")
+    man.repeat(3, "14bb")
+    cs = man.get_residue_connections()
+
+    v = utils.visual.MoleculeViewer3D(man)
+    for c in cs:
+        v.draw_vector(
+            None,
+            c[0].coord,
+            1.1 * (c[1].coord - c[0].coord),
+            color="limegreen",
+        )
+    v.show()
     pass
