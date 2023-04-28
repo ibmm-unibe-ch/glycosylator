@@ -17,7 +17,6 @@ class AbstractEntity:
         self.id = id
         self._atoms = {}
         self.bonds = []
-        self.internal_coordinates = []
 
     @property
     def atoms(self):
@@ -112,6 +111,39 @@ class AbstractEntity:
                 return bond
         return None
 
+    def add_atom(self, atom):
+        """
+        Add an atom to the residue
+        """
+        self._atoms[atom.id] = atom
+
+    def add_bond(self, bond):
+        """
+        Add a bond to the residue
+        """
+        self.bonds.append(bond)
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}({self.id})"
+
+
+class AbstractEntity_with_IC(AbstractEntity):
+    def __init__(self, id=None):
+        super().__init__(id)
+        self.internal_coordinates = []
+
+    def add_internal_coordinates(self, ic):
+        """
+        Add an internal coordinate to the residue
+        """
+        self.internal_coordinates.append(ic)
+
+    def add_ic(self, ic):
+        """
+        Add an internal coordinate to the residue
+        """
+        self.add_internal_coordinates(ic)
+
     def get_internal_coordinates(self, *ids, mode: str = "exact"):
         """
         Get internal coordinates by their atom IDs
@@ -199,33 +231,6 @@ class AbstractEntity:
 
         else:
             raise ValueError(f"Unknown mode {mode}")
-
-    def add_atom(self, atom):
-        """
-        Add an atom to the residue
-        """
-        self._atoms[atom.id] = atom
-
-    def add_bond(self, bond):
-        """
-        Add a bond to the residue
-        """
-        self.bonds.append(bond)
-
-    def add_internal_coordinates(self, ic):
-        """
-        Add an internal coordinate to the residue
-        """
-        self.internal_coordinates.append(ic)
-
-    def add_ic(self, ic):
-        """
-        Add an internal coordinate to the residue
-        """
-        self.add_internal_coordinates(ic)
-
-    def __repr__(self):
-        return f"{self.__class__.__name__}({self.id})"
 
 
 class AbstractResidue(AbstractEntity):
@@ -523,7 +528,7 @@ class AbstractInternalCoordinates:
         return f"AbstractInternalCoordinates({self.atom1.id}, {self.atom2.id}, {self.atom3.id}, {self.atom4.id})"
 
 
-class AbstractPatch(AbstractEntity):
+class AbstractPatch(AbstractEntity_with_IC):
     """
     A representation of a single Patch
     """
