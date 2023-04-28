@@ -82,7 +82,7 @@ class ResidueGraph(BaseGraph):
             new.make_detailed()
             if locked:
                 new._locked_edges.update(
-                    (i for i in mol.locked_bonds if i in new.edges)
+                    (i for i in mol._AtomGraph._locked_edges if i in new.edges)
                 )
         return new
 
@@ -181,6 +181,8 @@ class ResidueGraph(BaseGraph):
 
         triplets = struct.generate_triplets(self._atomic_bonds_list)
         for triplet in triplets:
+            if triplet[0].get_parent() == triplet[2].get_parent():
+                continue
             e1 = (triplet[0], triplet[0].get_parent())
             e3 = (triplet[2], triplet[2].get_parent())
             self.add_edge(*e1)
