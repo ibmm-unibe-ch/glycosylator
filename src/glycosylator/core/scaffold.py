@@ -304,8 +304,8 @@ class Scaffold(entity.BaseEntity):
                     scaffold.attach_residue = scaffold.root_residue
                     scaffold = scaffold.attach(
                         mol,
-                        remove_atoms,
-                        mol_remove_atoms,
+                        remove_atoms=remove_atoms,
+                        mol_remove_atoms=mol_remove_atoms,
                         chain=_chain,
                         _copy=False,
                     )
@@ -397,6 +397,8 @@ if __name__ == "__main__":
     )
     t2 = time.time()
     print("Oh yeah - it works!")
-    s.to_pdb("final_scaffold_superduper999_.pdb")
+    from datetime import datetime
+
+    s.to_pdb(f"final_scaffold_superduper.{datetime.now()}.pdb")
     print(f"Time: {t2 - t1}")
     pass

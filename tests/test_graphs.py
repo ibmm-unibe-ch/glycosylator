@@ -194,11 +194,13 @@ def test_atom_graph_copy_neighbors():
 
 def test_residue_graph_from_molecule():
     mol = gl.Molecule.from_pdb(base.MANNOSE9)
+    mol.reindex()
     mol.infer_bonds(restrict_residues=False)
+    mol.get_residue_connections()
     mol.lock_all()
     graph_simple = gl.graphs.ResidueGraph.from_molecule(mol, detailed=False)
 
-    v = gl.utils.visual.MoleculeViewer3D(mol)
+    v = mol.draw()
     for edge in mol.get_residue_connections(True):
         v.draw_vector(
             f"""{edge[0].full_id[3:]} ---> {edge[1].full_id[3:]}""",
@@ -216,21 +218,21 @@ def test_residue_graph_from_molecule():
 
     assert len(graph_simple._locked_edges) == 0, "Molecule is not locked"
 
-    v = gl.utils.visual.MoleculeViewer3D(graph_simple)
+    v = graph_simple.draw()
     v.show()
 
     graph_detailed = gl.graphs.ResidueGraph.from_molecule(mol, detailed=True)
-
     assert graph_detailed is not None, "No molecule is made"
 
-    v = gl.utils.visual.MoleculeViewer3D(graph_detailed)
+    graph_detailed.lock_centers()
+    v = graph_detailed.draw()
+    v.draw_edges(graph_detailed.get_locked_edges(), color="magenta")
+    v.draw_edges(graph_detailed.get_unlocked_edges(), color="limegreen")
     v.show()
 
     _received = len(list(graph_detailed.bonds))
     _expected = 40
     assert _received == _expected, f"Expected {_expected} bonds, got {_received}"
-
-    assert len(graph_detailed._locked_edges) != 0, "Molecule is not locked"
 
 
 def test_residue_graph_multi_residue_get_neighbors():
@@ -238,6 +240,7 @@ def test_residue_graph_multi_residue_get_neighbors():
     mol.infer_bonds(restrict_residues=False)
 
     mol = gl.graphs.ResidueGraph.from_molecule(mol, detailed=True)
+    mol.show()
 
     neigs = mol.get_neighbors("C1")
     assert isinstance(neigs, set), f"Expected a set but received {type(neigs)}"

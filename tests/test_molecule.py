@@ -111,6 +111,25 @@ def test_molecule_bonds():
     assert len(mol.bonds) == 24
 
 
+def test_molecule_get_bonds():
+    glc = gl.Molecule.from_compound("GLC")
+    glc.repeat(2, "14bb")
+
+    v = glc.draw()
+    v.show()
+    assert len(glc.bonds) == 46
+
+    b = glc.get_bonds("O4")
+    v.draw_edges(b, color="red")
+    assert len(b) == 2
+
+    c1 = glc.get_atom("C1", residue=2)
+    b = glc.get_bonds("O4", c1)
+    v.draw_edges(b, color="green")
+    assert len(b) == 1
+    v.show()
+
+
 def test_angles():
     mol = gl.Molecule.from_pdb(base.MANNOSE)
     mol.apply_standard_bonds()
