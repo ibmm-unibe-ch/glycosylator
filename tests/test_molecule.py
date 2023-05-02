@@ -96,6 +96,45 @@ def test_molecule_from_compound():
         raise e
 
 
+def test_atomgraph_sync():
+    mol = gl.Molecule.from_pdb(base.MANNOSE)
+    mol2 = gl.Molecule.from_pdb(base.MANNOSE)
+
+    mol.apply_standard_bonds()
+    mol2.apply_standard_bonds()
+
+    assert mol is not mol2
+
+    assert len(mol.atoms) == 24
+    assert len(mol.bonds) == 24
+
+    assert len(mol.bonds) == len(mol2.bonds)
+
+    for atom in mol.get_atoms():
+        assert atom in mol._AtomGraph.nodes, f"Atom {atom} not in graph"
+
+    for atom in mol2.get_atoms():
+        assert atom in mol2._AtomGraph.nodes, f"Atom {atom} not in graph"
+
+    # make the molecule larger
+    mol % "14bb"
+    mol += mol2
+
+    assert len(mol.atoms) == 45
+
+    for atom in mol.get_atoms():
+        assert atom in mol._AtomGraph.nodes, f"Atom {atom} not in graph"
+
+    mol.reindex(2, 100, 5)
+    assert len(mol.atoms) == 45
+
+    assert mol.chains[0].id == "B"
+    assert mol.residues[0].id[1] == 100
+
+    for atom in mol.get_atoms():
+        assert atom in mol._AtomGraph.nodes, f"Atom {atom} not in graph after reindex"
+
+
 def test_molecule_bonds():
     mol = gl.Molecule.from_pdb(base.MANNOSE)
 
