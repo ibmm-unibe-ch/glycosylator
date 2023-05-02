@@ -343,7 +343,7 @@ def test_attach_with_operator_inplace():
     glycan ^ 1
 
     asn = scaffold.get_residues("ASN", by="name", chain="A")[0]
-    scaffold.root_atom = asn.child_dict["ND2"]
+    scaffold.root_atom = scaffold.get_atom("ND2", residue=asn)
 
     # now attach
 

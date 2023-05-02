@@ -5,6 +5,7 @@ As a class the `Scaffold` shares many features with the `Molecule` class, but it
 As such it lacks certain features such as the `repeat` or `from_compound` methods. 
 A Scaffold can be edited just like a Molecule, so refer to the `Molecule` documentation for more information on how to do that.
 
+
 Attaching Molecules
 ===================
 
@@ -24,6 +25,7 @@ We can attach molecules to scaffolds via the `attach` method to:
 - one specific residue
 - a list of residues
 - all residues that match a specific sequence pattern (sequon, only for protein scaffolds)
+
 
 Attaching to a specific residue
 -------------------------------
@@ -87,7 +89,38 @@ And in this final version we change the second example to use the operator "shor
     my_prot += my_glycan
 
 
+Attaching to a list of residues
+-------------------------------
+
+Often we want to modify a number of residues in the same way, for example when we want to attach a glycan to all
+residues in a protein that match a specific sequence pattern (e.g. all N-glycosylation sequons). We can do this by providing
+a list of `residues` to the `attach` method:
+
+.. code-block:: python
+
+    # find all ASN residues in the protein
+    residues_to_modify = [res for res in my_prot.get_residues() if res.resname == "ASN"]
     
+    # now attach the glycan to all ASN residues
+    my_prot.attach(my_glycan, recipe=my_recipe, residues=residues_to_modify, at_atom="ND2")
+  
+This code will automatically add the glycan to all ASN residues in the list `residues_to_modify` and will use the `at_atom` argument to
+connect the glycan's root atom to the ND2 atom of each ASN residue.
+
+
+Attaching to residues matching a sequence pattern
+-------------------------------------------------
+
+The `Scaffold` class offers the `find` method which accepts a `regex` pattern to search 
+the protein sequence for matching residues. This is useful for attaching to all residues that match a specific sequence pattern,
+such as all N-glycosylation sequons. The `find` method returns a dictionary keyed by chain-id containing lists of matching residues.
+For convenience, the `attach` method accepts a `sequon` argument where a regex pattern can directly be provided to do the searching automatically:
+
+.. code-block:: python
+
+    # attach to all N-glycosylation sequons           * sequon pattern *
+    my_prot.attach(my_glycan, recipe=my_recipe, sequon="(N)(?=[^P][ST])", at_atom="ND2")
+
 """
 
 from copy import deepcopy
