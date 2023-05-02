@@ -643,9 +643,7 @@ class BaseEntity:
                     atom.set_parent(residue)
 
         # update the atom graph
-        self._AtomGraph.clear()
-        self._AtomGraph.add_nodes_from(self.get_atoms())
-        self._AtomGraph.add_edges_from(self._bonds)
+        self.update_atom_graph()
 
     def adjust_indexing(self, mol: "Molecule"):
         """
@@ -1569,6 +1567,14 @@ class BaseEntity:
         if not locked:
             graph.unlock_all()
         return graph
+
+    def update_atom_graph(self):
+        """
+        Generate a new up-to-date `AtomGraph` after any manual changes were done to the Molecule's underlying biopython structure.
+        """
+        self._AtomGraph.clear()
+        self._AtomGraph.add_nodes_from(self.get_atoms())
+        self._AtomGraph.add_edges_from(self._bonds)
 
     def make_residue_graph(self, detailed: bool = False, locked: bool = True):
         """
