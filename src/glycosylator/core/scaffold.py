@@ -71,14 +71,32 @@ class Scaffold(entity.BaseEntity):
         else:
             raise ValueError(f"Chain '{chain}' not found")
 
-    def exclude_residue(self, residue: Union[int, str, bio.Residue.Residue]):
+    def include_chain(self, chain: Union[str, bio.Chain.Chain]):
+        """
+        Include a previously excluded chain in the scaffold again to let molecules
+        attach to its residues. This will also
+        allow sequon matches to be found by the `find` method.
+
+        Parameters
+        ----------
+        chain : str or Chain
+            The chain to include
+        """
+        if isinstance(chain, str):
+            _chain = self._model.child_dict.get(chain)
+        if _chain is None:
+            raise ValueError(f"Chain '{chain}' not found")
+        elif _chain in self._excluded_chains:
+            self._excluded_chains.remove(_chain)
+           
+    def exclude_residue(self, residue: Union[int, bio.Residue.Residue]):
         """
         Exclude a residue of the scaffold from modification
         by a molecule
 
         Parameters
         ----------
-        residue : int or str or Residue
+        residue : int or Residue
             The residue to exclude
         """
         res = self.get_residue(residue)
@@ -86,6 +104,22 @@ class Scaffold(entity.BaseEntity):
             self._excluded_residues.add(res)
         else:
             raise ValueError(f"Residue '{residue}' not found")
+
+    def include_residue(self, residue: Union[int, bio.Residue.Residue]):
+        """
+        Include a previously excluded residue of the scaffold again for modification
+        by a molecule
+
+        Parameters
+        ----------
+        residue : int or Residue
+            The residue to include
+        """
+        res = self.get_residue(residue)
+        if res is None:
+            raise ValueError(f"Residue '{residue}' not found")
+        elif res in self._excluded_residues:
+            self._excluded_residues.remove(res)
 
     def find(self, sequon: str = "N-linked") -> list:
         """
@@ -407,6 +441,9 @@ if __name__ == "__main__":
     s = Scaffold.from_pdb(f1)
     s.reindex()
     s.infer_bonds(restrict_residues=True)
+
+    sequon = "(N)(?=[A-OQ-Z][ST])"
+    residues = s.find(sequon)
 
     # f = "/Users/oahhk/GIT/glycosylator/test.prot"
     # s.save(f)
