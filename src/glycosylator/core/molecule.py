@@ -381,6 +381,11 @@ class Molecule(entity.BaseEntity):
             if not patch_or_recipe:
                 raise ValueError("Cannot attach a molecule without a patch defined")
 
+        if isinstance(patch_or_recipe, str):
+            if not _topology:
+                _topology = utils.get_default_topology()
+            patch_or_recipe = _topology.get_patch(patch_or_recipe)
+
         if isinstance(patch_or_recipe, utils.abstract.AbstractPatch):
             self.patch(
                 other,
