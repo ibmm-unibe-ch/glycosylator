@@ -42,16 +42,20 @@ def test_seq():
         == "VFLGFLGAAGSTMGAASMTLTVQARNLLSGTVWGIKQLQARVLAVERYLRDQQLLGIWGCSGKLICCTNVPWNSSWSNRNLSEIWDNMTWLQWDKEISNYTQIIYGLLEESQNQQEKNEQDLLALD"
     )
 
+
 def test_atomgraph_sync():
     scaffold = gl.Scaffold.from_pdb(base.PROTEIN)
 
     for atom in scaffold.get_atoms():
-        assert atom in scaffold._AtomGraph.nodes, f"Atom {atom} not in AtomGraph before reindex"
+        assert (
+            atom in scaffold._AtomGraph.nodes
+        ), f"Atom {atom} not in AtomGraph before reindex"
 
     scaffold.reindex()
     for atom in scaffold.get_atoms():
-        assert atom in scaffold._AtomGraph.nodes, f"Atom {atom} not in AtomGraph after reindex"
-
+        assert (
+            atom in scaffold._AtomGraph.nodes
+        ), f"Atom {atom} not in AtomGraph after reindex"
 
     # add some residues
     old_residues = len(scaffold.residues)
@@ -294,6 +298,10 @@ def test_fill():
     new_residues = len(scaffold.residues)
 
     assert new_residues < old_residues
+
+    new_residues_dict = {}
+    for chain in scaffold.chains:
+        assert old_residues_dict[chain].issuperset(set(chain.child_list))
 
     # fill the protein back in
     scaffold.fill()
