@@ -426,7 +426,7 @@ def test_attach_with_operator_inplace_twice():
             lines += 1
 
     assert lines > old_lines
-    # os.remove("test_attach_via_roots.pdb")
+    os.remove("test_attach_via_roots.pdb")
 
 
 def test_attach_with_operator_copy():
