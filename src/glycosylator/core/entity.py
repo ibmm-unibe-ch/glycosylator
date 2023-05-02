@@ -128,11 +128,13 @@ class BaseEntity:
 
     @recipe.setter
     def recipe(self, value):
-        self._patch = value
+        # self._patch = value
+        self.set_patch_or_recipe(value)
 
     @patch.setter
     def patch(self, value):
-        self._patch = value
+        # self._patch = value
+        self.set_patch_or_recipe(value)
 
     @property
     def bonds(self):
@@ -635,9 +637,15 @@ class BaseEntity:
 
                 atoms = list(residue.child_list)
                 for atom in atoms:
+                    _atom = atom.copy()
                     atom.serial_number = adx
                     adx += 1
                     atom.set_parent(residue)
+
+        # update the atom graph
+        self._AtomGraph.clear()
+        self._AtomGraph.add_nodes_from(self.get_atoms())
+        self._AtomGraph.add_edges_from(self._bonds)
 
     def adjust_indexing(self, mol: "Molecule"):
         """
@@ -1063,7 +1071,11 @@ class BaseEntity:
                 self._AtomGraph.remove_node(atom)
                 self._purge_bonds(atom)
 
-            self._chain.detach_child(residue.id)
+            # keep the memory of the parent in the residue that is removed...
+            chain = residue.get_parent()
+            chain.detach_child(residue.id)
+            residue.set_parent(chain)
+
             _residues.append(residue)
         return _residues
 
