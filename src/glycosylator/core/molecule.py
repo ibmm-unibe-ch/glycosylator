@@ -1,12 +1,16 @@
 """
 The `Molecule` class is a wrapper around a biopython structure and a core part 
-of glycosylator functionality. It provides a convenient interface to available
-structures in PDB format, as well as an easy way to create new molecules from
-SMILES strings or reference compounds from the PDBECompounds database.
+of glycosylator functionality. It provides a convenient interface to molecular structures
+and their properties, such as atoms, bonds, residues, chains, etc. The purpose of a `Molecule` is to
+be attached onto a `Scaffold`. 
+
+
+Making Molecules
+================
 
 To make a new molecule, the easiest way is to use the `Molecule.from_compound` classmethod.
 This method is linked to the PDBECompounds database, which contains a large number of reference
-compounds (currently restricted to sugars and amino acids due to the nature of "glycosylator", however). The database
+compounds (currently restricted to sugars and amino acids due to the nature of "glycosylator"). The database
 is queried using the `by` parameter, which can be one of the following:
 - "id" for the PDB id (default)
 - "name" for the name of the compound (must match any known synonym of the iupac name)
@@ -34,10 +38,31 @@ Unless loaded from a PDB file, each `Molecule` starts with a single chain and re
 specifying a single compound, such as Galactose or Glucose. Starting from there, multiple molecules
 can be assembled together to form complex structures. 
 
-From single molecules to complex structures
--------------------------------------------
+Of course, an existing `biopython.Structure` object can also be used to create a `Molecule`:
 
-The `Molecule` class provides a number of methods to easily assemble complex structures from small single residue molecules.
+.. code-block:: python
+
+    from Bio.PDB import PDBParser
+
+    parser = PDBParser()
+    structure = parser.get_structure("my_structure", "my_structure.pdb")
+
+    # do any modifications to the structure here
+    # ...
+    
+    my_molecule = Molecule(structure)
+
+
+Connecting Molecules
+====================
+
+Since most modifications are not simply single residues but rather complex structures, the second main purpose of a `Molecule` is to be easily 
+connected to other Molecules to form a larger structure. To this end, the `Molecule` class provides a number of methods to easily assemble complex structures from small single residue molecules.
+
+
+Forming Polymers
+----------------
+
 The simplest way to generate a large structure is probably the `repeat` method, which will repeat the given molecule `n` times
 to form a homo-polymer.
 
@@ -46,29 +71,74 @@ to form a homo-polymer.
     # create a glucose molecule
     glc = Molecule.from_compound("GLC")
 
-    # create a galactose molecule
+    # create cellulose from glucose
+    # using a 1-4 beta-beta glycosidic linkeage
+    glc.repeat(10, "14bb")
+
+    # Now we have a cellulose of 10 glucoses
+
+In the above example we used the `repeat` method explicitly, but we could also achieve the same with the short-hand `*=`. For this to work, we need to specify 
+the linkeage type beforehand.
+
+.. code-block:: python
+
+    # specify the "default" linkeage type for connecting 
+    # other molecules to this glucose
+    glc.patch = "14bb"
+
+    # now make a cellulose by multiplying glucoses
+    glc *= 20
+
+    # Now we have a cellulose of 20 glucoses
+
+    
+If we wish to keep `glc` as a single residue Glucose and still get our desired cellulose, 
+we can set `inplace=False` when calling `repeat` or simply use the `*` operator, both of which 
+will have the same effect of creating a new copy that houses the appropriate residues.
+
+.. code-block:: python
+
+    cel = glc.repeat(10, "14bb", inplace=False)
+
+    # or (equivalently)
+    glc.patch = "14bb"
+    cel = glc * 10
+
+
+    
+Connecting different Molecules
+-------------------------------
+
+What if we want to connect different molecules? For example, we may want to connect a Galactose to a Glucose to form Lactose.
+This can be achieved using the `attach` method, which will attach a given molecule to to another molecule.
+
+.. code-block:: python
+
+    glc = Molecule.from_compound("GLC")
     gal = Molecule.from_compound("GAL")
 
-    # now attach the galactose to the glucose
-    # using a 1-4 beta linkage
-    glc.attach(gal, "14bb")
+    # attach the galactose to the glucose
+    # (we want a copy, so we set inplace=False just like with 'repeat')
+    lac = glc.attach(gal, "14bb", inplace=False)
 
-    # Now the glc object is a disaccharide holding two residues, one glucose and one galactose
+    # Now we have a lactose molecule
 
+
+    
 In the above example, the `attach` method is used to attach the galactose molecule to the glucose, but for those
 among us who prefer a more shorty syntax, the `+` operator will do the same thing. In this case we need
-to specify the linkage type (known as `patch`) as an attribute to the receiving molecule using `set_patch` first.
+to specify the linkage type (known as `patch`) as an attribute to the receiving molecule using `set_patch_or_recipe` first.
 
 .. code-block:: python
 
     # specify that incoming molecules shall be
     # attached using a 1-4 beta linkage
-    glc.set_patch("14bb")
+    glc.set_patch_or_recipe("14bb")
 
     # now attach the galactose to the glucose
     glc += gal
 
-For those who still want a shorter syntax, `set_patch` is represeted by the `%` opreator, so the above example
+For those who still want a shorter syntax, `set_patc_or_recipeh` is represeted by the `%` opreator, so the above example
 can be written as
 
 .. code-block:: python
@@ -354,6 +424,7 @@ class Molecule(entity.BaseEntity):
         ] = None,
         at_residue: Union[int, bio.Residue.Residue] = None,
         other_residue: Union[int, bio.Residue.Residue] = None,
+        inplace: bool = True,
         _topology=None,
     ):
         """
@@ -370,14 +441,21 @@ class Molecule(entity.BaseEntity):
             The residue to attach the other molecule to. If None, the defined `attach_residue` is used.
         other_residue : int or Residue
             The residue in the other molecule to attach this molecule to. If None, the defined `attach_residue` of the other molecule is used.
+        inplace : bool
+            If True the molecule is directly modified, otherwise a copy of the molecule is returned.
         _topology : Topology
             The topology to use when attaching. If None, the topology of the molecule is used. Only used if the patch is a string.
         """
         if not isinstance(other, Molecule):
             raise TypeError("Can only attach a Molecule to another Molecule")
 
+        if not inplace:
+            obj = deepcopy(self)
+        else:
+            obj = self
+
         if not patch_or_recipe:
-            patch_or_recipe = self._patch
+            patch_or_recipe = obj._patch
             if not patch_or_recipe:
                 raise ValueError("Cannot attach a molecule without a patch defined")
 
@@ -387,7 +465,7 @@ class Molecule(entity.BaseEntity):
             patch_or_recipe = _topology.get_patch(patch_or_recipe)
 
         if isinstance(patch_or_recipe, utils.abstract.AbstractPatch):
-            self.patch(
+            obj.patch(
                 other,
                 patch_or_recipe,
                 at_residue=at_residue,
@@ -395,13 +473,13 @@ class Molecule(entity.BaseEntity):
                 _topology=_topology,
             )
         elif isinstance(patch_or_recipe, utils.abstract.AbstractRecipe):
-            self.stitch(
+            obj.stitch(
                 other,
                 patch_or_recipe,
                 at_residue=at_residue,
                 other_residue=other_residue,
             )
-        return self
+        return obj
 
     def patch(
         self,
