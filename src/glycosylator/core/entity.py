@@ -147,7 +147,7 @@ class BaseEntity:
     @bonds.setter
     def bonds(self, value):
         if value is None or len(value) == 0:
-            self._bonds = []
+            self._bonds.clear()
             self._AtomGraph.clear_edges()
         self._bonds = value
         self._AtomGraph.clear_edges()
@@ -163,7 +163,7 @@ class BaseEntity:
     @locked_bonds.setter
     def locked_bonds(self, value):
         if value is None or len(value) == 0:
-            self._AtomGraph._locked_edges = set()
+            self._AtomGraph._locked_edges.clear()
         elif isinstance(value, set):
             self._AtomGraph._locked_edges = value
         else:
