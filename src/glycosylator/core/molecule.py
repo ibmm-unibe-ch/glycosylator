@@ -399,6 +399,56 @@ ready to go, set it as the default patch or recipe by:
 
 
 Now any call to `attach`, `repeat`, or any of its operator proxies will use your defined linkeage by default.
+
+Setting the default Residue for attachment
+------------------------------------------
+
+When specifying a `Patch` or `Recipe` we specify which atoms are supposed to be connected and removed, but we do not specify which residues
+these atoms belong to. We specify this as arguments inside the `attach` method for instance, but we can also leave this blank, in which case the
+last residue in the molecule is used by default. This is obviously not always what we want, however! Hence, if we do not want to specify the residue for attachment
+at every `attach` call or if we want to use the `+` operator, we can set the default residue for attachment by setting the `attach_residue` attribute:
+
+.. code-block:: python
+
+    # set the default attachment residue to the first residue
+    my_molecule.attach_residue = 1
+
+    # or
+    my_molecule.set_attach_residue(1)
+
+    # or (if you feel "extra cocky")
+    my_molecule @ 1 # <- the 'at' operator sets the attachment residue
+
+
+    # serial number indexing also works in reverse
+    # (set the second last residue as the default attachment residue)
+    my_molecule.attach_residue = -2
+
+Attaching Molecules to a Scaffold
+=================================
+
+Ultimately, the fate of a `Molecule` is to be attached to a `Scaffold`.
+The `Scaffold` class is very similar to the `Molecule` class but instead of representing modifying molecules such as glycans, it 
+represents the structures which are getting modified, such as proteins or membranes. A `Molecule` is always attached to a `Scaffold` 
+at its (the molecule's) `root_atom`. This can be set using the `root_atom` argument when creating a `Molecule` or by setting the `root_atom` attribute later on.
+
+.. code-block:: python
+
+    # set the root atom to the atom with serial number 1
+    my_molecule.root_atom = 1
+
+    # or
+    my_molecule.set_root(1)
+
+    # or (if you fell "extra cocky")
+    my_molecule ^ 1 # <- the caret operator sets the root atom 
+
+    # now we can attach the molecule to a scaffold
+    # ... some scaffold creation code ...
+
+    my_scaffold.attach(my_molecule)
+    
+Now, we can use the `Molecule` to attach it to a `Scaffold` (described in the :ref:`Scaffold` documentation).
 """
 
 from copy import deepcopy

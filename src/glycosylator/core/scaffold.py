@@ -1,6 +1,93 @@
 """
-The `Scaffold` class is used to represent a scaffold structure such as a protein or membrane on to which a modification in form of one or more :class:`glycosylator.core.molecule.Molecule`s can be added.
+The `Scaffold` class is used to represent a scaffold structure such as a protein or membrane on to which a modification in form of one or more `Molecule`s can be added.
+As a class the `Scaffold` shares many features with the `Molecule` class, but it is not a subclass of it but a sister class. 
 
+As such it lacks certain features such as the `repeat` or `from_compound` methods. 
+A Scaffold can be edited just like a Molecule, so refer to the `Molecule` documentation for more information on how to do that.
+
+Attaching Molecules
+===================
+
+The primary purpose of the `Scaffold` is to have `Molecule`s attached to it.
+This is done by using the `attach` method, which offers a versatile interface to attach one or more `Molecule`s to the `Scaffold` structure.
+
+.. note:: 
+
+    Connecting a `Molecule` and `Scaffold` is based on `Recipe`s (not on `Patch`es!).
+    Furthermore, "attaching" a `Molecule` to a `Scaffold` is defined as "connecting the Molecule's and Scaffold's root atoms".
+    In practice, (re-)setting the objects' root atoms is handled behind the scenes, but is is important to keep this in
+    mind when using the `attach` method and when writing `Recipe`s because they need to create bonds between the root atoms
+    and cannot specify bonds between other atoms!
+
+
+We can attach molecules to scaffolds via the `attach` method to:
+- one specific residue
+- a list of residues
+- all residues that match a specific sequence pattern (sequon, only for protein scaffolds)
+
+Attaching to a specific residue
+-------------------------------
+Below are two examples of attaching a glycan to a protein scaffold at a specific residue.
+In the first we use default "pythonistic" methods to properly attach the glycan to the protein:
+
+.. code-block:: python
+
+    import glycosylator as gl
+
+    # load some molecules from pickle files
+    my_prot = gl.Scaffold.load("my_protein.pkl")
+    my_glycan = gl.Molecule.load("my_glycan.pkl")
+
+    # set the root atom of the glycan (this is required for attaching to a scaffold)
+    my_glycan.root_atom = my_glycan.get_atom("C1", residue=1) # get the C1 of the first atom
+
+    # find some ASN residue the protein 
+    # (just the first ASN we can find)
+    asn = my_prot.get_residue("ASN")
+
+    # make a recipe for attaching to ASN
+    my_recipe = gl.Recipe(id="glycan_to_asn")
+    # ... add intstructions here ... 
+    
+    # now attach the glycan to the ASN residue
+    # (we use a list of the one residue here)
+    my_prot.attach(my_glycan, recipe=my_recipe, residues=[asn], at_atom="ND2")
+
+
+In the second example we make use of the fact that "attaching" always connects the 
+root atoms, which allows us to use the `attach` method without specifying the `at_atom` argument:
+
+.. code-block:: python
+
+    my_glycan.root_atom = my_glycan.get_atom("C1", residue=1)
+
+    # set the root atom on the protein as ND2 of the ASN residue
+    asn = my_prot.get_residue("ASN")
+    my_prot.root_atom = my_prot.get_atom("ND2", residue=asn)
+
+    # now we can directly attach
+    my_prot.attach(my_glycan, my_recipe)
+
+
+And in this final version we change the second example to use the operator "short-hand" syntax because we feel "extra cocky":
+
+.. code-block:: python
+
+    # set the root atom on the glycan
+    my_glycan ^ my_glycan.get_atom("C1", residue=1)
+    
+    # find an ASN residue in the protein and set its ND2 atom as root
+    asn = my_prot.get_residue("ASN")
+    my_prot ^ my_prot.get_atom("ND2", residue=asn)
+
+    # set the recipe as default modifier
+    my_prot % my_recipe
+
+    # now attach the glycan to the ASN residue
+    my_prot += my_glycan
+
+
+    
 """
 
 from copy import deepcopy
@@ -451,6 +538,18 @@ class Scaffold(entity.BaseEntity):
         scaffold.add_bond(s._anchors[0].serial_number, s._anchors[1].serial_number)
 
         return scaffold
+
+    def __add__(self, mol):
+        """
+        Attach a molecule to the scaffold via their root atoms.
+        """
+        return self.attach(mol, _copy=True)
+
+    def __iadd__(self, mol):
+        """
+        Attach a molecule to the scaffold via their root atoms.
+        """
+        return self.attach(mol, _copy=False)
 
     def __repr__(self) -> str:
         return f"Scaffold({self.id})"
