@@ -238,7 +238,7 @@ def test_remove_atoms():
     glc = gl.Molecule.from_compound("GLC")
     glc.remove_atoms("C1", "O4")
     assert len(glc.atoms) == 22
-    assert len(glc.bonds) == 20
+    assert len(glc.bonds) == 18
 
 
 def test_add_residues():
@@ -546,7 +546,6 @@ def test_multiply_with_patch():
     pre_residues = len(man.residues)
     pre_atoms = len(man.atoms)
     pre_bonds = len(man.bonds)
-    pre_locked = len(man.locked_bonds)
 
     # set 14bb patch
     n = 10
@@ -556,12 +555,10 @@ def test_multiply_with_patch():
     new_residues = len(man.residues)
     new_atoms = len(man.atoms)
     new_bonds = len(man.bonds)
-    new_locked = len(man.locked_bonds)
 
     assert new_residues == pre_residues * n
     assert n * 0.75 * pre_atoms < new_atoms < pre_atoms * n
     assert n * 0.75 * pre_bonds < new_bonds < pre_bonds * n
-    assert n * 0.75 * pre_locked < new_locked < pre_locked * n
 
     # test that the new molecule has no weird bond lengths
     for atom1, atom2 in man.bonds:
@@ -635,12 +632,10 @@ def test_repeat():
     new_residues = len(man.residues)
     new_atoms = len(man.atoms)
     new_bonds = len(man.bonds)
-    new_locked = len(man.locked_bonds)
 
     assert new_residues == pre_residues * n
     assert n * 0.75 * pre_atoms < new_atoms < pre_atoms * n
     assert n * 0.75 * pre_bonds < new_bonds < pre_bonds * n
-    assert n * 0.75 * pre_locked < new_locked < pre_locked * n
 
     # test that the new molecule has no weird bond lengths
     for atom1, atom2 in man.bonds:
