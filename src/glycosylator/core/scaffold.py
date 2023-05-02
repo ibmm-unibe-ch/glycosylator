@@ -30,7 +30,7 @@ class Scaffold(entity.BaseEntity):
         self._excluded_residues = set()
 
         self._molecule_residues = set()
-        self._internal_residues = []
+        self._internal_residues = set()
         self._molecule_connections = set()
 
     @property
@@ -88,7 +88,7 @@ class Scaffold(entity.BaseEntity):
             raise ValueError(f"Chain '{chain}' not found")
         elif _chain in self._excluded_chains:
             self._excluded_chains.remove(_chain)
-           
+
     def exclude_residue(self, residue: Union[int, bio.Residue.Residue]):
         """
         Exclude a residue of the scaffold from modification
@@ -227,19 +227,41 @@ class Scaffold(entity.BaseEntity):
         )
         residues = structural.infer_surface_residues(structure, cutoff=cutoff)
 
-        to_remove = [
+        # works fine with a list-comprehension...
+        to_remove = (
             res
             for res in self.residues
             if res not in residues and res not in self._molecule_residues
-        ]
+        )
 
-        self._internal_residues = self.remove_residues(*to_remove)
+        for residue in to_remove:
+            chain = residue.get_parent()
+            chain.detach_child(residue.id)
+            residue.set_parent(chain)
+
+            for atom in residue.get_atoms():
+                self._AtomGraph.remove_node(atom)
+                self._purge_bonds(atom)
+
+            self._internal_residues.add(residue)
 
     def fill(self):
         """
         Fill the structure with the residues that were removed by the `hollow_out` method.
         """
-        self.add_residues(*self._internal_residues, chain=self.chains[0])
+        for residue in self._internal_residues:
+            chain = residue.get_parent()
+            chain.add(residue)
+            for atom in residue.get_atoms():
+                self._AtomGraph.add_node(atom)
+                bonds = self._get_bonds(atom, None)
+                self._AtomGraph.add_edges_from(bonds)
+
+        self._internal_residues.clear()
+
+    def to_pdb(self, filename: str):
+        self.fill()  # fill the structure before writing it to a file
+        return super().to_pdb(filename)
 
     def attach(
         self,
