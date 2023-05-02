@@ -213,6 +213,7 @@ class Scaffold(entity.BaseEntity):
         recipe: "AbstractRecipe" = None,
         remove_atoms: tuple = None,
         mol_remove_atoms: tuple = None,
+        residues: list = None,
         sequon: str = None,
         at_atom: str = None,
         chain=None,
@@ -233,12 +234,14 @@ class Scaffold(entity.BaseEntity):
         mol_remove_atoms : tuple
             The atoms to remove from the molecule while stitching it to the scaffold. These must be the atom ids (e.g. "HO4")
             and they must be part of the molecule's root residue.
+        residues : list
+            A list of residues at which to attach copies of the molecule. This is an alternative to using a sequon.
         sequon : str
             Instead of providing one or multiple residues at which to attach the molecule, you can also provide a
             sequon, which will be used to find the residues at which to attach the molecule.
         at_atom: str
-            In case a sequon is provided, this specifies the atom of the matching residues that shall be used for stitching.
-            This must be the atom's id (e.g. "CA").
+            In case a sequon or a list of residues are provided, this specifies the atom of the matching residues that shall be used for stitching.
+            This must be the atom's id (e.g. "CA"). If no sequon and no residue list is provided, this parameter is ignored and the root atom of the scaffold is used for attachment.
         chain : str or int or bio.PDB.Chain.Chain
             The chain to which the molecule should be attached. If None, the molecule is attached to the same chain as the root residue.
             This can be set to "new" to create a new chain for the molecule, or "each" to create a new chain for each molecule that is attached
@@ -252,17 +255,22 @@ class Scaffold(entity.BaseEntity):
         scaffold
             The scaffold with the molecule(s) attached, which is either a copy of the original scaffold or the original.
         """
+        # ==========================================================
+        #                    check input parameters
+        # ==========================================================
         if not recipe and not remove_atoms:
             if not self._patch:
                 raise AttributeError(
                     "No recipe was set for this molecule and no manual instructions were found. Either set a default recipe, provide a recipe when stitching, or provide the information about removed and bonded atoms directly."
                 )
             recipe = self._patch
+
         if recipe:
             return self.attach(
                 mol,
                 remove_atoms=recipe.deletes[0],
                 mol_remove_atoms=recipe.deletes[1],
+                residues=residues,
                 sequon=sequon,
                 at_atom=at_atom,
                 chain=chain,
@@ -274,7 +282,11 @@ class Scaffold(entity.BaseEntity):
         else:
             scaffold = self
 
-        if sequon is not None:
+        # ==========================================================
+        #          attach molecule to multiple residues
+        # ==========================================================
+
+        if sequon is not None or residues is not None:
             _root = scaffold.root_atom
             _attach_residue = scaffold.attach_residue
 
@@ -290,10 +302,33 @@ class Scaffold(entity.BaseEntity):
             if chain == "each":
                 _chain = "new"
 
-            res_dict = scaffold.find(sequon)
-            for chain_id in res_dict:
-                residues = res_dict[chain_id]
+            # ----------------------------------------------------------
+            #                attach molecule using a sequon
+            # ----------------------------------------------------------
+            if sequon is not None:
+                res_dict = scaffold.find(sequon)
+                for chain_id in res_dict:
+                    residues = res_dict[chain_id]
+                    scaffold = scaffold.attach(
+                        mol,
+                        remove_atoms=remove_atoms,
+                        mol_remove_atoms=mol_remove_atoms,
+                        residues=residues,
+                        at_atom=at_atom,
+                        chain=_chain,
+                        _copy=False,
+                    )
+                scaffold.root_atom = _root
+                scaffold.attach_residue = _attach_residue
+                return scaffold
+
+            # ----------------------------------------------------------
+            #           attach molecule using a list of residues
+            # ----------------------------------------------------------
+            elif residues is not None:
                 for res in residues:
+                    if res not in scaffold.get_residues():
+                        res = scaffold.get_residue(res)
                     root = res.child_dict.get(at_atom)
                     if root is None:
                         raise ValueError(
@@ -313,6 +348,10 @@ class Scaffold(entity.BaseEntity):
             scaffold.root_atom = _root
             scaffold.attach_residue = _attach_residue
             return scaffold
+
+        # ==========================================================
+        #          attach molecule to a single residue
+        # ==========================================================
 
         if self.root_atom is None:
             raise ValueError("No root atom defined on the scaffold")
