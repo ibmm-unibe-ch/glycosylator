@@ -906,8 +906,7 @@ def test_make_mannose8_3():
     man8 = nag2.attach(bma)
 
     # now we attach the 13ab MAN to the BMA
-    man8.set_patch_or_recipe("13ab")
-    man8.attach(man)
+    man8.attach(man, "13ab")
 
     # now we make the mannose branch
     # MAN --- MAN
@@ -926,10 +925,10 @@ def test_make_mannose8_3():
 
     # and now we attach the man branch to the NAG-NAG--BMA---MAN
     # but at the second last residue (BMA), not the last one
-    man8.set_attach_residue(-2)
-    man8.set_patch_or_recipe("16ab")
-    man_branch.set_attach_residue(1)
-    man8.attach(man_branch)
+    # man8.set_attach_residue(-2)
+    # man_branch.set_attach_residue(1)
+    # man8.set_patch_or_recipe("16ab")
+    man8.attach(man_branch, "16ab", at_residue=-2, other_residue=1)
 
     for bond in man8.bonds:
         assert bond[0] in man8.atoms
