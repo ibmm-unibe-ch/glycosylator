@@ -690,7 +690,49 @@ class BaseEntity:
                 return chain.get_residues()
             return self._model.get_residues()
 
-        return [self.get_residue(i, by=by, chain=chain) for i in residues]
+        _residues = []
+        for residue in residues:
+            if isinstance(residue, bio.Residue.Residue):
+                if residue in self.residues:
+                    return residue
+                else:
+                    return self.get_residue(residue.id[1], by="seqid", chain=chain)
+
+            if by is None:
+                if isinstance(residue, int):
+                    by = "seqid"
+                elif isinstance(residue, str):
+                    by = "name"
+                elif isinstance(residue, tuple):
+                    by = "full_id"
+                else:
+                    raise ValueError(
+                        f"Cannot infer search parameter from residue query '{residue}', provide `by` manually: 'name', 'seqid' or 'full_id'"
+                    )
+
+            if by == "name":
+                _residue = [
+                    i for i in self._model.get_residues() if i.resname == residue
+                ]
+            elif by == "seqid":
+                if residue < 0:
+                    residue = len(self.residues) + residue + 1
+                _residue = [i for i in self._model.get_residues() if i.id[1] == residue]
+            elif by == "full_id":
+                _residue = [
+                    i for i in self._model.get_residues() if i.full_id == residue
+                ]
+            else:
+                raise ValueError(
+                    "Unknown search parameter, must be either 'name', 'seqid' or 'full_id'"
+                )
+            if chain is not None:
+                chain = self.get_chain(chain)
+                _residue = [i for i in _residue if i.get_parent() == chain]
+
+            _residues.extend(_residue)
+
+        return _residues
 
     def get_atoms(self, *atoms: Union[int, str, tuple], by: str = None) -> list:
         """
@@ -1018,8 +1060,8 @@ class BaseEntity:
                 residue = self._chain.child_list[residue - 1]
 
             for atom in residue.child_list:
-                self.purge_bonds(atom)
                 self._AtomGraph.remove_node(atom)
+                self._purge_bonds(atom)
 
             self._chain.detach_child(residue.id)
             _residues.append(residue)
