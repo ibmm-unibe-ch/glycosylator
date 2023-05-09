@@ -4,243 +4,275 @@ Intelligent agents for optimizing molecules
 
 from typing import Union
 import numpy as np
-import glycosylator.optimizers.environments as env
+
+import glycosylator.optimizers.environments as environments
+
+# import evotorch as et
+# import evotorch.algorithms as ea
+# import torch.optim as optim
+
+import scipy.optimize as opt
+
+from alive_progress import alive_bar
 
 
-class MemoryRotator:
+def optimize(env, steps: int = 1e5, method: str = "L-BFGS-B", **kws):
     """
-    This class is used to run an agent until convergence
-    with a tolerance for suboptimality. It will sample random rotations
-    around edges and accept them if they improve the score.
+    Optimize a Rotatron environment through
+    a simple scipy optimization
 
     Parameters
     ----------
+    env : glycosylator.optimizers.environments.Rotatron
+        The environment to optimize
     steps : int, optional
-        The maximal number of steps to run the agent for, by default 10000
+        The number of steps to take, by default 1000
+    method : str, optional
+        The optimizer to use, by default "L-BFGS-B".
+        This can be any optimizer from scipy.optimize.minimize
+    kws : dict, optional
+        Keyword arguments to pass as options to the optimizer
 
-    tolerance : int, optional
-        The number of steps to run the agent for to accept convergence, by default 50
-        This is also the number of steps the agent will accept a suboptimal score.
+    Returns
+    -------
+    np.ndarray
+        The optimized action
     """
 
-    def __init__(self, steps: int = 10000, tolerance: int = 100):
-        self.steps = steps
-        self.tolerance = tolerance
+    x0 = env.action_space.sample()
 
-    def sample(self):
-        """
-        Sample a random action
+    def loss_fn(x):
+        state, reward, *_ = env.step(x)
+        return -reward
 
-        Returns
-        -------
-        tuple
-            The action to take
-        """
-        rewards = np.ones(len(self._bond_choices))
-        # rewards = self._bond_rewards - np.min(self._bond_rewards) + 1
-        rewards = rewards / np.sum(rewards)
-        bond = np.random.choice(self._bond_choices, p=rewards)
+    kws["maxiter"] = int(steps)
+    result = opt.minimize(
+        loss_fn, x0, method=method, bounds=opt.Bounds(-np.pi, np.pi), options=kws
+    )
+    return result.x
 
-        rewards = self._angle_rewards[2] - np.min(self._angle_rewards[2]) + 1
-        rewards = rewards / np.sum(rewards)
-        self.adx = np.random.choice(self._angle_choices, p=rewards)
 
-        angle = np.random.uniform(*self._angle_rewards[:2, self.adx])
+# class Rotator:
+#     """
+#     The base agent class for working with Rotatron problems
 
-        return bond, angle
+#     Parameters
+#     ----------
+#     env : glycosylator.optimizers.environments.Rotatron
+#         The environment to optimize
+#     searcher : evotorch.algorithms.Searcher, optional
+#         A search algorithm to use, by default None.
+#         Each child class must define a searcher.
+#     verbose : bool, optional
+#         Whether to show a progress bar, by default False
+#     **kwargs
+#         Keyword arguments for the searcher
+#     """
 
-    def update(self, bond, reward):
-        """
-        Update the mean rewards for the given bond and angle
+#     def __init__(self, env, searcher=None, verbose: bool = False, **kwargs) -> None:
+#         self.problem = env
+#         if searcher is not None:
+#             self.searcher = searcher(self.problem, **kwargs)
+#         else:
+#             self.searcher = None
+#         if verbose:
+#             self.bar = alive_bar
+#         else:
+#             self.bar = aux.DummyBar
 
-        Parameters
-        ----------
-        bond : int
-            The bond to update
-        angle : float
-            The angle to update
-        reward : float
-            The reward to update the mean with
-        """
-        self._angle_rewards[2, self.adx] += reward
-        self._bond_rewards[bond] += reward
+#     def render(self, *args, **kwargs) -> None:
+#         """
+#         Render the environment
+#         """
+#         self.problem.render(*args, **kwargs)
 
-    def run(
-        self,
-        environment,
-        noise: float = 0.01,
-        render: Union[int, float] = None,
-        render_kws=None,
-    ):
-        """
-        Run the agent until convergence
+#     def reset(self) -> None:
+#         """
+#         Reset the environment
+#         """
+#         self.problem.reset()
 
-        Parameters
-        ----------
-        environment : Environment
-            The environment to run the agent in.
-        noise : float, optional
-            The probability of taking a random action, by default 0.05.
+#     def step(self, *args, **kwargs) -> None:
+#         """
+#         Run a single step of the environment
+#         """
+#         if not self.searcher:
+#             raise ValueError("No searcher defined")
+#         self.problem.step(*args, **kwargs)
 
-        render : int or float
-            The interval at which to render the environment.
-            This can be either a fixed number of steps or a fraction of the total number of steps
-            By default rendering is disabled.
-        render_kws : dict
-            The keyword arguments to pass to the render method of the environment
-        Returns
-        -------
-        Environment
-            The converged environment
-        policy : list
-            The policy that was used to converge the environment
-        """
+#     def run(self, steps: int, *args, **kwargs) -> None:
+#         """
+#         Run the agent
 
-        state, reward, *_ = environment.step((0, 0))
+#         Parameters
+#         ----------
+#         steps : int
+#             The number of steps to run the agent
+#         *args
+#             Arguments for the searcher
+#         **kwargs
+#             Keyword arguments for the searcher
 
-        worst_reward = np.inf
+#         Returns
+#         -------
+#         tuple
+#             The best found solution and its obtained reward
+#         """
+#         if not self.searcher:
+#             raise ValueError("No searcher defined")
 
-        tolerance_counter = 0
-        policy = {i: 0 for i in range(len(environment.bonds))}
-        temporary_policy = dict(policy)
+#         with self.bar(steps) as bar:
+#             for _ in range(steps):
+#                 self.searcher.step(*args, **kwargs)
+#                 bar()
+#         return self.best
 
-        last_favourable_state = state
-        last_favourable_reward = reward
-        reward_history = np.full(20, worst_reward)
-        reward_history[0] = reward
+#     @property
+#     def best(self) -> tuple:
+#         """
+#         Get the best found solution and its obtained reward
+#         """
+#         if not self.searcher:
+#             return None, None
+#         else:
+#             return (
+#                 self.searcher.status["best"].values.numpy(),
+#                 self.searcher.status["best_eval"],
+#             )
 
-        self.setup_sampling_space(environment)
+#     def __repr__(self) -> str:
+#         return f"{self.__class__.__name__}({self.problem})"
 
-        if isinstance(render, float):
-            render = int(render * self.steps)
-        if not render_kws:
-            render_kws = {}
+#     def __call__(self, steps: int, *args, **kwds):
+#         self.run(steps, *args, **kwds)
+#         return self.best
 
-        # Run the agent until convergence
-        for i in range(0, int(self.steps)):
 
-            # Take a step
-            action = self.sample()
-            new_state, reward, done, info = environment.step(action)
+# class EvoRotator(Rotator):
+#     """
+#     This rotator uses an evolutionary algorithm to search for optimal conformations
 
-            if reward > last_favourable_reward:
+#     Parameters
+#     ----------
+#     env : glycosylator.optimizers.environments.Rotatron
+#         The environment to optimize
+#     verbose : bool, optional
+#         Whether to show a progress bar, by default False
+#     population_size : int, optional
+#         The population of conformations to maintian, by default 20
+#     mutation_rate : float, optional
+#         The mutation rate, by default 0.25 (25%)
+#     mutation_stdev : float, optional
+#         The standard deviation of the mutation of angles, by default 0.8,
+#         in radians, confinded to [-pi, pi].
+#     """
 
-                self.update(action[0], reward * 0.5)
+#     def __init__(
+#         self,
+#         env,
+#         verbose: bool = False,
+#         population_size: int = 20,
+#         mutation_rate: float = 0.25,
+#         mutation_stdev: float = 0.8,
+#         **kwargs,
+#     ) -> None:
+#         searcher = ea.Cosyne
+#         kwargs.setdefault("popsize", population_size)
+#         kwargs.setdefault("mutation_probability", mutation_rate)
+#         kwargs.setdefault("mutation_stdev", mutation_stdev)
+#         kwargs.setdefault("tournament_size", int(max(1, population_size / 5)))
+#         super().__init__(env, searcher, verbose, **kwargs)
 
-                policy[action[0]] += action[1]
 
-                last_favourable_state = deepcopy(new_state)
-                last_favourable_reward = reward
+# class GradientRotator(Rotator):
+#     """
+#     This rotator uses gradient descent to search for optimal conformations
 
-                reward_history = np.roll(reward_history, 1)
-                reward_history[0] = reward
+#     Parameters
+#     ----------
+#     env : glycosylator.optimizers.environments.Rotatron
+#         The environment to optimize
+#     verbose : bool, optional
+#         Whether to show a progress bar, by default False
+#     lr : float, optional
+#         The learning rate, by default 0.1
+#     """
 
-                tolerance_counter = 0
-
-                for k in temporary_policy:
-                    policy[k] += temporary_policy[k]
-                    temporary_policy[k] = 0
-
-            elif reward > worst_reward:
-
-                self.update(action[0], reward * 0.05)
-                temporary_policy[action[0]] += action[1]
-                tolerance_counter += 1
-
-            else:
-                self.update(action[0], -reward * 0.02)
-                worst_reward = reward
-                tolerance_counter += 1
-
-            if tolerance_counter > self.tolerance:
-                tolerance_counter = 0
-                environment.set_state(deepcopy(last_favourable_state))
-                for k in temporary_policy:
-                    temporary_policy[k] = 0
-
-            if (
-                np.sum(reward_history / np.max(reward_history) > 0.95)
-                > 0.6 * self.tolerance
-            ):
-                break
-
-        environment.set_state(last_favourable_state)
-        return environment, policy, last_favourable_reward
-
-    def setup_sampling_space(self, environment):
-        self._bond_choices = np.arange(0, len(environment.bonds))
-        self._bond_rewards = np.zeros(len(environment.bonds))
-
-        angle_linspace = np.linspace(0, np.pi, 101)
-        self._angle_rewards = np.array(
-            [
-                [angle_linspace[i] for i in range(len(angle_linspace) - 1)],
-                [angle_linspace[i + 1] for i in range(len(angle_linspace) - 1)],
-                np.zeros(len(angle_linspace) - 1),
-            ]
-        )
-        self._angle_choices = np.arange(0, 100)
-
+#     def __init__(self, env, verbose: bool = False, lr: float = 0.1, **kwargs) -> None:
+#         kwargs.setdefault("lr", lr)
+#         super().__init__(env, None, verbose, **kwargs)
+#         self.searcher = optim.SGD()
+#     def step(self, *args, **kwargs) -> None:
+#         """
+#         Run a single step of the environment
+#         """
+#         if not self.searcher:
+#             raise ValueError("No searcher defined")
 
 if __name__ == "__main__":
-
     import glycosylator as gl
+    from copy import deepcopy
     from time import time
-    import matplotlib.pyplot as plt
+    import stable_baselines3 as sb3
+    import halo
 
-    mol = gl.Molecule.from_pdb(
+    mol_ref = gl.Molecule.from_pdb(
         "/Users/noahhk/GIT/glycosylator/support/examples/man9.pdb"
     )
-    mol.infer_bonds(restrict_residues=False)
+    mol_ref.infer_bonds(restrict_residues=False)
 
-    from copy import deepcopy
+    mol = gl.Molecule.load("/Users/noahhk/GIT/glycosylator/test.mol")
+    # mol1 = deepcopy(mol)
 
-    mol2 = deepcopy(mol)
+    # angles = np.random.randint(-180, 180, size=(len(mol.get_residue_connections())))
+    connections = sorted(mol.get_residue_connections())
+    # for i, angle in enumerate(angles):
+    #     mol.rotate_around_bond(*connections[i], angle, descendants_only=True)
 
-    connections = mol.get_residue_connections()
-    _cons = mol.get_residue_connections()
+    g = mol.make_residue_graph()
+    g.make_detailed(True, True, f=1)
 
-    for i in range(len(connections)):
-        random_bond = _cons.pop()
-        for i in range(5):
-            random_angle = np.random.uniform(0.2, np.pi)
-            mol.rotate_around_bond(
-                *random_bond, np.degrees(random_angle), descendants_only=True
-            )
-
+    v2 = gl.utils.visual.MoleculeViewer3D(mol.make_residue_graph(True))
     v = gl.utils.visual.MoleculeViewer3D(mol)
-    v.draw_edges(mol2.bonds, color="cyan", linewidth=2)
 
-    graph = mol.make_atom_graph() #mol.make_residue_graph(detailed=True)
+    v.draw_edges(mol_ref.bonds, color="cyan")
+    v2.draw_edges(mol_ref.make_residue_graph(True).edges, color="cyan")
 
-    env = env.SingleBondRotatron(graph, connections)
-    # env.mask_effector_coords(
-    #     np.array([i in graph.residues for i in graph.nodes], dtype=bool)
-    # )
+    steps = (1e5,)  # , 1e4, 1e5, 1e6)
+    colors = ("green",)  # "orange", "red", "purple")
+    for step, color in zip(steps, colors):
+        for i in range(3):
+            mol1 = deepcopy(mol)
 
-    initial_reward = env._compute_reward(env._coords)
+            spinner = halo.Halo(text="Optimizing", spinner="dots")
+            spinner.start()
 
-    print("----------" * 4)
-    conv = MemoryRotator(steps=1000, tolerance=10)
-    start = time()
-    env, policy, reward = conv.run(env)
+            t1 = time()
+            env = environments.MultiBondRotatron(g, connections)
+            result = optimize(env, steps=step)#, method="Nelder-Mead")
+            t2 = time()
 
-    print(
-        "Initial reward:",
-        initial_reward,
-        "Final reward:",
-        env._compute_reward(env._coords),
-    )
-    print(time() - start)
+            spinner.succeed(f"scipy Optimization finished in {t2-t1:.2f} seconds")
 
-    # apply the policy
-    for k, angle in policy.items():
-        bond = env.bonds[k]
-        angle = np.degrees(angle)
-        mol.rotate_around_bond(*bond, angle, descendants_only=True)
+            for i, angle in enumerate(result):
+                bond = env.rotatable_edges[i]
+                bond = (bond[0].serial_number, bond[1].serial_number)
+                mol1.rotate_around_bond(*bond, np.degrees(angle), descendants_only=True)
 
-    v.draw_edges(mol.bonds, color="magenta")
+            v.draw_edges(mol1.bonds, color=color, opacity=0.3)
+            v2.draw_edges(mol1.make_residue_graph(True).edges, color=color, opacity=0.3)
+
     v.show()
+    v2.show()
 
-    v = gl.utils.visual.MoleculeViewer3D(mol)
-    v.show()
+    # r = EvoRotator(env, verbose=True)
+    # best, reward = r.run(5000)
+
+    # for i, angle in enumerate(best):
+    #     bond = env.rotatable_edges[i]
+    #     bond = (bond[0].serial_number, bond[1].serial_number)
+    #     mol1.rotate_around_bond(*bond, np.degrees(angle), descendants_only=True)
+
+    # v.draw_edges(mol1.bonds, color="limegreen")
+    # v.show()
+    pass
