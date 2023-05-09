@@ -1,9 +1,13 @@
-from copy import deepcopy
-import gymnasium as gym
 import numpy as np
+from copy import deepcopy
+
+# import gymnasium as gym
+import gym
+
+from scipy.spatial.distance import cdist
 from scipy.spatial.transform import Rotation
 
-import glycosylator.utils.visual as visual
+import glycosylator.structural as structural
 
 
 class Rotatron(gym.Env):
@@ -12,16 +16,27 @@ class Rotatron(gym.Env):
 
     Parameters
     ----------
-    graph : glycosylator.graphs.Graph
+    graph : glycosylator.graphs.Graph,
         The graph to optimize
-    rotateable_edges : list, optional
+    rotatable_edges : list, optional,
         A list of edges to rotate around
     """
 
-    def __init__(self, graph, rotateable_edges) -> None:
+    def __init__(self, graph, rotatable_edges=None) -> None:
         super().__init__()
+        if rotatable_edges is None:
+            rotatable_edges = [
+                edge for edge in graph.edges if not graph.is_locked(*edge)
+            ]
+
         self.graph = graph
-        self.rotateable_edges = [i for i in rotateable_edges if i in graph.edges]
+        self.rotatable_edges = [i for i in rotatable_edges if i in graph.edges]
+
+        self.graph = deepcopy(self.graph)
+        self.rotatable_edges = deepcopy(self.rotatable_edges)
+
+        self.n = len(self.rotatable_edges)
+        self.reward = 0
 
         self._make_coord_array()
         self._make_descendant_masks()
@@ -29,7 +44,6 @@ class Rotatron(gym.Env):
 
         self._effector_mask = np.ones(len(self._nodes), dtype=bool)
         self.__orig_coords = deepcopy(self._coords)
-
         self.__renderer__ = None
 
     @property
@@ -72,12 +86,13 @@ class Rotatron(gym.Env):
         """
         return self.state
 
-    def reset(self):
+    def reset(self, graph: bool = False):
         """
         Reset the environment
         """
         self._coords = deepcopy(self.__orig_coords)
-        self.apply_to_graph()
+        if graph:
+            self.apply_to_graph()
         return self.state
 
     def render(self, **kwargs):
@@ -96,6 +111,7 @@ class Rotatron(gym.Env):
         """
         Apply the current state to the graph
         """
+        raise NotImplementedError
         for i, node in enumerate(self._nodes):
             node.coord = deepcopy(self._coords[i])
 
@@ -111,6 +127,22 @@ class Rotatron(gym.Env):
         """
         self._effector_mask = mask
 
+    def get_descendant_coords(self, bond: int):
+        """
+        Get the descendant coordinates for a given bond
+
+        Parameters
+        ----------
+        bond : int
+            The bond to get the descendants for
+
+        Returns
+        -------
+        descendant_coords : np.ndarray
+            The descendant coordinates
+        """
+        return self._coords[self._descendant_masks[bond]]
+
     def rotate(self, bond: int, angle: float):
         """
         Rotate a coordinate array around an axis by a specified angle
@@ -121,13 +153,16 @@ class Rotatron(gym.Env):
             The bond to rotate around (as sampled from the action space)
         angle : float
             The angle to rotate by in radians
-        """
 
+        Returns
+        -------
+        rotated_coords : np.ndarray
+            The rotated coordinates
+        desc_mask : np.ndarray
+            The mask of the descendant nodes
+        """
         desc_mask = self._descendant_masks[bond]
         coords = self._coords[desc_mask]
-
-        # for c in coords:
-        #     self._v.draw_point(None, c, color="red", opacity=0.3, showlegend=False)
 
         # Get the axis to rotate around
         edge_masks = self._edge_ref_masks[bond]
@@ -139,27 +174,21 @@ class Rotatron(gym.Env):
         # get the reference coordinate for the bond
         ref_coord = b
 
-        # self._v.draw_point("anchor", ref_coord, color="limegreen")
-
         # translate the coordinates so that the reference coordinate is at the origin
-        coords -= ref_coord
+        coords = coords - ref_coord
+
+        axis = angle * axis
 
         # Get the rotation matrix
-        R = Rotation.from_rotvec(angle * axis)
+        R = Rotation.from_rotvec(axis)
 
         # Rotate the coordinates
         rotated_coords = R.apply(coords)
 
         # Translate the coordinates back to the original position
-        rotated_coords += ref_coord
+        rotated_coords = rotated_coords + ref_coord
 
-        # Update the coordinate array
-        self._coords[desc_mask] = rotated_coords
-
-        # for c in self._coords[desc_mask]:
-        #     self._v.draw_point(None, c, color="purple", opacity=0.5, showlegend=False)
-
-        return rotated_coords
+        return rotated_coords, desc_mask
 
     def blank(self):
         """
@@ -171,218 +200,192 @@ class Rotatron(gym.Env):
         """
         Compute the reward of the given or current coordinate array
         """
-        if coords is None:
-            coords = self.effector_coords
-
-        # Compute the inter-residue distances
-        dists = np.linalg.norm(coords[:, None, :] - coords[None, :, :], axis=-1)
-
-        # Mask the diagonal
-        np.fill_diagonal(dists, np.nan)
-        dist = np.nanmin(dists)
-
-        # now also include a penalty for any atoms that are too close
-        # to each other
-        _dists = dists[np.where(~np.isnan(dists))]
-        penalty = np.sum(_dists < 0.85)
-        penalty *= 100
-
-        reward = dist - penalty
-        return reward
+        raise NotImplementedError
 
     def _make_coord_array(self):
         """
         Make the coordinate array
         """
         self._nodes = list(self.graph.nodes)
-        self._coords = np.array([i.coord for i in self._nodes])
+        self._coords = np.array([node.coord for node in self._nodes], dtype=float)
 
     def _make_descendant_masks(self):
         """
-        Map the descendant nodes for each rotateable edge
+        Map the descendant nodes for each rotatable edge
         """
-        self._descendant_masks = {
+        masks = {
             idx: np.array([j in self.graph.get_descendants(*edge) for j in self._nodes])
-            for idx, edge in enumerate(self.rotateable_edges)
+            for idx, edge in enumerate(self.rotatable_edges)
         }
+        self._descendant_masks = masks
 
     def _make_edge_ref_masks(self):
         """
-        Map the coordinates of one end of each rotateable edge from the _coords array
+        Map the coordinates of one end of each rotatable edge from the _coords array
         """
-        self._edge_ref_masks = {
+        masks = {
             idx: (
                 np.array([j == node1 for j in self._nodes]),
                 np.array([j == node2 for j in self._nodes]),
             )
-            for idx, (node1, node2) in enumerate(self.rotateable_edges)
+            for idx, (node1, node2) in enumerate(self.rotatable_edges)
         }
+        self._edge_ref_masks = masks
 
 
-class SingleBondRotatron(Rotatron):
+class MultiBondRotatron(Rotatron):
     """
-    Optimize the geometry of a structure by rotating around single bonds successively
+    This environment samples an angle for each rotatable bond and evaluates
+    the reward of the resulting structure
+
+    Parameters
+    ----------
+    graph
+        A detailed ResidueGraph object
+    rotatable_edges
+        A list of rotatable edges. If None, all non-locked edges from the graph are used.
     """
 
-    def __init__(self, graph, connections):
-        super().__init__(graph, connections)
-
-        self._bond_space = gym.spaces.Discrete(len(self.rotateable_edges))
-        self._angle_space = gym.spaces.Box(low=-np.pi, high=np.pi, shape=(1,))
-        self.action_space = gym.spaces.Tuple((self._bond_space, self._angle_space))
-
-    def step(self, action):
-        """
-        Take a step in the environment
-        """
-        bond, angle = action
-        self.rotate(bond, angle)
-        reward = self.compute_reward()
-        done = False
-        info = {}
-        return self.state, reward, done, info
+    def __init__(self, graph, rotatable_edges=None):
+        super().__init__(graph, rotatable_edges)
+        self._mask_residues()
+        self.action_space = gym.spaces.Box(
+            low=-np.pi, high=np.pi, shape=(len(self.rotatable_edges),)
+        )
+        self.observation_space = gym.spaces.Box(
+            low=-np.inf, high=np.inf, shape=(len(self._nodes), 3)
+        )
 
     def blank(self):
         """
         Return a blank action
         """
-        return (0, 0)
+        return np.zeros(len(self.rotatable_edges))
 
-    def render(self, **kwargs):
+    def step(self, action):
         """
-        Render the environment
+        Take a step in the environment
         """
-        print(f"Current reward: {self.compute_reward()}")
+        self.reset()
+        angles = action
+        for idx in range(len(angles)):
+            angle = angles[idx]
+            new_coords, mask = self.rotate(idx, angle)
+            self._coords[mask] = new_coords
+        reward = self.compute_reward()
+
+        return self.state, reward, False, {}
+
+    def compute_reward(self):
+        """
+        Compute the reward of the given or current coordinate array
+        """
+
+        coords = self.effector_coords
+
+        # Compute the inter-residue distances
+        dists = np.linalg.norm(coords[:, None, :] - coords[None, :, :], axis=-1)
+
+        # Mask the residue distances
+        np.fill_diagonal(dists, -1)
+        dists[self._residue_masks] = -1
+
+        dist_func = lambda x: x[x > 0].mean()
+        dists = np.apply_along_axis(dist_func, 1, dists)
+
+        # energy = (1 / dists) ** 12 - (1 / dists) ** 6
+        reward = -4 * np.sum(1 / dists)
+
+        return reward
+
+    def _mask_residues(self):
+        """
+        For each node in the graph, mask which nodes are part of the same
+        residue as these are not relevant for reward computation and could
+        interfere with the learning process
+        """
+        self._residue_masks = np.empty((len(self._nodes), len(self._nodes)), dtype=bool)
+        for residue in self.graph.residues:
+            node_mask = np.array(
+                [node in residue.child_list or node is residue for node in self._nodes]
+            )
+            node_mask[self._nodes.index(residue)] = True
+            for node in residue.child_list:
+                if node not in self._nodes:
+                    continue
+                self._residue_masks[self._nodes.index(node)] = node_mask
+            self._residue_masks[self._nodes.index(residue)] = node_mask
+
+        for edge in self.rotatable_edges:
+            a, b = edge
+            self._residue_masks[self._nodes.index(a), self._nodes.index(b)] = True
+            self._residue_masks[self._nodes.index(b), self._nodes.index(a)] = True
 
 
-__all__ = ["SingleBondRotatron"]
+class SphereRotatron(MultiBondRotatron):
+    """
+    This environment samples an angle for each rotatable bond and evaluates
+    the reward of the resulting structure. It uses a spherical representation
+    of residues to evaluate the reward.
+
+    Parameters
+    ----------
+    graph
+        A detailed ResidueGraph object
+    rotatable_edges
+        A list of rotatable edges. If None, all non-locked edges from the graph are used.
+    """
+
+    def __init__(self, graph, rotatable_edges=None):
+        super().__init__(graph, rotatable_edges)
+        self._effector_mask = np.array(
+            [node in self.graph.residues for node in self._nodes]
+        )
+        self._residue_radii = np.array(
+            [
+                structural.compute_residue_radius(node)
+                for node in self._nodes
+                if node in self.graph.residues
+            ]
+        )
+        self._residue_radii_sums = (
+            self._residue_radii[:, np.newaxis] + self._residue_radii
+        )
+
+    def compute_reward(self):
+        """
+        Compute the reward of the given or current coordinate array
+        """
+
+        coords = self.effector_coords
+
+        # Compute the inter-residue distances
+        dists = cdist(coords, coords) - self._residue_radii_sums
+        reward = -np.sum(1 / dists**2)
+        return reward
 
 
 if __name__ == "__main__":
-    from glycosylator import Molecule
     import glycosylator as gl
-    from time import time
+    import jax.numpy as np
+    import jax
 
-    mol = Molecule.from_pdb("/Users/noahhk/GIT/glycosylator/support/examples/man9.pdb")
-    mol.infer_bonds(restrict_residues=False)
+    mol = gl.Molecule.load("/Users/noahhk/GIT/glycosylator/test.mol")
 
-    # for c in mol.get_residue_connections():
+    connections = sorted(mol.get_residue_connections())
+    graph = mol.make_residue_graph()
+    graph.make_detailed(True, True, f=0.8)
 
-    #     angle = np.random.randint(120, 180)
-    #     mol.rotate_around_bond(*c, angle)
+    env = MultiBondRotatron(graph, connections)
 
-    # connections = mol.get_residue_connections()
+    reward_f = lambda x: env.step(x)[1]
 
-    # g = mol.make_residue_graph(detailed=True)
-    # v = visual.MoleculeViewer3D(g)
-
-    # env = SingleBondRotatron(g, connections)
-    # env._v = v
-
-    # bond, angle = env.action_space.sample()
-    # for i in range(10):
-    #     env.step((bond, angle))
-
-    # # v.draw_point("root", mol.get_atom(1).coord)
-
-    # # for c in env.rotateable_edges:
-    # #     v.draw_vector(None, c[0].coord, 1.2 * (c[1].coord - c[0].coord), color="red")
-
-    # # t1 = time()
-    # # # bond, _ = env.action_space.sample()
-    # # # _bond = env.bonds[bond]
-    # # # v.draw_vector(
-    # # #     None, _bond[0].coord, 1.2 * (_bond[1].coord - _bond[0].coord), color="limegreen"
-    # # # )
-
-    # # start_reward = env.compute_reward()
-    # # print(f"Starting reward: {start_reward}")
-
-    # # colors = ["yellow", "orange", "red", "magenta", "blue", "cyan", "green"]
-    # # angles = [0.3, 0.5, 0.7, 0.9, 1.1, 1.3, 1.5]
-    # # for run in range(3):
-
-    # #     global_best = -1000
-    # #     global_best_coords = None
-    # #     env.reset()
-
-    # #     for i in range(3):
-    # #         c, reward, *_ = env.step((3, angles[run]))
-
-    # #         if reward > global_best:
-    # #             global_best = reward
-    # #             global_best_coords = c
-
-    # #         env.apply_to_graph()
-    # #         v.draw_edges(env.graph.edges, color=colors[run])
-    # #         v.draw_point(
-    # #             None,
-    # #             env.rotateable_edges[3][0].coord,
-    # #             color="limegreen",
-    # #         )
-
-    # #     v.draw_point(
-    # #         "root", mol.get_residue(2).coord, color="magenta", showlegend=False
-    # #     )
-
-    # #     print(f"=== run {run} ===")
-    # #     print(f"Best: {global_best}")
-
-    # # env.set_state(global_best_coords)
-    # # env.apply_to_graph()
-    # # v.draw_edges(env.graph.edges, color="magenta")
-
-    # # t2 = time()
-    # # print(f"Time: {t2 - t1}")
-
-    # v.show()
-    # env.reset()
-
-    connections = mol.get_residue_connections()
-
-    env = SingleBondRotatron(mol.make_residue_graph(detailed=True), connections)
-    env._v = gl.utils.visual.MoleculeViewer3D(env.graph)
-
-    initial_coords = env._coords.copy()
-    nodes = list(env.graph.nodes)
-
-    initial_distances = []
-    for node in nodes:
-        neighbors = env.graph.get_neighbors(node)
-        dists = np.array(
-            [np.linalg.norm(node.coord - neighbor.coord) for neighbor in neighbors]
+    def jax_reward(x_jax):
+        reward = jax.pure_callback(
+            reward_f, jax.core.ShapedArray((1, 1), np.float32), x_jax
         )
-        initial_distances.append(dists)
+        return np.array(reward)
 
-    v = gl.utils.visual.MoleculeViewer3D(mol.make_residue_graph(detailed=True))
-    for run in range(5):
+    grad_reward = grad(jax_reward)
 
-        for i in range(30):
-            action = env.action_space.sample()
-            descendant_mask = env._descendant_masks[action[0]]
-            descendant_coords = env._coords[descendant_mask].copy()
-            ancestor_coords = env._coords[~descendant_mask].copy()
-
-            env.step(action)
-
-            assert not np.allclose(descendant_coords, env._coords[descendant_mask])
-            assert np.allclose(ancestor_coords, env._coords[~descendant_mask])
-
-            new_distances = []
-            for node in nodes:
-                dists = []
-                neighbors = env.graph.get_neighbors(node)
-                for neighbor in neighbors:
-                    dists.append(np.linalg.norm(node.coord - neighbor.coord))
-                new_distances.append(np.asarray(dists))
-
-            for i in range(len(nodes)):
-                assert np.all(np.abs(initial_distances[i] - new_distances[i]) < 1e-3)
-
-        env.apply_to_graph()
-        v.draw_edges(env.graph.edges, color="cyan", linewidth=2)
-
-        env.reset()
-        assert np.allclose(initial_coords, env.state)
-
-    v.show()
+    grad_reward(np.array(env.action_space.sample()))
