@@ -7,16 +7,13 @@ import numpy as np
 
 import glycosylator.optimizers.environments as environments
 
-# import evotorch as et
-# import evotorch.algorithms as ea
-# import torch.optim as optim
-
+import pyswarms as ps
 import scipy.optimize as opt
 
 from alive_progress import alive_bar
 
 
-def optimize(env, steps: int = 1e5, method: str = "L-BFGS-B", **kws):
+def scipy_optimize(env, steps: int = 1e5, method: str = "L-BFGS-B", **kws):
     """
     Optimize a Rotatron environment through
     a simple scipy optimization
@@ -50,6 +47,42 @@ def optimize(env, steps: int = 1e5, method: str = "L-BFGS-B", **kws):
         loss_fn, x0, method=method, bounds=opt.Bounds(-np.pi, np.pi), options=kws
     )
     return result.x
+
+
+def swarm_optimize(env, steps: int = 50, n: int = 10, **kws):
+    """
+    Optimize a Rotatron environment through
+    a pyswarms swarm optimization
+
+    Parameters
+    ----------
+    env : glycosylator.optimizers.environments.Rotatron
+        The environment to optimize
+    steps : int, optional
+        The number of steps to take, by default 1000
+    n : int, optional
+        The number of particles to use, by default 10
+    kws : dict, optional
+        Keyword arguments to pass as options to the optimizer
+
+    Returns
+    -------
+    tuple
+        The optimized action and the reward
+    """
+
+    x0 = env.action_space.sample()
+
+    def loss_fn(x):
+        state, reward, *_ = env.step(x)
+        return -reward
+
+    kws["iters"] = int(steps)
+    optimizer = ps.single.GlobalBestPSO(
+        n_particles=n, dimensions=x0.shape[0], bounds=opt.Bounds(-np.pi, np.pi), **kws
+    )
+    result, reward = optimizer.optimize(loss_fn, iters=steps)
+    return result, -reward
 
 
 # class Rotator:
@@ -249,7 +282,7 @@ if __name__ == "__main__":
 
             t1 = time()
             env = environments.MultiBondRotatron(g, connections)
-            result = optimize(env, steps=step)#, method="Nelder-Mead")
+            result = scipy_optimize(env, steps=step)  # , method="Nelder-Mead")
             t2 = time()
 
             spinner.succeed(f"scipy Optimization finished in {t2-t1:.2f} seconds")

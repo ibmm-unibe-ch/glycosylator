@@ -250,7 +250,7 @@ class Stitcher(base.Connector):
         edges = sorted(tmp.get_residue_connections())
         env = optimizers.MultiBondRotatron(graph, edges)
 
-        best = optimizers.optimize(env, int(steps), **kwargs)
+        best = optimizers.scipy_optimize(env, int(steps), **kwargs)
         self._policy = edges, best
 
         # self.best.append(best)
