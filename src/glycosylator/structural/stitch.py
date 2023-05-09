@@ -258,7 +258,7 @@ class Stitcher(base.Connector):
 
         # self.env = env
 
-    def merge(self):
+    def merge(self) -> "molecule.Molecule":
         """
         Merge the source molecule into the target molecule
         """
