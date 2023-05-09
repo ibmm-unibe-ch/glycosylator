@@ -409,6 +409,46 @@ class BaseEntity:
             residue = self.get_residue(residue)
             self._attach_residue = residue
 
+    def rotate_descendants(
+        self,
+        atom1: Union[str, int, bio.Atom.Atom],
+        atom2: Union[str, int, bio.Atom.Atom],
+        angle: float,
+    ):
+        """
+        Rotate all descendant atoms (atoms after atom2) of a bond.
+
+        Parameters
+        ----------
+        atom1 : Union[str, int, bio.Atom.Atom]
+            The first atom
+        atom2 : Union[str, int, bio.Atom.Atom]
+            The second atom (whose downstream neighbors are rotated)
+        angle : float
+            The angle to rotate by in degrees
+        """
+        self.rotate_around_bond(atom1, atom2, angle, descendants_only=True)
+
+    def rotate_ancestors(
+        self,
+        atom1: Union[str, int, bio.Atom.Atom],
+        atom2: Union[str, int, bio.Atom.Atom],
+        angle: float,
+    ):
+        """
+        Rotate all ancestor atoms (atoms before atom1) of a bond
+
+        Parameters
+        ----------
+        atom1 : Union[str, int, bio.Atom.Atom]
+            The first atom (whose upstream neighbors are rotated)
+        atom2 : Union[str, int, bio.Atom.Atom]
+            The second atom
+        angle : float
+            The angle to rotate by in degrees
+        """
+        self.rotate_around_bond(atom2, atom1, angle, descendants_only=True)
+
     def rotate_around_bond(
         self,
         atom1: Union[str, int, bio.Atom.Atom],
@@ -428,7 +468,7 @@ class BaseEntity:
         angle
             The angle to rotate by in degrees
         descendants_only
-            Whether to only rotate the descendants of the bond
+            Whether to only rotate the descendants of the bond, i.e. only atoms that come after atom2
             (sensible only for linear molecules, or bonds that are not part of a circular structure).
         
         Examples
@@ -444,7 +484,7 @@ class BaseEntity:
         we can rotate around the bond `(1)CH3 --- CH` by 180° using
 
         >>> import numpy as np
-        >>> angle = np.radians(180) # rotation angle needs to be in radians
+        >>> angle = 180
         >>> mol.rotate_around_bond("(1)CH3", "CH", angle)
 
         and thus achieve the following:
