@@ -5,10 +5,10 @@ Functions to patch molecules together
 import numpy as np
 from copy import deepcopy
 
-# import glycosylator.core.molecule as molecule
 import glycosylator.utils.abstract as abstract
 import glycosylator.structural.connector as base
 import glycosylator.structural.infer as infer
+import glycosylator.core.molecule as molecule
 
 
 class PatchError(Exception):
@@ -34,7 +34,7 @@ class Patcher(base.Connector):
         super().__init__(copy_target=copy_target, copy_source=copy_source)
         self.patch = None
 
-    def set_patch(self, patch: "AbstractPatch"):
+    def set_patch(self, patch: "abstract.AbstractPatch"):
         """
         Set the patch
 
@@ -47,9 +47,9 @@ class Patcher(base.Connector):
 
     def apply(
         self,
-        patch: "AbstractPatch" = None,
-        target: "Molecule" = None,
-        source: "Molecule" = None,
+        patch: "abstract.AbstractPatch" = None,
+        target: "molecule.Molecule" = None,
+        source: "molecule.Molecule" = None,
         target_residue=None,
         source_residue=None,
     ):
@@ -440,6 +440,11 @@ class Patcher(base.Connector):
         return atom
 
 
+__default_keep_keep_patcher__ = Patcher(copy_target=False, copy_source=False)
+"""
+Default instance of the Patcher that will modify the target molecule in place
+"""
+
 __default_keep_copy_patcher__ = Patcher(copy_target=False, copy_source=True)
 """
 Default instance of the Patcher that will modify the target molecule in place
@@ -451,6 +456,59 @@ __default_copy_copy_patcher__ = Patcher(copy_target=True, copy_source=True)
 Default instance of the Patcher that will copy both the target and source molecules
 to leave the originals intact.
 """
+
+
+def patch(
+    target: "molecule.Molecule",
+    source: "molecule.Molecule",
+    patch: "abstract.AbstractPatch",
+    target_residue=None,
+    source_residue=None,
+    copy_target: bool = False,
+    copy_source: bool = False,
+) -> "molecule.Molecule":
+    """
+    Patch two molecules together.
+    This will merge the source molecule's residues into the target molecule.
+
+    Parameters
+    ----------
+    patch : AbstractPatch
+        The patch to apply
+    target : Molecule
+        The target molecule
+    source : Molecule
+        The source molecule
+    target_residue : int or str or Residue
+        The residue in the target molecule to which the source molecule will be patched.
+        By default, the last residue in the target molecule will be used if it contains
+        appropriate anchor atoms.
+    source_residue : int or str or Residue
+        The residue in the source molecule that will be patched into the target molecule.
+        By default, the first residue in the source molecule will be used if it contains
+        appropriate anchor atoms.
+    copy_target : bool
+        Whether to copy the target molecule before patching it
+    copy_source : bool
+        Whether to copy the source molecule before patching it
+
+    Returns
+    -------
+    Molecule
+        The patched molecule
+    """
+    if copy_target:
+        target = deepcopy(target)
+    if copy_source:
+        source = deepcopy(source)
+    __default_keep_keep_patcher__.apply(
+        patch=patch,
+        target=target,
+        source=source,
+        target_residue=target_residue,
+        source_residue=source_residue,
+    )
+    return __default_keep_keep_patcher__.merge()
 
 
 if __name__ == "__main__":

@@ -12,6 +12,7 @@ import Bio.PDB as bio
 import glycosylator.core.molecule as molecule
 import glycosylator.structural.connector as base
 import glycosylator.optimizers as optimizers
+import glycosylator.utils.abstract as abstract
 
 
 class Stitcher(base.Connector):
@@ -37,8 +38,8 @@ class Stitcher(base.Connector):
 
     def apply(
         self,
-        target: "Molecule",
-        source: "Molecule",
+        target: "molecule.Molecule",
+        source: "molecule.Molecule",
         target_removals: tuple,
         source_removals: tuple,
         target_atom: Union[int, bio.Atom.Atom] = None,
@@ -47,7 +48,7 @@ class Stitcher(base.Connector):
         source_residue: Union[int, bio.Residue.Residue] = None,
         optimization_steps: int = 1e4,
         **kwargs,
-    ) -> "Molecule":
+    ) -> "molecule.Molecule":
         """
         Stitch the source and target molecules together
 
@@ -300,8 +301,129 @@ class Stitcher(base.Connector):
         return self.target
 
 
+__default_keep_keep_stitcher__ = Stitcher(False, False)
+"""
+Default stitcher for the case that both molecules are kept
+"""
+
 __default_keep_copy_stitcher__ = Stitcher(False, True)
+"""
+Default stitcher for the case that the target molecule is kept and the source molecule is copied
+"""
+
 __default_copy_copy_stitcher__ = Stitcher(True, True)
+"""
+Default stitcher for the case that both molecules are copied
+"""
+
+
+def stitch(
+    target: "molecule.Molecule",
+    source: "molecule.Molecule",
+    recipe: "abstract.AbstracRecipe" = None,
+    target_removals: tuple = None,
+    source_removals: tuple = None,
+    target_atom: Union[int, bio.Atom.Atom] = None,
+    source_atom: Union[int, bio.Atom.Atom] = None,
+    target_residue: Union[int, bio.Residue.Residue] = None,
+    source_residue: Union[int, bio.Residue.Residue] = None,
+    optimization_steps: int = 1e4,
+    copy_target: bool = False,
+    copy_source: bool = False,
+    **kwargs,
+) -> "molecule.Molecule":
+    """
+    Stitch two molecules together.
+    Thereby the source molecule is integrated into the target molecule.
+
+    Parameters
+    ----------
+    target : Molecule
+        The target molecule
+    source : Molecule
+        The source molecule. This will be attached to the target molecule.
+    recipe : AbstractRecipe
+        The recipe to be used for stitching. If none is provided, the stitching instructions can be submitted manually via the other parameters.
+    target_removals : tuple
+        This parameter is only used if no recipe is provided.
+        A tuple of atoms to be removed from the target molecule. These must be the atom's ids within the attaching residue.
+        All atoms must be part fo the same residue as the attaching `target_atom`.
+    source_removals : tuple
+        This parameter is only used if no recipe is provided.
+        A tuple of atoms to be removed from the source molecule. These must be the atom's ids within the attaching residue.
+        All atoms must be part fo the same residue as the attaching `source_atom`.
+    target_atom : int or bio.Atom.Atom
+        This parameter is only used if no recipe is provided.
+        The atom on the target molecule to which the source molecule will be attached. This may either be the atom object directly or its serial number.
+        If none is provided, the molecule's "root atom" is used (if defined).
+    source_atom : int or bio.Atom.Atom
+        This parameter is only used if no recipe is provided.
+        The atom on the source molecule to which the target molecule will be attached. This may either be the atom object directly or its serial number.
+        If none is provided, the molecule's "root atom" is used (if defined).
+    target_residue : int or Residue
+        The residue hosting the target atom. This is only required if the target atom is not given directly or specified by name. If a recipe is provided, the "attach_residue" is used by default. A ValueError is raised if none is defined.
+    source_residue : int or Residue
+        The residue hosting the source atom. This is only required if the source atom is not given directly or specified by name. If a recipe is provided, the "attach_residue" is used by default. A ValueError is raised if none is defined.
+    optimization_steps : int, optional
+        The number of steps to take in the optimization process, by default 1e4
+    copy_target : bool, optional
+        Whether to copy the target molecule before stitching, by default False
+    copy_source : bool, optional
+        Whether to copy the source molecule before stitching, by default False
+    **kwargs
+        Additional keyword arguments to pass to the optimizer. See the documentation for `glycosylator.optimizers.agents.optimize` for more details.
+
+    Returns
+    -------
+    Molecule
+        The stitched molecule
+    """
+    if recipe is not None:
+        if target_residue is None:
+            if target.attach_residue is None:
+                raise ValueError(
+                    "A residue in the target molecule must be provided or the target molecule must define an attachment residue"
+                )
+            target_residue = target.attach_residue
+        if source_residue is None:
+            if source.attach_residue is None:
+                raise ValueError(
+                    "A residue in the source molecule must be provided or the source molecule must define an attachment residue"
+                )
+            source_residue = source.attach_residue
+
+        return stitch(
+            target=target,
+            source=source,
+            target_removals=recipe.deletes[0],
+            source_removals=recipe.deletes[1],
+            target_atom=recipe.bonds[0][0],
+            source_atom=recipe.bonds[1][0],
+            target_residue=target_residue,
+            source_residue=source_residue,
+            optimization_steps=optimization_steps,
+            **kwargs,
+        )
+
+    # =====================
+
+    if copy_source:
+        source = deepcopy(source)
+    if copy_target:
+        target = deepcopy(target)
+    __default_keep_keep_stitcher__.apply(
+        target=target,
+        source=source,
+        target_removals=target_removals,
+        source_removals=source_removals,
+        target_atom=target_atom,
+        source_atom=source_atom,
+        target_residue=target_residue,
+        source_residue=source_residue,
+        optimization_steps=optimization_steps,
+        **kwargs,
+    )
+    return __default_keep_keep_stitcher__.merge()
 
 
 if __name__ == "__main__":
