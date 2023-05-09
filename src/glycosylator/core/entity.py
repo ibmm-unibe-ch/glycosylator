@@ -462,6 +462,8 @@ class BaseEntity:
         if (atom1, atom2) in self.locked_bonds:
             raise RuntimeError("Cannot rotate around a locked bond")
 
+        angle = np.radians(angle)
+
         self._AtomGraph.rotate_around_edge(atom1, atom2, angle, descendants_only)
 
     def get_ancestors(
