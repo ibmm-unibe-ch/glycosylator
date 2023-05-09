@@ -49,7 +49,7 @@ def scipy_optimize(env, steps: int = 1e5, method: str = "L-BFGS-B", **kws):
     return result.x
 
 
-def swarm_optimize(env, steps: int = 50, n: int = 10, **kws):
+def swarm_optimize(env, steps: int = 30, n: int = 10, **kws):
     """
     Optimize a Rotatron environment through
     a pyswarms swarm optimization
@@ -73,15 +73,27 @@ def swarm_optimize(env, steps: int = 50, n: int = 10, **kws):
 
     x0 = env.action_space.sample()
 
-    def loss_fn(x):
-        state, reward, *_ = env.step(x)
-        return -reward
+    bounds = (np.full(x0.shape, -np.pi), np.full(x0.shape, np.pi))
 
-    kws["iters"] = int(steps)
+    def loss_fn(sol):
+        costs = np.zeros(n)
+        i = 0
+        for s in sol:
+            costs[i] = -env.step(s)[1]
+            i += 1
+        return costs
+
+    options = kws.pop("options", {})
+    options.setdefault("c1", 0.5)
+    options.setdefault("c2", 0.3)
+    options.setdefault("w", 0.9)
+
+    verbose = kws.pop("verbose", False)
+
     optimizer = ps.single.GlobalBestPSO(
-        n_particles=n, dimensions=x0.shape[0], bounds=opt.Bounds(-np.pi, np.pi), **kws
+        n_particles=n, dimensions=x0.shape[0], bounds=bounds, options=options, **kws
     )
-    result, reward = optimizer.optimize(loss_fn, iters=steps)
+    reward, result = optimizer.optimize(loss_fn, iters=steps, verbose=verbose)
     return result, -reward
 
 
@@ -244,68 +256,124 @@ def swarm_optimize(env, steps: int = 50, n: int = 10, **kws):
 
 if __name__ == "__main__":
     import glycosylator as gl
-    from copy import deepcopy
     from time import time
-    import stable_baselines3 as sb3
-    import halo
 
-    mol_ref = gl.Molecule.from_pdb(
-        "/Users/noahhk/GIT/glycosylator/support/examples/man9.pdb"
-    )
-    mol_ref.infer_bonds(restrict_residues=False)
+    glc = gl.Molecule.from_compound("GLC")
+    lac = glc.repeat(2, "14bb")
 
-    mol = gl.Molecule.load("/Users/noahhk/GIT/glycosylator/test.mol")
-    # mol1 = deepcopy(mol)
+    c1 = lac.get_atom("C1", residue=2)
+    o4 = lac.get_atom("O4", residue=1)
+    c4 = lac.get_atom("C4", residue=1)
+    o5 = lac.get_atom("O5", residue=2)
+    c5 = lac.get_atom("C5", residue=1)
 
-    # angles = np.random.randint(-180, 180, size=(len(mol.get_residue_connections())))
-    connections = sorted(mol.get_residue_connections())
-    # for i, angle in enumerate(angles):
-    #     mol.rotate_around_bond(*connections[i], angle, descendants_only=True)
+    _dihedral_c1_o4 = (o5, c1, o4, c4)
+    _dihedral_o4_c4 = (c1, o4, c4, c5)
 
-    g = mol.make_residue_graph()
-    g.make_detailed(True, True, f=1)
+    dihedral_c1_o4 = lac.compute_dihedral(*_dihedral_c1_o4)
+    dihedral_o4_c4 = lac.compute_dihedral(*_dihedral_o4_c4)
 
-    v2 = gl.utils.visual.MoleculeViewer3D(mol.make_residue_graph(True))
-    v = gl.utils.visual.MoleculeViewer3D(mol)
+    v = lac.draw()
+    v.draw_edges(lac.bonds, color="limegreen", linewidth=5)
 
-    v.draw_edges(mol_ref.bonds, color="cyan")
-    v2.draw_edges(mol_ref.make_residue_graph(True).edges, color="cyan")
+    lac.rotate_around_bond(c1, o4, -dihedral_c1_o4, descendants_only=True)
+    lac.rotate_around_bond(o4, c4, -dihedral_o4_c4, descendants_only=True)
 
-    steps = (1e5,)  # , 1e4, 1e5, 1e6)
-    colors = ("green",)  # "orange", "red", "purple")
-    for step, color in zip(steps, colors):
-        for i in range(3):
-            mol1 = deepcopy(mol)
+    edges = lac.get_residue_connections()
+    v.draw_edges(lac.bonds, color="black", linewidth=4)
+    v.draw_edges(edges, color="magenta", linewidth=4)
 
-            spinner = halo.Halo(text="Optimizing", spinner="dots")
-            spinner.start()
+    # ====================================================================
 
-            t1 = time()
-            env = environments.MultiBondRotatron(g, connections)
-            result = scipy_optimize(env, steps=step)  # , method="Nelder-Mead")
-            t2 = time()
+    graph = lac.make_residue_graph()
+    graph.make_detailed(True, True)
+    env = gl.optimizers.MultiBondRotatron(graph, edges)
 
-            spinner.succeed(f"scipy Optimization finished in {t2-t1:.2f} seconds")
+    # ====================================================================
+    colors = ["red", "orange", "yellow", "green", "blue", "purple"]
+    idx = 0
+    for steps in (20, 30, 40, 50, 60):
+        t1 = time()
+        for i in range(20):
+            sol, reward = swarm_optimize(env, steps=steps)
 
-            for i, angle in enumerate(result):
-                bond = env.rotatable_edges[i]
-                bond = (bond[0].serial_number, bond[1].serial_number)
-                mol1.rotate_around_bond(*bond, np.degrees(angle), descendants_only=True)
+            lac.rotate_around_bond(c1, o4, np.degrees(sol[0]), descendants_only=True)
+            lac.rotate_around_bond(o4, c4, np.degrees(sol[1]), descendants_only=True)
 
-            v.draw_edges(mol1.bonds, color=color, opacity=0.3)
-            v2.draw_edges(mol1.make_residue_graph(True).edges, color=color, opacity=0.3)
+            v.draw_edges(lac.bonds, color=colors[idx], opacity=0.2, linewidth=4)
 
+            lac.rotate_around_bond(c1, o4, -np.degrees(sol[0]), descendants_only=True)
+            lac.rotate_around_bond(o4, c4, -np.degrees(sol[1]), descendants_only=True)
+        idx += 1
+        t2 = time()
+        print(f"Steps: {steps}, Time: {t2-t1}")
     v.show()
-    v2.show()
-
-    # r = EvoRotator(env, verbose=True)
-    # best, reward = r.run(5000)
-
-    # for i, angle in enumerate(best):
-    #     bond = env.rotatable_edges[i]
-    #     bond = (bond[0].serial_number, bond[1].serial_number)
-    #     mol1.rotate_around_bond(*bond, np.degrees(angle), descendants_only=True)
-
-    # v.draw_edges(mol1.bonds, color="limegreen")
-    # v.show()
     pass
+
+# if __name__ == "__main__":
+#     import glycosylator as gl
+#     from copy import deepcopy
+#     from time import time
+#     import stable_baselines3 as sb3
+#     import halo
+
+#     mol_ref = gl.Molecule.from_pdb(
+#         "/Users/noahhk/GIT/glycosylator/support/examples/man9.pdb"
+#     )
+#     mol_ref.infer_bonds(restrict_residues=False)
+
+#     mol = gl.Molecule.load("/Users/noahhk/GIT/glycosylator/test.mol")
+#     # mol1 = deepcopy(mol)
+
+#     # angles = np.random.randint(-180, 180, size=(len(mol.get_residue_connections())))
+#     connections = sorted(mol.get_residue_connections())
+#     # for i, angle in enumerate(angles):
+#     #     mol.rotate_around_bond(*connections[i], angle, descendants_only=True)
+
+#     g = mol.make_residue_graph()
+#     g.make_detailed(True, True, f=1)
+
+#     v2 = gl.utils.visual.MoleculeViewer3D(mol.make_residue_graph(True))
+#     v = gl.utils.visual.MoleculeViewer3D(mol)
+
+#     v.draw_edges(mol_ref.bonds, color="cyan")
+#     v2.draw_edges(mol_ref.make_residue_graph(True).edges, color="cyan")
+
+#     steps = (1e5,)  # , 1e4, 1e5, 1e6)
+#     colors = ("green",)  # "orange", "red", "purple")
+#     for step, color in zip(steps, colors):
+#         for i in range(3):
+#             mol1 = deepcopy(mol)
+
+#             spinner = halo.Halo(text="Optimizing", spinner="dots")
+#             spinner.start()
+
+#             t1 = time()
+#             env = environments.MultiBondRotatron(g, connections)
+#             result = scipy_optimize(env, steps=step)  # , method="Nelder-Mead")
+#             t2 = time()
+
+#             spinner.succeed(f"scipy Optimization finished in {t2-t1:.2f} seconds")
+
+#             for i, angle in enumerate(result):
+#                 bond = env.rotatable_edges[i]
+#                 bond = (bond[0].serial_number, bond[1].serial_number)
+#                 mol1.rotate_around_bond(*bond, np.degrees(angle), descendants_only=True)
+
+#             v.draw_edges(mol1.bonds, color=color, opacity=0.3)
+#             v2.draw_edges(mol1.make_residue_graph(True).edges, color=color, opacity=0.3)
+
+#     v.show()
+#     v2.show()
+
+#     # r = EvoRotator(env, verbose=True)
+#     # best, reward = r.run(5000)
+
+#     # for i, angle in enumerate(best):
+#     #     bond = env.rotatable_edges[i]
+#     #     bond = (bond[0].serial_number, bond[1].serial_number)
+#     #     mol1.rotate_around_bond(*bond, np.degrees(angle), descendants_only=True)
+
+#     # v.draw_edges(mol1.bonds, color="limegreen")
+#     # v.show()
+#     pass
