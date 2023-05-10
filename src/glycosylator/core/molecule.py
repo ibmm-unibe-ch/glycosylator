@@ -740,7 +740,7 @@ class Molecule(entity.BaseEntity):
             patch_or_recipe = _topology.get_patch(patch_or_recipe)
 
         if isinstance(patch_or_recipe, utils.abstract.AbstractPatch):
-            obj.patch(
+            obj.patch_attach(
                 other,
                 patch_or_recipe,
                 at_residue=at_residue,
@@ -748,7 +748,7 @@ class Molecule(entity.BaseEntity):
                 _topology=_topology,
             )
         elif isinstance(patch_or_recipe, utils.abstract.AbstractRecipe):
-            obj.stitch(
+            obj.stitch_attach(
                 other,
                 patch_or_recipe,
                 at_residue=at_residue,
@@ -756,7 +756,7 @@ class Molecule(entity.BaseEntity):
             )
         return obj
 
-    def patch(
+    def patch_attach(
         self,
         other: "Molecule",
         patch: Union[utils.abstract.AbstractPatch, str] = None,
@@ -804,7 +804,7 @@ class Molecule(entity.BaseEntity):
         p.merge()
         return self
 
-    def stitch(
+    def stitch_attach(
         self,
         other: "Molecule",
         recipe: utils.abstract.AbstractRecipe = None,
@@ -843,7 +843,7 @@ class Molecule(entity.BaseEntity):
             recipe = self._patch
 
         if recipe:
-            return self.stitch(
+            return self.stitch_attach(
                 other,
                 remove_atoms=recipe.deletes[0],
                 other_remove_atoms=recipe.deletes[1],
