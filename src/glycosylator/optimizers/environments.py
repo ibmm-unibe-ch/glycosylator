@@ -33,7 +33,7 @@ class Rotatron(gym.Env):
         self.rotatable_edges = [i for i in rotatable_edges if i in graph.edges]
 
         self.graph = deepcopy(self.graph)
-        self.rotatable_edges = deepcopy(self.rotatable_edges)
+        # self.rotatable_edges = deepcopy(self.rotatable_edges)
 
         self.n = len(self.rotatable_edges)
         self.reward = 0
