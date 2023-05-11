@@ -343,7 +343,7 @@ def test_rotate_some():
 
     first = mol.get_atom("O3")
     second = mol.get_atom("C3")
-    angle = np.radians(10)
+    angle = 10 # 10 degrees
 
     v.draw_point("first (O3)", first.coord, color="magenta")
     v.draw_point("second (C3)", second.coord, color="magenta")
