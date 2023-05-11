@@ -248,7 +248,6 @@ class MultiBondRotatron(Rotatron):
 
     def __init__(self, graph, rotatable_edges=None):
         super().__init__(graph, rotatable_edges)
-        self._mask_residues()
         self.action_space = gym.spaces.Box(
             low=-np.pi, high=np.pi, shape=(len(self.rotatable_edges),)
         )
@@ -288,7 +287,49 @@ class MultiBondRotatron(Rotatron):
 
         # Mask the residue distances
         np.fill_diagonal(dists, -1)
-        dists[self._residue_masks] = -1
+
+        dist_func = lambda x: x[x > 0].mean()
+        dists = np.apply_along_axis(dist_func, 1, dists)
+
+        # energy = (1 / dists) ** 12 - (1 / dists) ** 6
+        reward = -4 * np.sum(1 / dists)
+
+        return reward
+
+
+class MaskedMultiBondRotatron(MultiBondRotatron):
+    """
+    This environment samples an angle for each rotatable bond and evaluates
+    the reward of the resulting structure. Compared to the default `MultiBondRotatron`, this
+    implementation only considers distances between atomic nodes of non-identical residues.
+
+    Parameters
+    ----------
+    graph
+        A detailed ResidueGraph object
+    rotatable_edges
+        A list of rotatable edges. If None, all non-locked edges from the graph are used.
+    """
+
+    def __init__(self, graph, rotatable_edges=None):
+        super().__init__(graph, rotatable_edges)
+        self._mask_residues()
+
+    def compute_reward(self):
+        """
+        Compute the reward of the given or current coordinate array
+        """
+
+        coords = self.effector_coords
+
+        # Compute the inter-residue distances
+        dists = np.linalg.norm(coords[:, None, :] - coords[None, :, :], axis=-1)
+
+        # Mask the residue distances
+        np.fill_diagonal(dists, -1)
+        dists[
+            self._residue_masks
+        ] = -1  # <- THIS LINE IS NEW FOR THE MASKED ENVIRONMENT
 
         dist_func = lambda x: x[x > 0].mean()
         dists = np.apply_along_axis(dist_func, 1, dists)
