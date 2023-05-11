@@ -291,15 +291,13 @@ class ResidueGraph(BaseGraph):
             bond = self._atomic_bonds.get((residue2, residue1))
         return bond
 
-    def get_neighbors(
-        self, residue: Union[int, str, bio.Residue.Residue], n: int = 1, mode="upto"
-    ):
+    def get_neighbors(self, residue: bio.Residue.Residue, n: int = 1, mode="upto"):
         """
         Get the neighbors of a residue
 
         Parameters
         ----------
-        residue : int, str, bio.Residue.Residue
+        residue : bio.Residue.Residue
             The target residue
         n : int, optional
             The number of connections to separate the residue from its neighbors.

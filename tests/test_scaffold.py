@@ -245,7 +245,7 @@ def test_attach_glycan_with_sequon():
     scaffold % recipe
 
     # use the N-linked sequon for ASNs
-    sequon = "(N)(?=[^P])(?=(S|T))"
+    sequon = "(N)(?=[A-OQ-Z][ST])"
 
     residues = scaffold.find(sequon)
     assert len(residues) > 0
