@@ -214,7 +214,13 @@ class Rotatron(gym.Env):
         Map the descendant nodes for each rotatable edge
         """
         masks = {
-            idx: np.array([j in self.graph.get_descendants(*edge) for j in self._nodes])
+            # the list comprehension is pretty slow
+            # idx: np.array([j in self.graph.get_descendants(*edge) for j in self._nodes])
+            idx: np.fromiter(
+                (j in self.graph.get_descendants(*edge) for j in self._nodes),
+                dtype=bool,
+                count=len(self._nodes),
+            )
             for idx, edge in enumerate(self.rotatable_edges)
         }
         self._descendant_masks = masks
@@ -348,7 +354,7 @@ class MaskedMultiBondRotatron(MultiBondRotatron):
         self._residue_masks = np.empty((len(self._nodes), len(self._nodes)), dtype=bool)
         for residue in self.graph.residues:
             node_mask = np.array(
-                [node in residue.child_list or node is residue for node in self._nodes]
+                [node is residue or node in residue.child_list for node in self._nodes]
             )
             node_mask[self._nodes.index(residue)] = True
             for node in residue.child_list:
