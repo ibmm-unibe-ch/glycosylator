@@ -15,63 +15,6 @@ class AtomGraph(BaseGraph):
         super().__init__(id, bonds)
         nx.set_node_attributes(self, {i: i.coord for i in self.nodes}, "coord")
 
-    # @classmethod
-    # def from_pdb(
-    #     cls,
-    #     filename: str,
-    #     id=None,
-    #     apply_standard_bonds: bool = True,
-    #     infer_residue_connections: bool = True,
-    #     infer_bonds: bool = False,
-    #     max_bond_length: float = None,
-    #     restrict_residues: bool = True,
-    #     _topology=None,
-    # ):
-    #     """
-    #     Create an AtomGraph from a PDB of a single molecule
-
-    #     Parameters
-    #     ----------
-    #     filename : str
-    #         Path to the PDB file
-    #     id : str
-    #         The ID of the molecule. By default the filename is used.
-    #     apply_standard_bonds : bool
-    #         Whether to apply standard bonds from known molecule connectivity.
-    #     infer_residue_connections: bool
-    #         Whether to infer residue connecting bonds based on atom distances.
-    #     infer_bonds : bool
-    #         Whether to infer bonds from the distance between atoms. If this is set
-    #         to True, standard bonds cannot be also applied, and are therefore ignored.
-    #     max_bond_length : float
-    #         The maximum distance between atoms to infer a bond.
-    #         If none is given, a default bond length is assumed.
-    #     restrict_residues : bool
-    #         Whether to restrict to atoms of the same residue when inferring bonds.
-    #         If set to False, this will also infer residue connecting bonds.
-    #     _topology
-    #         A specific reference topology to use when re-constructing any missing parts.
-    #         By default the default CHARMM topology is used.
-
-    #     Returns
-    #     -------
-    #     AtomGraph
-    #         The AtomGraph representation of the molecule
-    #     """
-    #     id = id if id else utils.filename_to_id(filename)
-
-    #     # load PDB
-    #     structure = struct.defaults.__bioPDBParser__.get_structure(id, filename)
-    #     return cls.from_biopython(
-    #         structure,
-    #         apply_standard_bonds,
-    #         infer_residue_connections,
-    #         infer_bonds,
-    #         max_bond_length,
-    #         restrict_residues,
-    #         _topology,
-    #     )
-
     @classmethod
     def from_biopython(
         cls,
@@ -149,15 +92,13 @@ class AtomGraph(BaseGraph):
             new._locked_edges.update(mol.locked_bonds)
         return new
 
-    def get_neighbors(
-        self, atom: Union[int, str, bio.Atom.Atom], n: int = 1, mode="upto"
-    ):
+    def get_neighbors(self, atom: bio.Atom.Atom, n: int = 1, mode="upto"):
         """
         Get the neighbors of a node
 
         Parameters
         ----------
-        atom : int, str, bio.Atom.Atom
+        atom : bio.Atom.Atom
             The atom
         n : int, optional
             The number of bonds to separate the atom from its neighbors.
