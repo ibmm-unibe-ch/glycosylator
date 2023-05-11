@@ -146,7 +146,8 @@ class BaseGraph(nx.Graph):
         >>> graph.get_descendants("B", "A")
         set() # because in this direction there are no other nodes
         """
-        if node_1 == node_2:
+        # if node_1 == node_2:
+        if node_1 is node_2:
             raise ValueError(
                 "Cannot get descendants if only one node is given (no direction)!"
             )

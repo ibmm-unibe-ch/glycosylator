@@ -36,7 +36,7 @@ class Neighborhood:
         # each implementation may call this method before the super init
         # self._validate_getters()
 
-        self._make_node_dicts()
+        # self._make_node_dicts()
 
     def get_neighbors(self, node, n: int = 1, mode: str = "upto"):
         """
@@ -71,47 +71,6 @@ class Neighborhood:
             return self._get_neighbors_at(node, n) - {node}
         else:
             raise ValueError(f"Invalid mode: {mode}")
-
-    def _make_node_dicts(self):
-        """
-        Make a dictionary of nodes, which are biopython objects (or anything that has an id and sequence identifier attribute) mapped to their serial number and ids
-        """
-        self._idx_nodes = {}
-        self._ids_nodes = defaultdict(list)
-
-        for node1, node2 in self._src.edges:
-            self._idx_nodes.setdefault(self.__index_method__(node1), node1)
-            self._idx_nodes.setdefault(self.__index_method__(node2), node2)
-
-            id1 = self.__id_method__(node1)
-            id2 = self.__id_method__(node2)
-
-            if node1 not in self._ids_nodes[id1]:
-                self._ids_nodes[id1].append(node1)
-            if node2 not in self._ids_nodes[id2]:
-                self._ids_nodes[id2].append(node2)
-
-    def _get_node(self, node: Union[int, str]):
-        """
-        Get a node from its id or sequence index
-        """
-        if isinstance(node, int):
-            node = self._idx_nodes.get(node)
-        elif isinstance(node, str):
-            node = self._ids_nodes.get(node)
-            if node and len(node) > 1:
-                warnings.warn(
-                    f"Found multiple nodes with the given id. Returning the full list!"
-                )
-            elif node:
-                node = node[0]
-            else:
-                warnings.warn(f"No nodes found with the given id!")
-        elif isinstance(node, (bio.Residue.Residue, bio.Atom.Atom)):
-            pass
-        else:
-            raise TypeError(f"Invalid node type: {type(node)}")
-        return node
 
     def _get_neighbors_upto(self, node, n: int):
         """
@@ -181,8 +140,8 @@ class AtomNeighborhood(Neighborhood):
 
         Parameters
         ----------
-        atom : int or str or Bio.PDB.Atom
-            The serial number or the id of the atom, or the atom itself.
+        atom : Bio.PDB.Atom
+            The atom whose neighbors should be returned.
         n : int
             The (maximal) number of bonds that should
             separate the target from the neighbors.
@@ -198,17 +157,9 @@ class AtomNeighborhood(Neighborhood):
         neighbors : set
             The neighbors of the atom
         """
-        if not isinstance(atom, bio.Atom.Atom):
-            atom = self._get_node(atom)
         if atom is None:
             return set()
         return super().get_neighbors(atom, n, mode)
-
-    def get_atom(self, atom: Union[int, str]):
-        """
-        Get an atom from its id or serial number
-        """
-        return self._get_node(atom)
 
 
 class ResidueNeighborhood(Neighborhood):
@@ -253,8 +204,8 @@ class ResidueNeighborhood(Neighborhood):
 
         Parameters
         ----------
-        residue : int or str or Bio.PDB.Residue
-            The index or the id (resname) of the residue, or the residue itself.
+        residue : Bio.PDB.Residue
+            The residue whose neighbors should be returned.
         n : int
             The (maximal) number of bonds that should
             separate the target from the neighbors.
@@ -270,17 +221,9 @@ class ResidueNeighborhood(Neighborhood):
         neighbors : set
             The neighbors of the residue
         """
-        if not isinstance(residue, bio.Residue.Residue):
-            residue = self._get_node(residue)
         if residue is None:
             return set()
         return super().get_neighbors(residue, n, mode)
-
-    def get_residue(self, residue: Union[int, str]):
-        """
-        Get a residue from its id or index
-        """
-        return self._get_node(residue)
 
 
 class Quartet:
