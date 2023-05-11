@@ -283,9 +283,9 @@ class Scaffold(entity.BaseEntity):
             chain = self._model.child_dict[id]
             cdx = chain.child_list[0].id[1]
             _residues[id] = [
-                self.residues[idx]
+                chain.child_list[idx - (cdx - 1)]
                 for idx in indices
-                if self.residues[idx] not in self._excluded_residues
+                if chain.child_list[idx - (cdx - 1)] not in self._excluded_residues
             ]
         return _residues
 
@@ -382,6 +382,15 @@ class Scaffold(entity.BaseEntity):
     def to_pdb(self, filename: str):
         self.fill()  # fill the structure before writing it to a file
         return super().to_pdb(filename)
+
+    def make_residue_graph(self, detailed: bool = False, locked: bool = True):
+        graph = super().make_residue_graph(detailed, locked)
+        # also add all remaining non connected (scaffold residues)
+        for residue in self.residues:
+            residue.coord = residue.center_of_mass()
+            if residue not in graph:
+                graph.add_node(residue)
+        return graph
 
     def attach(
         self,
@@ -563,7 +572,7 @@ class Scaffold(entity.BaseEntity):
         connections = _mol.infer_residue_connections(triplet=True)
         connections.append(s._anchors)
         connections = set((i.serial_number, j.serial_number) for i, j in connections)
-        scaffold._molecule_connections.update(connections)
+        scaffold._molecule_connections.update(connections)  # I THINK WE DON'T NEED THIS
 
         scaffold.add_residues(*_mol.residues, chain=chain)
         scaffold._bonds.extend(_mol.bonds)
