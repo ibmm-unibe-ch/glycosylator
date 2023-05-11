@@ -62,9 +62,16 @@ def test_atom_graph_pdb_multi_residue_is_non_empty():
 def test_atom_graph_one_residue_get_neighbors():
     mol = gl.Molecule.from_pdb(base.MANNOSE)
     mol.infer_bonds()
-    mol = gl.graphs.AtomGraph.from_molecule(mol)
+    graph = gl.graphs.AtomGraph.from_molecule(mol)
 
-    neigs = mol.get_neighbors("C1")
+    try:
+        neigs = graph.get_neighbors("C1")
+    except Exception as e:
+        pass
+    else:
+        raise AssertionError("Expected an exception, got none")
+
+    neigs = graph.get_neighbors(mol.get_atom("C1"))
     assert isinstance(neigs, set), f"Expected a set but received {type(neigs)}"
 
     _received = len(neigs)
@@ -75,9 +82,16 @@ def test_atom_graph_one_residue_get_neighbors():
 def test_atom_graph_multi_residue_get_neighbors():
     mol = gl.Molecule.from_pdb(base.MANNOSE9)
     mol.infer_bonds()
-    mol = gl.graphs.AtomGraph.from_molecule(mol)
+    graph = gl.graphs.AtomGraph.from_molecule(mol)
 
-    neigs = mol.get_neighbors("C1")
+    try:
+        neigs = graph.get_neighbors("C1")
+    except Exception as e:
+        pass
+    else:
+        raise AssertionError("Expected an exception, got none")
+
+    neigs = graph.get_neighbors(mol.get_atoms("C1", by="id"))
     assert isinstance(neigs, list), f"Expected a list but received {type(neigs)}"
 
     _received = len(neigs)
@@ -239,38 +253,54 @@ def test_residue_graph_multi_residue_get_neighbors():
     mol = gl.Molecule.from_pdb(base.MANNOSE9)
     mol.infer_bonds(restrict_residues=False)
 
-    mol = gl.graphs.ResidueGraph.from_molecule(mol, detailed=True)
-    mol.show()
+    graph = gl.graphs.ResidueGraph.from_molecule(mol, detailed=True)
+    graph.show()
 
-    neigs = mol.get_neighbors("C1")
+    try:
+        neigs = graph.get_neighbors("C1")
+    except Exception as e:
+        pass
+    else:
+        raise AssertionError("Expected an exception, got none")
+
+    # get the C1 of the BMA residue (seqid=4)
+    neigs = graph.get_neighbors(mol.get_atom("C1", residue=4))
     assert isinstance(neigs, set), f"Expected a set but received {type(neigs)}"
 
     _received = len(neigs)
-    _expected = 0
+    _expected = 2
     assert _received == _expected, f"Expected {_expected} neighbors, got {_received}"
 
-    neigs = mol.get_neighbors("MAN")
+    try:
+        neigs = graph.get_neighbors("MAN")
+    except Exception as e:
+        pass
+    else:
+        raise AssertionError("Expected an exception, got none")
+
+    neigs = graph.get_neighbors(mol.get_residues("MAN", by="name"))
     assert isinstance(neigs, list), f"Expected a list but received {type(neigs)}"
 
     _received = len(neigs)
     _expected = 8
     assert _received == _expected, f"Expected {_expected} neighbors, got {_received}"
 
-    neigs = mol.get_neighbors("BMA")
+    bma = mol.get_residue("BMA", by="name")
+    neigs = graph.get_neighbors(bma)
     assert isinstance(neigs, set), f"Expected a set but received {type(neigs)}"
 
     _received = len(neigs)
     _expected = 3
     assert _received == _expected, f"Expected {_expected} neighbors, got {_received}"
 
-    neigs = mol.get_neighbors("BMA", 2)
+    neigs = graph.get_neighbors(bma, 2)
     assert isinstance(neigs, set), f"Expected a set but received {type(neigs)}"
 
     _received = len(neigs)
     _expected = 6
     assert _received == _expected, f"Expected {_expected} neighbors, got {_received}"
 
-    neigs = mol.get_neighbors("BMA", 2, "at")
+    neigs = graph.get_neighbors(bma, 2, "at")
     assert isinstance(neigs, set), f"Expected a set but received {type(neigs)}"
 
     _received = len(neigs)
@@ -460,13 +490,14 @@ def test_residue_graph_detailed():
 def test_residue_graph_detailed_get_neighbors():
     mol = gl.Molecule.from_pdb(base.MANNOSE9)
     mol.infer_bonds(restrict_residues=False)
-    mol = gl.graphs.ResidueGraph.from_molecule(mol, detailed=False)
-    mol.make_detailed()
+    graph = gl.graphs.ResidueGraph.from_molecule(mol, detailed=False)
+    graph.make_detailed()
 
     v = gl.utils.visual.MoleculeViewer3D(mol)
     v.show()
 
-    neigs = mol.get_neighbors(3)
+    nag = mol.get_residue(3)
+    neigs = graph.get_neighbors(nag)
     assert isinstance(neigs, set), f"Expected a set but received {type(neigs)}"
     _received = len(neigs)
     _expected = 2
@@ -478,7 +509,7 @@ def test_residue_graph_detailed_get_neighbors():
 
     has_residues = False
     has_atoms = False
-    for node in mol.nodes:
+    for node in graph.nodes:
         if node.__class__.__name__ == "Residue":
             has_residues = True
         if node.__class__.__name__ == "Atom":

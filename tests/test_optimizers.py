@@ -14,7 +14,7 @@ def test_rotatron_constraints():
 
     connections = mol.get_residue_connections()
 
-    env = opt.SingleBondRotatron(mol.make_residue_graph(detailed=True), connections)
+    env = opt.MultiBondRotatron(mol.make_residue_graph(detailed=True), connections)
 
     initial_coords = env._coords.copy()
     nodes = list(env.graph.nodes)
@@ -28,7 +28,6 @@ def test_rotatron_constraints():
         initial_distances.append(dists)
 
     for run in range(3):
-
         v = gl.utils.visual.MoleculeViewer3D(mol.make_residue_graph(detailed=True))
 
         for i in range(200):

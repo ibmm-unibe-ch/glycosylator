@@ -5,7 +5,7 @@ with open("README.md", "r") as f:
 
 setuptools.setup(
     name="glycosylator",
-    version="2.0.37-alpha",
+    version="2.0.38-alpha",
     author="Noah H. Kleinschmidt",
     author_email="noah.kleinschmidt@students.unibe.ch",
     description="A python package for structural simulation of protein glycosylation",
