@@ -940,13 +940,13 @@ class BaseEntity:
                 return [
                     i
                     for i in self.bonds
-                    if i[0].get_parent() == atom1 and i[1].get_parent() == atom1
+                    if i[0].get_parent() is atom1 and i[1].get_parent() is atom1
                 ]
             else:
                 return [
                     i
                     for i in self.bonds
-                    if i[0].get_parent() == atom1 or i[1].get_parent() == atom1
+                    if i[0].get_parent() is atom1 or i[1].get_parent() is atom1
                 ]
 
         if atom1:
