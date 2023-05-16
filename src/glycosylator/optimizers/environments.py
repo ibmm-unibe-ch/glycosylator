@@ -8,6 +8,7 @@ from scipy.spatial.distance import cdist
 from scipy.spatial.transform import Rotation
 
 import glycosylator.structural as structural
+import glycosylator.utils.auxiliary as aux
 
 
 class Rotatron(gym.Env):
@@ -46,6 +47,18 @@ class Rotatron(gym.Env):
         self.__orig_coords = deepcopy(self._coords)
         self.__renderer__ = None
 
+    @classmethod
+    def load(cls, path):
+        """
+        Load the environment from a file
+
+        Parameters
+        ----------
+        path : str
+            The path to the file
+        """
+        return aux.load_pickle(path)
+
     @property
     def effector_coords(self):
         """
@@ -73,6 +86,17 @@ class Rotatron(gym.Env):
         Set the current state of the environment
         """
         self._coords = deepcopy(state)
+
+    def save(self, path):
+        """
+        Save the environment to a file
+
+        Parameters
+        ----------
+        path : str
+            The path to the file
+        """
+        aux.save_pickle(self, path)
 
     def set_state(self, state):
         """
@@ -213,16 +237,25 @@ class Rotatron(gym.Env):
         """
         Map the descendant nodes for each rotatable edge
         """
-        masks = {
-            # the list comprehension is pretty slow
-            # idx: np.array([j in self.graph.get_descendants(*edge) for j in self._nodes])
-            idx: np.fromiter(
-                (j in self.graph.get_descendants(*edge) for j in self._nodes),
-                dtype=bool,
-                count=len(self._nodes),
-            )
-            for idx, edge in enumerate(self.rotatable_edges)
-        }
+        # masks = {
+        #     # the list comprehension is pretty slow
+        #     # idx: np.array([j in self.graph.get_descendants(*edge) for j in self._nodes])
+        #     idx: np.fromiter(
+        #         # WE CAN IMPROVE THIS LINE BY DOING SOMETHING LIKE
+        #         # FOR J IN SELF._NODES IF J NOT AN INTERNAL NODE
+        #         # ELSE JUST USE THE ALL FALSE MASK...
+        #         (j in self.graph.get_descendants(*edge) for j in self._nodes),
+        #         dtype=bool,
+        #         count=len(self._nodes),
+        #     )
+        #     for idx, edge in enumerate(self.rotatable_edges)
+        # }
+        masks = {}
+        for idx, edge in enumerate(self.rotatable_edges):
+            mask = np.zeros(len(self._nodes), dtype=bool)
+            for j in self.graph.get_descendants(*edge):
+                mask[self._nodes.index(j)] = True
+            masks[idx] = mask
         self._descendant_masks = masks
 
     def _make_edge_ref_masks(self):
@@ -250,9 +283,16 @@ class MultiBondRotatron(Rotatron):
         A detailed ResidueGraph object
     rotatable_edges
         A list of rotatable edges. If None, all non-locked edges from the graph are used.
+    mask_same_residues: bool
+        Whether to mask the coordinates of the same residue as the effector
     """
 
-    def __init__(self, graph, rotatable_edges=None):
+    def __init__(
+        self,
+        graph,
+        rotatable_edges=None,
+        mask_same_residues: bool = True,
+    ):
         super().__init__(graph, rotatable_edges)
         self.action_space = gym.spaces.Box(
             low=-np.pi, high=np.pi, shape=(len(self.rotatable_edges),)
@@ -260,6 +300,10 @@ class MultiBondRotatron(Rotatron):
         self.observation_space = gym.spaces.Box(
             low=-np.inf, high=np.inf, shape=(len(self._nodes), 3)
         )
+
+        # Mask the effector coordinates
+        if mask_same_residues:
+            self._mask_residues()
 
     def blank(self):
         """
@@ -298,28 +342,9 @@ class MultiBondRotatron(Rotatron):
         dists = np.apply_along_axis(dist_func, 1, dists)
 
         # energy = (1 / dists) ** 12 - (1 / dists) ** 6
-        reward = -4 * np.sum(1 / dists)
+        reward = -4 * np.sum((1 / dists) ** 4)
 
         return reward
-
-
-class MaskedMultiBondRotatron(MultiBondRotatron):
-    """
-    This environment samples an angle for each rotatable bond and evaluates
-    the reward of the resulting structure. Compared to the default `MultiBondRotatron`, this
-    implementation only considers distances between atomic nodes of non-identical residues.
-
-    Parameters
-    ----------
-    graph
-        A detailed ResidueGraph object
-    rotatable_edges
-        A list of rotatable edges. If None, all non-locked edges from the graph are used.
-    """
-
-    def __init__(self, graph, rotatable_edges=None):
-        super().__init__(graph, rotatable_edges)
-        self._mask_residues()
 
     def compute_reward(self):
         """
