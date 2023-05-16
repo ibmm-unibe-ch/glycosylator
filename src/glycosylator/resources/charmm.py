@@ -1,5 +1,68 @@
 """
-File parsers and data classes to work with the CHARMM force field
+This module defines File parsers and data classes to work with the CHARMM force field
+
+Reading CHARMM files
+====================
+
+CHARMM files can be read using the `CHARMMTopology` and `CHARMMParameters` classes, depending on the file type.
+
+.. code-block:: python
+
+    from glycosylator.resources import CHARMMTopology, CHARMMParameters
+
+    charmm_topology_file = "top_all36_prot.rtf"
+    charmm_parameters_file = "par_all36_prot.prm"
+
+    # load a CHARMM topology file
+    top = CHARMMTopology.from_file(charmm_topology_file)
+
+    # load a CHARMM parameters file
+    par = CHARMMParameters.from_file(charmm_parameters_file)
+
+
+Because parsing can be a time intensive task, it is recommended to `save` the parsed objects to a pickle file for later use.
+In this case a pre-parsed topology or parameters object can be loaded using the `load` method.
+
+.. code-block:: python
+
+    # save the parsed objects to a pickle file
+    top.save("top_all36_prot.pkl")
+    par.save("par_all36_prot.pkl")
+
+    # load a CHARMM topology file
+    top = CHARMMTopology.load("top_all36_prot.pkl")
+
+    # load a CHARMM parameters file
+    par = CHARMMParameters.load("par_all36_prot.pkl")
+
+
+Working with CHARMM objects
+===========================
+
+The `CHARMMTopology` and `CHARMMParameters` classes are include methods to work with the parsed data, 
+such as `get_residue` or `get_mass`. They also support adding new data via the corresponding `add_{...}` methods.
+
+
+Setting default CHARMM objects
+==============================
+
+The `glycosylator.utils.defaults` module pre-loads default CHARMM topology and parameters objects for convenience. Many methods that make use of 
+these objects such as the `attach` methods of the `Scaffold` and `Molecule` classes also accept arguments for custom topology and parameters objects.
+For convenience, a custom object can be set as the default, however, using the `set_default_topology` and `set_default_parameters` functions.
+
+.. code-block:: python
+
+    from glycosylator.utils import defaults
+    
+    # set a custom topology object as the default
+    defaults.set_default_topology(top)
+
+
+.. warning::
+
+    The `set_default_{...}` functions include an argument `overwrite` that is set to `False` by default. If set to `True` the default object is permanently overwritten
+    and will be used for all future sessions. This is not recommended as it may lead to unexpected behavior.
+
 """
 
 import os
@@ -511,7 +574,6 @@ class CHARMMTopology(CHARMMParser):
         atom4 = line[4]
 
         if isinstance(obj, _abstract.AbstractResidue):
-
             atom1 = obj.get_atom(atom1)
             atom2 = obj.get_atom(atom2)
             atom3 = obj.get_atom(atom3)
@@ -584,7 +646,6 @@ class CHARMMTopology(CHARMMParser):
 
         if isinstance(obj, _abstract.AbstractResidue):
             for a1, a2 in line:
-
                 atom1 = obj.get_atom(a1)
                 atom2 = obj.get_atom(a2)
                 if atom1 is None or atom2 is None:
@@ -1089,7 +1150,6 @@ __all__ = [CHARMMTopology, CHARMMParameters]
 
 
 if __name__ == "__main__":
-
     _carbs = "/Users/noahhk/GIT/glycosylator/support/toppar_charmm/carbohydrates.rtf"
     _top = CHARMMTopology.from_file(_carbs)
     print(_top)
