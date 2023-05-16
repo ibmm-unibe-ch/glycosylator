@@ -36,6 +36,7 @@ setuptools.setup(
         "periodictable",
         "plotly",
         "alive_progress",
+        "pyswarms",
         # "openbabel",
         # "mdtraj",
         # "prody",
