@@ -507,26 +507,29 @@ def test_atom_neighborhood_basic():
         _recieved == _expected
     ), f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
 
-    a = neighborhood.get_atom(1)
-    assert a is not None
+    # Neigborhood is not designed for this anymore...
+    # a = neighborhood.get_atom(1)
+    # assert a is not None
 
-    a = neighborhood.get_atom("C1")
-    assert a is not None
-    assert not isinstance(a, list), "we get a list of C1s although there is only 1"
+    # a = neighborhood.get_atom("C1")
+    # assert a is not None
+    # assert not isinstance(a, list), "we get a list of C1s although there is only 1"
 
 
 def test_atom_neighborhood_get():
     mannose = gl.graphs.AtomGraph.from_biopython(MANNOSE)
     neighborhood = gl.structural.AtomNeighborhood(mannose)
 
-    _recieved = set(i.id for i in neighborhood.get_neighbors("C1"))
+    c1 = next(atom for atom in MANNOSE.get_atoms() if atom.id == "C1")
+
+    _recieved = set(i.id for i in neighborhood.get_neighbors(c1))
     _expected = {"H1", "C2", "O1", "O5"}
     _what = "as n=1 neighbors of C1"
     assert (
         _recieved == _expected
     ), f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
 
-    _recieved = set(i.id for i in neighborhood.get_neighbors("C1", 2))
+    _recieved = set(i.id for i in neighborhood.get_neighbors(c1, 2))
     _n2 = {"HO1", "H2", "O2", "C3", "C5"}
     _expected.update(_n2)
     _what = "as n<=2 neighbors of C1"
@@ -534,7 +537,7 @@ def test_atom_neighborhood_get():
         _recieved == _expected
     ), f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
 
-    _recieved = set(i.id for i in neighborhood.get_neighbors("C1", 2, mode="at"))
+    _recieved = set(i.id for i in neighborhood.get_neighbors(c1, 2, mode="at"))
     _expected = _n2
     _what = "as n==2 neighbors of C1"
     assert (
@@ -545,9 +548,9 @@ def test_atom_neighborhood_get():
 def test_residue_neighborhood_basic():
     mannose = gl.Molecule.from_pdb(base.MANNOSE9)
     mannose.infer_bonds(restrict_residues=False)
-    mannose = mannose.make_residue_graph()
+    graph = mannose.make_residue_graph()
 
-    neighborhood = gl.structural.ResidueNeighborhood(mannose)
+    neighborhood = gl.structural.ResidueNeighborhood(graph)
     assert neighborhood is not None, "No neighborhood object is made..."
 
     _recieved = len(neighborhood.residues)
@@ -557,64 +560,75 @@ def test_residue_neighborhood_basic():
         _recieved == _expected
     ), f"Recieved {_recieved} {_what}, expected {_expected} {_what}!"
 
-    a = neighborhood.get_residue(2)  # first residue is labelled as NAG (resseq=2)
-    assert a is not None
+    # # Graphs and Neighborhoods are not designed for this anymore...
+    # # nag2 = mannose.get_residue(2)  # first residue is labelled as NAG (resseq=2)
+    # # a = neighborhood.get_residue(nag2)
+    # # assert a is not None
 
-    a = neighborhood.get_residue("MAN")
-    assert a is not None
-    assert isinstance(a, list), "we expect a list of MANs!"
+    # man = mannose.get_residues("MAN", by="name")
+    # a = neighborhood.get_residue(man)
+    # assert a is not None
+    # assert isinstance(a, list), "we expect a list of MANs!"
 
-    a = neighborhood.get_residue("BMA")
-    assert a is not None
-    assert not isinstance(
-        a, list
-    ), "we expect a single residue of BMA since there is only one!"
+    # bma = mannose.get_residue("BMA")
+    # a = neighborhood.get_residue(bma)
+    # assert a is not None
+    # assert not isinstance(
+    #     a, list
+    # ), "we expect a single residue of BMA since there is only one!"
 
 
 def test_residue_neighborhood_get():
     mannose = gl.Molecule.from_pdb(base.MANNOSE9)
     mannose.infer_bonds(restrict_residues=False)
-    mannose = mannose.make_residue_graph()
+    graph = mannose.make_residue_graph()
 
-    neighborhood = gl.structural.ResidueNeighborhood(mannose)
+    neighborhood = gl.structural.ResidueNeighborhood(graph)
     assert neighborhood is not None, "No neighborhood object is made..."
 
-    neigs = neighborhood.get_neighbors("C1")
-    assert isinstance(neigs, set), f"Expected a set but received {type(neigs)}"
+    # because the graph is not detailed there should be no
+    # node and neighbors for C1 from BMA residue
+    try:
+        c1 = mannose.get_atom("C1", residue=4)
+        neigs = neighborhood.get_neighbors(c1)
+    except KeyError:
+        pass
+    else:
+        raise AssertionError(
+            "We should not be able to get neighbors of C1 from BMA residue!"
+        )
 
-    _received = len(neigs)
-    _expected = 0
-    assert _received == _expected, f"Expected {_expected} neighbors, got {_received}"
-
-    neigs = neighborhood.get_neighbors("MAN")
+    man = mannose.get_residues("MAN")
+    neigs = neighborhood.get_neighbors(man)
     assert isinstance(neigs, list), f"Expected a list but received {type(neigs)}"
 
     _received = len(neigs)
     _expected = 8
     assert _received == _expected, f"Expected {_expected} neighbors, got {_received}"
 
-    neigs = neighborhood.get_neighbors("BMA")
+    bma = mannose.get_residue("BMA")
+    neigs = neighborhood.get_neighbors(bma)
     assert isinstance(neigs, set), f"Expected a set but received {type(neigs)}"
 
     _received = len(neigs)
     _expected = 3
     assert _received == _expected, f"Expected {_expected} neighbors, got {_received}"
 
-    neigs = neighborhood.get_neighbors("BMA", 2)
+    neigs = neighborhood.get_neighbors(bma, 2)
     assert isinstance(neigs, set), f"Expected a set but received {type(neigs)}"
 
     _received = len(neigs)
     _expected = 7
     assert _received == _expected, f"Expected {_expected} neighbors, got {_received}"
 
-    neigs = neighborhood.get_neighbors("BMA", 2, "at")
+    neigs = neighborhood.get_neighbors(bma, 2, "at")
     assert isinstance(neigs, set), f"Expected a set but received {type(neigs)}"
 
     _received = len(neigs)
     _expected = 4
     assert _received == _expected, f"Expected {_expected} neighbors, got {_received}"
 
-    _recieved = set(i.id[1] for i in neighborhood.get_neighbors("BMA", 2, "at"))
+    _recieved = set(i.id[1] for i in neighborhood.get_neighbors(bma, 2, "at"))
     _expected = {8, 6, 2, 11}
     _what = "as n=2 neighbors of BMA"
     assert (
