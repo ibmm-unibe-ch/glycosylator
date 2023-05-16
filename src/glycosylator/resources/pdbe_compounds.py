@@ -1,5 +1,94 @@
 """
-Parsers to extract information from the PDBE compound database.
+This module defines a Parser to extract information from the PDBE compound library.
+
+Reading the PDBE Compound Library
+=================================
+
+The PDBE Compound Library is a database of small molecules that are found in PDB structures. It can be downloaded as an mmCIF file. 
+`Glycosylator` provides a parser to extract information from the mmCIF file.
+
+To parse a PDBE Compound Library file, use the `PDBECompounds` class:
+
+.. code-block:: python
+
+    from glycosylator.resources import PDBECompounds
+
+    compounds = PDBECompounds.from_file("path/to/pdbe-compounds.cif")
+
+Because parsing may be an intensive operation, the `PDBECompounds` class implements a `save` method to save the parsed data to a pickle file.
+For future sessions the pre-parsed object can be directly loaded using the `load` method:
+
+.. code-block:: python
+
+    # save an existing PDBECompounds object
+    compounds.save("path/to/pdbe-compounds.pkl")
+    
+    # load a pre-parsed PDBECompounds object
+    compounds = PDBECompounds.load("path/to/pdbe-compounds.pkl")
+
+    
+Working with PDBECompounds
+==========================
+
+The `PDBECompounds` class provides a dictionary-like interface to the compounds in the library. It supports a number of query methods unified within the `get`. 
+Compounds can be obtained from the library from their 3-letter _PDB ID_, their _name_, _chemical formula_, or _SMILES_ or _InChI_ string.
+
+
+.. code-block:: python
+
+    # get a compound by its PDB ID
+    glc = compounds.get("GLC")
+
+    # get a compound by its name
+    glc = compounds.get("alpha d-glucose", by="name")
+
+    # get a compound by its chemical formula
+    glc = compounds.get("C6 H12 O6", by="formula")
+
+    # get a compound by its SMILES string
+    glc = compounds.get("C([C@@H]1[C@H]([C@@H]([C@H](O[C@@H]1O)O)O)O)O", by="smiles")
+
+    # get a compound by its InChI string (note the "InChI=" prefix)
+    # THIS ALSO USES `by="smiles"`!
+    glc = compounds.get("InChI=1S/C6H12O6/c7-1-2-3(8)4(9)5(10)6(11)12-2/h2-11H,1H2/t2-,3-,4+,5-,6-/m1/s1", by="smiles")
+
+    
+By default the `get` method will create a `Molecule` object from the compound. Other output formats such as `biopython.Structure` or simple `dict` are also supported and can be specified using the `return_type` argument.
+If multiple compounds match a query, they are returned as a list (unless `return_type` is a dictionary, in which they are kept as a dictionary).    
+
+
+.. code-block:: python
+
+    # get a compound as a `biopython.Structure` object
+    glc = compounds.get("GLC", return_type="structure")
+
+    # get a compound as a `dict`
+    glc = compounds.get("GLC", return_type="dict")
+
+    
+
+Setting default PDBECompounds
+=============================
+
+_Glycosylator_  loads a default PDBECompounds object for convenience. The default instance can be accessed using the `get_default_compounds` function. A custom instance can be set as the default using the `set_default_compounds` function.
+
+.. code-block:: python
+
+    import glycosylator as gl
+
+    # get the default PDBECompounds instance
+    compounds = gl.get_default_compounds()
+
+    # ... do something with the compounds
+
+    # set a custom PDBECompounds instance as the default
+    gl.set_default_compounds(compounds)
+
+.. warning::
+
+    The `set_default_compounds` has an additional keyword argument `overwrite` which is set to `False` by default. If set to `True` the default instance
+    is permanently overwritten by the new one and will be used automatically by all future sessions. This is not recommended as it may lead to unexpected behaviour.
+    
 """
 
 import warnings
