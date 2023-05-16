@@ -66,6 +66,7 @@ class AtomGraph(BaseGraph):
             infer_bonds,
             max_bond_length,
             restrict_residues,
+            _topology,
         )
         return cls(structure.id, bonds)
 
@@ -160,6 +161,7 @@ class AtomGraph(BaseGraph):
         infer_bonds: bool,
         max_bond_length: float,
         restrict_residues: bool,
+        _topology=None,
     ) -> list:
         """
         Make bond tuples from a structure
@@ -175,7 +177,7 @@ class AtomGraph(BaseGraph):
             )
 
         if apply_standard_bonds:
-            bonds.extend(struct.apply_standard_bonds(structure))
+            bonds.extend(struct.apply_standard_bonds(structure, _topology))
 
         if infer_residue_connections:
             bonds.extend(struct.infer_residue_connections(structure, max_bond_length))
