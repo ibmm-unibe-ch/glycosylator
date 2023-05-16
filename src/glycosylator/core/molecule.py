@@ -219,7 +219,7 @@ Adjusting labelling
 Single-residue molecules that were loaded from a PDB file may not use the same atom labelling as the `PDBE` and `CHARMM` databases.
 In order to quickly adjust the labelling, a method `autolabel` exists. However, it is restricted to default-conformation residues at the moment
 as it uses a structure overlay to determine the correct labelling. If your molecules follow another labelling scheme it may be more efficient to simply
-define your own linkeage recipies or patches (see the documentation of `linkeages`).
+define your own linkage recipies or patches (see the documentation of `linkages`).
 
 .. code-block:: python
 
@@ -281,17 +281,17 @@ to form a homo-polymer.
     glc = Molecule.from_compound("GLC")
 
     # create cellulose from glucose
-    # using a 1-4 beta-beta glycosidic linkeage
+    # using a 1-4 beta-beta glycosidic linkage
     glc.repeat(10, "14bb")
 
     # Now we have a cellulose of 10 glucoses
 
 In the above example we used the `repeat` method explicitly, but we could also achieve the same with the short-hand `*=`. For this to work, we need to specify 
-the linkeage type beforehand. We do this by setting the `patch` attribute before using any operator.
+the linkage type beforehand. We do this by setting the `patch` attribute before using any operator.
 
 .. code-block:: python
 
-    # specify the "default" linkeage type for connecting 
+    # specify the "default" linkage type for connecting 
     # other molecules to this glucose
     glc.patch = "14bb"
 
@@ -360,14 +360,14 @@ Of course, if there is a `+` operator there should also be a `+=` operator, whic
 Setting default Modifiers
 -------------------------
 
-So far, we have always worked with a 1-4 beta-beta glycosidic linkeage, which we apparently could select using the string `"14bb"`. 
-But what if we want to use a different linkeage type? For example, a 1-4 alpha-beta glycosidic linkeage?  You of course noticed, 
-that `attach` and `repeat` accept an argument `recipe_or_patch` which allows you to specify the linkeage type, and that if you leave it blank
-the default linkeage type is used. But how do we set the default linkeage type?
+So far, we have always worked with a 1-4 beta-beta glycosidic linkage, which we apparently could select using the string `"14bb"`. 
+But what if we want to use a different linkage type? For example, a 1-4 alpha-beta glycosidic linkage?  You of course noticed, 
+that `attach` and `repeat` accept an argument `recipe_or_patch` which allows you to specify the linkage type, and that if you leave it blank
+the default linkage type is used. But how do we set the default linkage type?
 
-Let's first check what linkeage types are available by default anyway. Have you noticed an argument named `_topology`
-at the end of the `attach` or `repeat` methods? The `topology` refers to the underlying _CHARMM_ topology which hosts the linkeage type information.
-By default a topology is already loaded in _glycosylator_'s framework so it is not necessary for the user to specify anything here, but we can check which linkeage types are available by:
+Let's first check what linkage types are available by default anyway. Have you noticed an argument named `_topology`
+at the end of the `attach` or `repeat` methods? The `topology` refers to the underlying _CHARMM_ topology which hosts the linkage type information.
+By default a topology is already loaded in _glycosylator_'s framework so it is not necessary for the user to specify anything here, but we can check which linkage types are available by:
 
 .. code-block:: python
 
@@ -379,10 +379,10 @@ By default a topology is already loaded in _glycosylator_'s framework so it is n
     print(topology.patches)
 
 
-Any of these linkeages can be referenced by their name, e.g. `"14bb"` or `"14ab"`. 
+Any of these linkages can be referenced by their name, e.g. `"14bb"` or `"14ab"`. 
 
-Wait a second, my desired linkeage is not in the list! What now?! Well, you can always define your own linkeage type by creating either a new `Patch` or a new `Recipe`.
-Check out the documentation on :ref:`linkeages` for more information on how to do this. If you have your desired patch or recipe
+Wait a second, my desired linkage is not in the list! What now?! Well, you can always define your own linkage type by creating either a new `Patch` or a new `Recipe`.
+Check out the documentation on :ref:`linkages` for more information on how to do this. If you have your desired patch or recipe
 ready to go, set it as the default patch or recipe by:
 
 .. code-block:: python
@@ -398,7 +398,7 @@ ready to go, set it as the default patch or recipe by:
     my_molecule % my_patch_or_recipe # <- the modulo operator assignes the "modifier" to the molecule
 
 
-Now any call to `attach`, `repeat`, or any of its operator proxies will use your defined linkeage by default.
+Now any call to `attach`, `repeat`, or any of its operator proxies will use your defined linkage by default.
 
 Setting the default Residue for attachment
 ------------------------------------------

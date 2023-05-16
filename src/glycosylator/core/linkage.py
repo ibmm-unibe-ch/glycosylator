@@ -1,11 +1,11 @@
 """
-This module contains classes for default linkeage instructions to attach molecules together and to scaffolds.
+This module contains classes for default linkage instructions to attach molecules together and to scaffolds.
 
 
-Types of Linkeages 
+Types of Linkages 
 ==================
 
-There are two kinds of linkeages: `Patch` and `Recipe`. They specify in essence the same information, namely:
+There are two kinds of linkages: `Patch` and `Recipe`. They specify in essence the same information, namely:
 - which atoms are to be connected (one bond may be created)
 - which atoms are to be deleted in the process from the two connecting structures
 
@@ -18,10 +18,10 @@ newly formed bond in order to find a geometry that is energetically favorable.
 Therefore, the `Patch` approach is preferred, but it is not always possible to use it - especially if it is not possible to establish 
 the internal coordinates of bond atom neighborhood _a priori_ with confidence. 
 
-Creating Linkeages
+Creating Linkages
 ==================
 
-Linkeages are created by instantiating the `Patch` or `Recipe` classes and then adding the desired instructions to them.
+Linkages are created by instantiating the `Patch` or `Recipe` classes and then adding the desired instructions to them.
 They share most of their methods for adding instructions, namely:
 
 - `add_bond`: adds a bond between two atoms
@@ -92,3 +92,17 @@ class Recipe(abstract.AbstractRecipe):
     """
 
     pass
+
+
+def write_json(patch_or_recipe, filename: str):
+    """
+    Write a `Patch` or `Recipe` to a JSON file.
+
+    Parameters
+    ----------
+    patch_or_recipe : Patch or Recipe
+        The patch or recipe to write to file
+    filename : str
+        The filename to write to
+    """
+    raise NotImplementedError
