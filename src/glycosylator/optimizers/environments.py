@@ -414,7 +414,7 @@ class SphereRotatron(MultiBondRotatron):
         return reward
 
 
-class DiscreteRotatron:
+class DiscreteRotatron(MultiBondRotatron):
     """
     This environment uses a discrete sample space for rotational angles instead of a continuous one.
     This helps reduce the complexity of the environment and makes it easier to learn.
@@ -423,26 +423,32 @@ class DiscreteRotatron:
     ----------
     graph
         A detailed ResidueGraph object
-    d: int
-        The angle discretization to use, given in degrees.
-        1 degree by default, meaning 360 possible actions between -180 and +180 degrees.
     rotatable_edges
         A list of rotatable edges. If None, all non-locked edges from the graph are used.
     mask_same_residues: bool
         Whether to mask the nodes of the same residue from the reward computation.
+    d: int
+        The angle discretization to use, given in degrees.
+        1 degree by default, meaning 360 possible actions between -180 and +180 degrees.
     """
 
     def __init__(
-        self, graph, d: int = 1, rotatable_edges=None, mask_same_residues: bool = True
+        self,
+        graph,
+        rotatable_edges=None,
+        mask_same_residues: bool = True,
+        d: int = 1,
     ) -> None:
         super().__init__(graph, rotatable_edges, mask_same_residues)
 
         d = np.radians(d)
         self._angles = np.arange(-np.pi, np.pi, d)
-        self.sample_space = gym.spaces.MultiDiscrete([d for _ in self.rotatable_edges])
+        self.action_space = gym.spaces.MultiDiscrete(
+            [len(self._angles) for _ in self.rotatable_edges]
+        )
 
     def step(self, action):
-        angles = self._angles[action]
+        angles = self._angles[action.astype(int)]
         return super().step(angles)
 
 
