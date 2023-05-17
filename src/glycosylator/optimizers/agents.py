@@ -13,7 +13,9 @@ import scipy.optimize as opt
 from alive_progress import alive_bar
 
 
-def scipy_optimize(env, steps: int = 1e5, method: str = "L-BFGS-B", **kws):
+def scipy_optimize(
+    env, steps: int = 1e5, method: str = "L-BFGS-B", bounds=(-np.pi, np.pi), **kws
+):
     """
     Optimize a Rotatron environment through
     a simple scipy optimization
@@ -27,6 +29,8 @@ def scipy_optimize(env, steps: int = 1e5, method: str = "L-BFGS-B", **kws):
     method : str, optional
         The optimizer to use, by default "L-BFGS-B".
         This can be any optimizer from scipy.optimize.minimize
+    bounds : tuple, optional
+        The bounds to use for solutions as a tuple of size 2 with a minimal and maximal angle to allow.
     kws : dict, optional
         Keyword arguments to pass as options to the optimizer
 
@@ -34,6 +38,8 @@ def scipy_optimize(env, steps: int = 1e5, method: str = "L-BFGS-B", **kws):
     -------
     np.ndarray
         The optimized action
+    float
+        The reward for the optimized action
     """
 
     x0 = env.action_space.sample()
@@ -42,14 +48,15 @@ def scipy_optimize(env, steps: int = 1e5, method: str = "L-BFGS-B", **kws):
         state, reward, *_ = env.step(x)
         return -reward
 
+    if bounds:
+        bounds = opt.Bounds(*bounds)
+
     kws["maxiter"] = int(steps)
-    result = opt.minimize(
-        loss_fn, x0, method=method, bounds=opt.Bounds(-np.pi, np.pi), options=kws
-    )
-    return result.x
+    result = opt.minimize(loss_fn, x0, method=method, bounds=bounds, options=kws)
+    return result.x, -result.fun
 
 
-def swarm_optimize(env, steps: int = 30, n: int = 10, **kws):
+def swarm_optimize(env, steps: int = 30, n: int = 10, bounds=(-np.pi, np.pi), **kws):
     """
     Optimize a Rotatron environment through
     a pyswarms swarm optimization
@@ -62,18 +69,23 @@ def swarm_optimize(env, steps: int = 30, n: int = 10, **kws):
         The number of steps to take, by default 1000
     n : int, optional
         The number of particles to use, by default 10
+    bounds : tuple, optional
+        The bounds to use for solutions as a tuple of size 2 with a minimal and maximal angle to allow.
     kws : dict, optional
         Keyword arguments to pass as options to the optimizer
 
     Returns
     -------
-    tuple
-        The optimized action and the reward
+    np.ndarray
+        The optimized action
+    float
+        The reward for the optimized action
     """
 
     x0 = env.action_space.sample()
 
-    bounds = (np.full(x0.shape, -np.pi), np.full(x0.shape, np.pi))
+    if bounds:
+        bounds = (np.full(x0.shape, bounds[0]), np.full(x0.shape, bounds[1]))
 
     def loss_fn(sol):
         costs = np.zeros(n)
