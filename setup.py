@@ -37,6 +37,7 @@ setuptools.setup(
         "plotly",
         "alive_progress",
         "pyswarms",
+        "gym",
         # "openbabel",
         # "mdtraj",
         # "prody",
