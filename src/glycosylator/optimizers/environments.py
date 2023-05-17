@@ -410,31 +410,63 @@ class SphereRotatron(MultiBondRotatron):
 
         # Compute the inter-residue distances
         dists = cdist(coords, coords) - self._residue_radii_sums
-        reward = -np.sum(1 / dists**2)
+        reward = -np.sum((1 / dists) ** 4)
         return reward
 
 
-if __name__ == "__main__":
-    import glycosylator as gl
-    import jax.numpy as np
-    import jax
+class DiscreteRotatron:
+    """
+    This environment uses a discrete sample space for rotational angles instead of a continuous one.
+    This helps reduce the complexity of the environment and makes it easier to learn.
 
-    mol = gl.Molecule.load("/Users/noahhk/GIT/glycosylator/test.mol")
+    Parameters
+    ----------
+    graph
+        A detailed ResidueGraph object
+    d: int
+        The angle discretization to use, given in degrees.
+        1 degree by default, meaning 360 possible actions between -180 and +180 degrees.
+    rotatable_edges
+        A list of rotatable edges. If None, all non-locked edges from the graph are used.
+    mask_same_residues: bool
+        Whether to mask the nodes of the same residue from the reward computation.
+    """
 
-    connections = sorted(mol.get_residue_connections())
-    graph = mol.make_residue_graph()
-    graph.make_detailed(True, True, f=0.8)
+    def __init__(
+        self, graph, d: int = 1, rotatable_edges=None, mask_same_residues: bool = True
+    ) -> None:
+        super().__init__(graph, rotatable_edges, mask_same_residues)
 
-    env = MultiBondRotatron(graph, connections)
+        d = np.radians(d)
+        self._angles = np.arange(-np.pi, np.pi, d)
+        self.sample_space = gym.spaces.MultiDiscrete([d for _ in self.rotatable_edges])
 
-    reward_f = lambda x: env.step(x)[1]
+    def step(self, action):
+        angles = self._angles[action]
+        return super().step(angles)
 
-    def jax_reward(x_jax):
-        reward = jax.pure_callback(
-            reward_f, jax.core.ShapedArray((1, 1), np.float32), x_jax
-        )
-        return np.array(reward)
 
-    grad_reward = grad(jax_reward)
+# if __name__ == "__main__":
+#     import glycosylator as gl
+#     import jax.numpy as np
+#     import jax
 
-    grad_reward(np.array(env.action_space.sample()))
+#     mol = gl.Molecule.load("/Users/noahhk/GIT/glycosylator/test.mol")
+
+#     connections = sorted(mol.get_residue_connections())
+#     graph = mol.make_residue_graph()
+#     graph.make_detailed(True, True, f=0.8)
+
+#     env = MultiBondRotatron(graph, connections)
+
+#     reward_f = lambda x: env.step(x)[1]
+
+#     def jax_reward(x_jax):
+#         reward = jax.pure_callback(
+#             reward_f, jax.core.ShapedArray((1, 1), np.float32), x_jax
+#         )
+#         return np.array(reward)
+
+#     grad_reward = grad(jax_reward)
+
+#     grad_reward(np.array(env.action_space.sample()))
