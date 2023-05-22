@@ -138,7 +138,6 @@ __to_delete__ = {
 __to_ignore__ = [
     "_pdbx_chem_comp_audit",
     "_pdbx_chem_comp_feature",
-    "_pdbx_chem_comp_identifier",
 ]
 
 
@@ -476,6 +475,9 @@ class PDBECompounds:
             synonyms = value.get("_pdbx_chem_comp_synonyms", None)
             if synonyms:
                 comp["names"].extend(synonyms["name"])
+            identifiers = value.get("_pdbx_chem_comp_identifier", None)
+            if identifiers:
+                comp["names"].extend(identifiers["identifier"])
             comp["names"] = set(i.lower() for i in comp["names"])
 
             comp["formula"] = comp["formula"].replace(" ", "")
