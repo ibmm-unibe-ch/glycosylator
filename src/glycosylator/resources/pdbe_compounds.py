@@ -514,6 +514,7 @@ class PDBECompounds:
                     ),
                     "elements": atoms["type_symbol"],
                     "charges": np.array(atoms["charge"], dtype=float),
+                    "residue": atoms["pdbx_component_comp_id"],
                 },
                 "bonds": [
                     (a, b) for a, b in zip(bonds["atom_id_1"], bonds["atom_id_2"])
@@ -655,6 +656,13 @@ class PDBECompounds:
 
     def __getitem__(self, key):
         return self._compounds[key], self._pdb[key]
+
+    def __len__(self):
+        return len(self._compounds)
+
+    def __iter__(self):
+        for key in self._compounds:
+            yield key, self._compounds[key], self._pdb[key]
 
 
 if __name__ == "__main__":
