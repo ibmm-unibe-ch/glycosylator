@@ -906,7 +906,7 @@ class BaseEntity:
 
     def get_bonds(
         self,
-        atom1: Union[int, str, tuple, bio.Atom.Atom, bio.Residue.Residue],
+        atom1: Union[int, str, tuple, bio.Atom.Atom, bio.Residue.Residue] = None,
         atom2: Union[int, str, tuple, bio.Atom.Atom] = None,
         either_way: bool = True,
         residue_internal: bool = True,
@@ -933,8 +933,11 @@ class BaseEntity:
         Returns
         -------
         bond : list
-            The bond(s)
+            The bond(s). If no input is given, all bonds are returned.
         """
+        if atom1 is None and atom2 is None:
+            return self.bonds
+
         if isinstance(atom1, bio.Residue.Residue):
             if residue_internal:
                 return [
@@ -1530,6 +1533,14 @@ class BaseEntity:
         if _compounds is None:
             _compounds = utils.defaults.get_default_compounds()
         _compounds.relabel_atoms(self._base_struct)
+
+    def relabel_hydrogens(self):
+        """
+        Relabel hydrogen atoms in the structure to match the standard labelling according
+        to the CHARMM force field. This is useful if you want to use some pre-generated
+        PDB file that may have used a different labelling scheme for atoms.
+        """
+        structural.relabel_hydrogens(self)
 
     def compute_angle(
         self,
