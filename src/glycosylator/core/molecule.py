@@ -455,11 +455,13 @@ from copy import deepcopy
 
 from typing import Union
 
+import numpy as np
 import Bio.PDB as bio
 
 import glycosylator.core.entity as entity
 import glycosylator.utils as utils
 import glycosylator.structural as structural
+import glycosylator.resources.pubchem as pubchem
 
 
 class Molecule(entity.BaseEntity):
@@ -505,7 +507,7 @@ class Molecule(entity.BaseEntity):
         self._root_atom = root_atom
 
     @classmethod
-    def empty(cls, id: str = None):
+    def empty(cls, id: str = None) -> "Molecule":
         """
         Create an empty Molecule object
 
@@ -513,6 +515,11 @@ class Molecule(entity.BaseEntity):
         ----------
         id : str
             The id of the Molecule. By default an id is inferred from the filename.
+
+        Returns
+        -------
+        Molecule
+            An empty Molecule object
         """
         structure = structural.make_empty_structure(id)
         return cls(structure)
@@ -525,7 +532,7 @@ class Molecule(entity.BaseEntity):
         id: str = None,
         model: int = 0,
         chain: str = None,
-    ):
+    ) -> "Molecule":
         """
         Read a Molecule from a PDB file
 
@@ -542,6 +549,11 @@ class Molecule(entity.BaseEntity):
             valid identifier for a model in the structure, such as an integer or string.
         chain : str
             The chain to use from the structure. Defaults to the first chain in the structure.
+
+        Returns
+        -------
+        Molecule
+            The Molecule object
         """
         if id is None:
             id = utils.filename_to_id(filename)
@@ -586,7 +598,7 @@ class Molecule(entity.BaseEntity):
         id: str = None,
         root_atom: Union[str, int] = None,
         add_hydrogens: bool = True,
-    ):
+    ) -> "Molecule":
         """
         Read a Molecule from a SMILES string
 
@@ -600,10 +612,61 @@ class Molecule(entity.BaseEntity):
             The id or the serial number of the root atom (optional)
         add_hydrogens : bool
             Whether to add hydrogens to the molecule
+
+        Returns
+        -------
+        Molecule
+            The Molecule object
         """
         struct = structural.read_smiles(smiles, add_hydrogens)
         struct.id = id if id else smiles
         return cls(struct, root_atom)
+
+    @classmethod
+    def from_pubchem(
+        cls,
+        query: str,
+        root_atom: Union[str, int] = None,
+        by: str = "name",
+        idx: int = 0,
+    ) -> "Molecule":
+        """
+        Create a Molecule from PubChem
+
+        Note
+        ----
+        PubChem follows a different atom labelling scheme than the CHARMM force field!
+        This means that atom names may not match the names required by the default patches that are
+        integrated in glycosylator. It is advisable to run `autolabel` or `relabel_hydrogens` on the molecule.
+        Naturally, custom patches or recipies working with adjusted atom names will always work.
+
+        Parameters
+        ----------
+        query : str
+            The query to search for in the PubChem database
+        root_atom : str or int
+            The id or the serial number of the root atom (optional)
+        by : str
+            The method to search by. This can be any of the following:
+            - cid
+            - name
+            - smiles
+            - sdf
+            - inchi
+            - inchikey
+            - formula
+        idx : int
+            The index of the result to use if multiple are found. By default, the first result is used.
+
+        Returns
+        -------
+        Molecule
+            The Molecule object
+        """
+        _compound_2d, _compound_3d = pubchem.query(query, by=by, idx=idx)
+        new = _molecule_from_pubchem(_compound_2d.iupac_name, _compound_3d)
+        new.set_root(root_atom)
+        return new
 
     def get_residue_connections(self, triplet: bool = True, direct_by: str = "resid"):
         """
@@ -959,6 +1022,55 @@ class Molecule(entity.BaseEntity):
 
     def __repr__(self):
         return f"Molecule({self.id})"
+
+
+def _molecule_from_pubchem(id, comp):
+    """
+    Convert a PubChem compound to a Molecule.
+
+    Parameters
+    ----------
+    id : str
+        The id of the molecule
+    comp : pcp.Compound
+        The PubChem compound
+
+    Returns
+    -------
+    Molecule
+        The molecule
+    """
+    bonds = comp.bonds
+    structure = bio.Structure.Structure(id)
+    model = bio.Model.Model(0)
+    structure.add(model)
+    chain = bio.Chain.Chain("A")
+    model.add(chain)
+    residue = bio.Residue.Residue((" ", 1, " "), "UNL", 1)
+    chain.add(residue)
+
+    element_counts = {}
+    for atom in comp.atoms:
+        element = atom.element
+        element_counts[element] = element_counts.get(element, 0) + 1
+
+        _atom = bio.Atom.Atom(
+            f"{element}{element_counts[element]}",
+            np.array((atom.x, atom.y, atom.z)),
+            1.0,
+            1.0,
+            None,
+            element,
+            atom.aid,
+            element=element,
+        )
+        residue.add(_atom)
+
+    mol = Molecule(structure)
+    for bond in bonds:
+        mol.add_bond(bond.aid1, bond.aid2)
+
+    return mol
 
 
 if __name__ == "__main__":

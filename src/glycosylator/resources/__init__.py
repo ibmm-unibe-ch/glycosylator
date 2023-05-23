@@ -6,7 +6,13 @@ PDBe Compounds
 
 The Protein Data Bank in Europe (PDBe) provides a database of small molecules that are found in PDB structures.
 They are available via the `PDBe Component Library <https://www.ebi.ac.uk/pdbe/pdb-component-library/>`. _Glycosylator_
-integrates a subset of the database directly for Molecule creation.
+integrates a subset of the database directly for Molecule creation. Since this database is integrated directly in glycosylator it can be used offline.
+
+PubChem
+=======
+
+PubChem maintains an extensive database of small molecules. _Glycosylator_ integrates the PubChem API for Molecule creation.
+Since this database is queried online and not integrated directly in glycosylator it requires an internet connection.
 
 CHARMM
 ======
@@ -23,9 +29,9 @@ They are used to identify potential glycosylation sites in proteins. _Glycosylat
 that can be used to identify potential glycosylation sites in proteins.
 """
 import glycosylator.resources.pdbe_compounds as pdbe_compounds
+import glycosylator.resources.pubchem as pubchem
 import glycosylator.resources.sequons as sequons
 import glycosylator.resources.charmm as charmm
-
 
 PDBECompounds = pdbe_compounds.PDBECompounds
 CHARMMTopology = charmm.CHARMMTopology
