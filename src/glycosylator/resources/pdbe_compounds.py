@@ -540,13 +540,7 @@ class PDBECompounds:
         struct = self._make_structure(compound)
         mol = molecule.Molecule(struct)
         pdb = self._pdb[compound["id"]]
-        atoms = pdb["atoms"]
         for bond in pdb["bonds"]:
-            a, b = bond
-            _a = atoms["full_ids"].index(a)
-            _b = atoms["full_ids"].index(b)
-            a = atoms["serials"][_a]
-            b = atoms["serials"][_b]
             mol.add_bond(*bond)
 
         return mol
@@ -597,11 +591,12 @@ class PDBECompounds:
         atoms = pdb["atoms"]
         for i in range(len(atoms["ids"])):
             atom = self._make_atom(
-                atoms["ids"][i],
+                # SWITCHED FULL_ID AND ID<
+                atoms["full_ids"][i],
                 atoms["serials"][i],
                 atoms["coords"][i],
                 atoms["elements"][i],
-                atoms["full_ids"][i],
+                atoms["ids"][i],
                 atoms["charges"][i],
             )
             residue.add(atom)
