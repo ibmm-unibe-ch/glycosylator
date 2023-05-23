@@ -500,6 +500,7 @@ class PDBECompounds:
 
             pdb = {
                 "atoms": {
+                    "full_ids": atoms["atom_id"],
                     "ids": atoms["pdbx_component_atom_id"],
                     "serials": np.array(atoms["pdbx_ordinal"], dtype=int),
                     "coords": np.array(
@@ -539,7 +540,13 @@ class PDBECompounds:
         struct = self._make_structure(compound)
         mol = molecule.Molecule(struct)
         pdb = self._pdb[compound["id"]]
+        atoms = pdb["atoms"]
         for bond in pdb["bonds"]:
+            a, b = bond
+            _a = atoms["full_ids"].index(a)
+            _b = atoms["full_ids"].index(b)
+            a = atoms["serials"][_a]
+            b = atoms["serials"][_b]
             mol.add_bond(*bond)
 
         return mol
@@ -594,6 +601,7 @@ class PDBECompounds:
                 atoms["serials"][i],
                 atoms["coords"][i],
                 atoms["elements"][i],
+                atoms["full_ids"][i],
                 atoms["charges"][i],
             )
             residue.add(atom)
@@ -620,7 +628,13 @@ class PDBECompounds:
         return res
 
     def _make_atom(
-        self, id: str, serial: int, coords: np.ndarray, element: str, charge: float
+        self,
+        id: str,
+        serial: int,
+        coords: np.ndarray,
+        element: str,
+        full_id: str,
+        charge: float,
     ) -> "bio.PDB.Atom":
         """
         Make an atom.
@@ -635,7 +649,8 @@ class PDBECompounds:
             The atom coordinates.
         element : str
             The atom element.
-
+        full_id : str
+            The atom full id.
         Returns
         -------
         bio.PDB.Atom
@@ -648,7 +663,7 @@ class PDBECompounds:
             bfactor=0.0,
             occupancy=0.0,
             element=element,
-            fullname=id,
+            fullname=full_id,
             altloc=" ",
             pqr_charge=charge,
         )
