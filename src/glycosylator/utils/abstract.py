@@ -104,6 +104,11 @@ class AbstractEntity:
             id1 = id1.id
         if isinstance(id2, AbstractAtom):
             id2 = id2.id
+
+        # ----------------------------     FUTURE FIX    ----------------------------
+        # The bond.atom1.id assumes that the atom objects actually have an `id` attribute.
+        # If only strings were provided as atoms then this will fail.
+        # ----------------------------     FUTURE FIX    ----------------------------
         for bond in self.bonds:
             if bond.atom1.id == id1 and bond.atom2.id == id2:
                 return bond
