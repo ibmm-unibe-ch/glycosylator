@@ -10,7 +10,6 @@ import numpy as np
 
 
 def test_from_cif():
-
     comps = pdbe_compounds.PDBECompounds.from_file(base.PDBE_TEST_FILE)
 
     assert comps is not None, "Could not load the PDBe compounds from a CIF file."
@@ -18,7 +17,6 @@ def test_from_cif():
 
 
 def test_getting_compounds():
-
     comps = pdbe_compounds.PDBECompounds.from_file(base.PDBE_TEST_FILE)
 
     man = comps.get("D-Mannose", by="name")
@@ -38,7 +36,6 @@ def test_getting_compounds():
 
 
 def test_compound_is_same():
-
     comps = pdbe_compounds.PDBECompounds.from_file(base.PDBE_TEST_FILE)
 
     man = comps.get("D-Mannose", by="name")
@@ -57,7 +54,6 @@ def test_compound_is_same():
 
 
 def test_compound_getting_types():
-
     comps = pdbe_compounds.PDBECompounds.from_file(base.PDBE_TEST_FILE)
 
     man_mol = comps.get("D-Mannose", by="name")
@@ -92,7 +88,6 @@ def test_compound_getting_types():
 
 
 def test_relabel():
-
     scrambled = gl.Molecule.from_compound("MAN")
 
     # randomly rotate the molecule
@@ -133,11 +128,9 @@ def test_relabel():
 
 
 def test_relabel_2():
-
     comps = gl.utils.defaults.get_default_compounds()
 
     for i in ("MAN", "GLC", "BMA", "FUC"):
-
         scrambled = gl.Molecule.from_compound(i)
 
         # relabel to elementwise order without specific connectivity
@@ -175,3 +168,27 @@ def test_relabel_2():
 
         # v = gl.utils.visual.MoleculeViewer3D(scrambled)
         # v.show()
+
+
+def test_get_3BU():
+    comps = gl.get_default_compounds()
+    _dict = comps.get("3BU", return_type="dict")
+    assert isinstance(_dict, dict)
+    mol = comps.get("3BU", return_type="molecule")
+    assert isinstance(mol, gl.Molecule)
+
+
+def test_get_all_molecule():
+    comps = gl.get_default_compounds()
+    for comp, d_data, d_pdb in comps:
+        try:
+            assert isinstance(comp, str)
+            assert isinstance(d_data, dict)
+            assert isinstance(d_pdb, dict)
+            mol = comps.get(comp)
+            assert isinstance(mol, gl.Molecule)
+            assert sum(1 for i in mol.get_atoms()) == len(d_pdb["atoms"]["ids"])
+            assert sum(1 for i in mol.get_bonds()) == len(d_pdb["bonds"])
+        except StopIteration as e:
+            w = Warning(f"Failed for {comp}: {e}")
+            print(w)
