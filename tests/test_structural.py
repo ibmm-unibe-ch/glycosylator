@@ -8,6 +8,7 @@ import pytest
 import glycosylator as gl
 import base
 import Bio.PDB as bio
+import re
 
 MARGIN = 1.5 * 1e-2
 MANNOSE = bio.PDBParser().get_structure("MAN", base.MANNOSE)
@@ -1158,3 +1159,16 @@ def test_patch_and_stich():
     for atom in final.atoms:
         assert atom.serial_number not in _seen_indices
         _seen_indices.add(atom.serial_number)
+
+
+def test_relabel_Hydrogens():
+    ref = gl.Molecule.from_compound("GLC")
+    mol = gl.Molecule.from_pubchem("D-glucose")
+
+    gl.structural.relabel_hydrogrens(mol)
+
+    hydrogens = (a for a in mol.get_atoms() if a.element == "H")
+    for h in hydrogens:
+        assert h.id.startswith("H")
+        assert h.id[1].isdigit() or h.id[1] in ("C", "O", "N", "S")
+        assert h.id[-1].isdigit()

@@ -38,6 +38,60 @@ element_connectivity = {
 }
 
 
+def relabel_hydrogrens(molecule):
+    """
+    Relabel hydrogen atoms in a structure to match the CHARMM naming scheme.
+
+    Parameters
+    ----------
+    molecule : glycosylator.structural.base.Molecule
+        The molecule that holds the atoms to be relabeled.
+        This molecule needs to have bonds assigned or computed.
+
+    Returns
+    -------
+    molecule : glycosylator.structural.base.Molecule
+        The molecule with relabeled hydrogen atoms.
+    """
+
+    _neighbors_H_dict = {}
+    for atom in molecule.get_atoms():
+        if not atom.element == "H":
+            continue
+
+        _neighbors = molecule.get_neighbors(atom)
+        if len(_neighbors) != 1:
+            Warning(
+                f"Atom {atom} (full_id: {atom.full_id}) has {len(_neighbors)} neighbors, but should have 1!"
+            )
+            continue
+
+        _neighbor = _neighbors.pop()
+        _neighbors_H_dict.setdefault(_neighbor, []).append(atom)
+
+    # -------------------------   IMPORTANT   -------------------------
+    # The code below assumes that we are only dealing with default
+    # organic molecules whose atoms have single letter element symbols.
+    # -------------------------   IMPORTANT   -------------------------
+
+    for _neighbor, hydrogens in _neighbors_H_dict.items():
+        if len(hydrogens) == 1:
+            if _neighbor.element == "C":
+                _n = _neighbor.id[1:]
+            else:
+                _n = _neighbor.id
+            hydrogens[0].id = f"H{_n}"
+        else:
+            for i, hydrogen in enumerate(hydrogens):
+                if _neighbor.element == "C":
+                    _n = _neighbor.id[1:]
+                else:
+                    _n = _neighbor.id
+                hydrogen.id = f"H{_n}{i+1}"
+
+    return molecule
+
+
 def compute_residue_radius(residue):
     """
     Compute the radius of a residue by computing the distance between its center of mass
@@ -265,6 +319,31 @@ def infer_bonds(structure, bond_length: float = None, restrict_residues: bool = 
     ]
     bonds = _prune_H_triplets(bonds)
     return bonds
+
+
+def identify_glycans(structure):
+    """
+    Identify glycans in a structure.
+
+    Parameters
+    ----------
+    structure : Bio.PDB.Structure.Structure
+        The structure to identify glycans in. This can be any of the following objects which host Residues:
+        - `Bio.PDB.Structure`
+        - `Bio.PDB.Model`
+        - `Bio.PDB.Chain`
+        - `Bio.PDB.Residue`
+
+    Returns
+    -------
+    glycans : list
+        A list of glycans, each represented by a list of `Bio.PDB.Residue` objects.
+    """
+    glycans = []
+    for residue in structure.get_residues():
+        if residue.get_resname() in defaults.GLYCAN_RESIDUES:
+            glycans.append(residue)
+    return glycans
 
 
 def apply_standard_bonds(structure, _topology=None):
