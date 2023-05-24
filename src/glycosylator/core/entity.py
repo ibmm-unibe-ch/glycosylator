@@ -388,6 +388,12 @@ class BaseEntity:
         else:
             return utils.visual.MoleculeViewer3D(self)
 
+    def copy(self):
+        """
+        Create a deepcopy of the molecule/scaffold
+        """
+        return deepcopy(self)
+
     def get_attach_residue(self):
         """
         Get the residue that is used for attaching other molecules to this one.
@@ -1217,6 +1223,20 @@ class BaseEntity:
             self._bonds.append((atom1, atom2))
         if not self._AtomGraph.has_edge(atom1, atom2):
             self._AtomGraph.add_edge(atom1, atom2)
+
+    def add_bonds(self, *bonds):
+        """
+        Add multiple bonds at once
+
+        Parameters
+        ----------
+        bonds
+            The bonds to add, each bond is a tuple of two atoms.
+            Each atom may be specified directly (biopython object)
+            or by providing the serial number, the full_id or the id of the atoms.
+        """
+        for bond in bonds:
+            self.add_bond(*bond)
 
     def remove_bond(
         self,
