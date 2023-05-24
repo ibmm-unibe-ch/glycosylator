@@ -19,6 +19,9 @@ from glycosylator.utils import (
     set_default_compounds,
 )
 
+has_compound = resources.has_compound
+get_compound = resources.get_compound
+
 __all__ = [
     # Drawer,
     # Glycosylator,
@@ -35,4 +38,8 @@ __all__ = [
     get_default_topology,
     set_default_topology,
     set_default_parameters,
+    get_default_compounds,
+    set_default_compounds,
+    has_compound,
+    get_compound,
 ]

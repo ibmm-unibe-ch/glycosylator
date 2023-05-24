@@ -99,6 +99,7 @@ import pickle
 import Bio.PDB as bio
 from Bio import SVDSuperimposer
 
+import glycosylator.utils.defaults as defaults
 import glycosylator.utils.auxiliary as aux
 import glycosylator.core.molecule as molecule
 
@@ -140,6 +141,77 @@ __to_ignore__ = [
     "_pdbx_chem_comp_feature",
 ]
 
+__needs_to_have__ = set(
+    (
+        "_chem_comp",
+        "_pdbx_chem_comp_descriptor",
+        "_pdbx_chem_comp_identifier",
+        "_chem_comp_atom",
+        "_chem_comp_bond",
+    )
+)
+
+__search_by__ = ("id", "name", "formula", "smiles")
+
+
+def has_compound(compound: str, search_by: str = None) -> bool:
+    """
+    Checks if a given compound is available in the currently loaded default
+    PDBECompounds instance.
+
+    Parameters
+    ----------
+    compound : str
+        The compound to check.
+
+    search_by : str, optional
+        The type of search to perform. One of `id`, `name`, `formula`, `smiles` (includes `inchi`).
+        By default, all search types are used.
+    """
+    if search_by is not None:
+        return defaults.get_default_compounds().has_residue(compound, by=search_by)
+
+    for by in __search_by__:
+        if defaults.get_default_compounds().has_residue(compound, by=by):
+            return True
+
+
+def get_compound(
+    compound: str, search_by: str = None, return_type: str = "molecule"
+) -> molecule.Molecule:
+    """
+    Get a compound from the currently loaded default PDBECompounds instance.
+
+    Parameters
+    ----------
+    compound : str
+        The compound to get.
+
+    search_by : str, optional
+        The type of search to perform. One of `id`, `name`, `formula`, `smiles` (includes `inchi`).
+        By default, all search types are used.
+
+    return_type : str, optional
+        The type of object to return. One of `molecule` (a glycosylator Molecule), `structure` (a biopython structure only, does not include connectivity), `dict` (the compound data and coordinate dictionaries).
+        Defaults to `molecule`.
+
+    Returns
+    -------
+    molecule.Molecule
+        The molecule object.
+    """
+    if not has_compound(compound, search_by=search_by):
+        raise ValueError(
+            f"Compound {compound} not found in the default PDBECompounds instance."
+        )
+    comps = defaults.get_default_compounds()
+    for by in __search_by__:
+        if comps.has_residue(compound, by=by):
+            comp = comps.get(compound, by=by, return_type=return_type)
+            if return_type == "dict":
+                comp = comp, comps._pdb[comp["id"]]
+            return comp
+
 
 class PDBECompounds:
     """
@@ -177,6 +249,17 @@ class PDBECompounds:
         """
         _dict = mmcif_tools.MMCIF2Dict()
         _dict = _dict.parse(filename, ignoreCategories=__to_ignore__)
+
+        # Make sure all required fields are present
+        _keys = set(_dict.keys())
+        for key in _keys:
+            v = _dict[key]
+            if not all(i in v.keys() for i in __needs_to_have__):
+                del _dict[key]
+                warnings.warn(
+                    f"Compound '{key}' does not have all required fields. It will be ignored."
+                )
+
         new = cls(_dict)
         new._filename = filename
         return new
@@ -480,7 +563,8 @@ class PDBECompounds:
                 comp["names"].extend(identifiers["identifier"])
             comp["names"] = set(i.lower() for i in comp["names"])
 
-            comp["formula"] = comp["formula"].replace(" ", "")
+            if comp["formula"] is not None:
+                comp["formula"] = comp["formula"].replace(" ", "")
 
             self._compounds[key] = comp
 

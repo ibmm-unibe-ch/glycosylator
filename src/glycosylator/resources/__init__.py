@@ -37,3 +37,6 @@ PDBECompounds = pdbe_compounds.PDBECompounds
 CHARMMTopology = charmm.CHARMMTopology
 CHARMMParameters = charmm.CHARMMParameters
 SEQUONS = sequons.SEQUONS
+
+has_compound = pdbe_compounds.has_compound
+get_compound = pdbe_compounds.get_compound
