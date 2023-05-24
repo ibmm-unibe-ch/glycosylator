@@ -88,6 +88,23 @@ def make_molecule(mol: str):
     raise ValueError(f"Could not generate molecule from input: {mol}")
 
 
+def make_scaffold(scaf: str):
+    """
+    Generate a scaffold from an input string. This string can be a PDB id, filename, a SMILES or InChI string, or a IUPAC name or abbreviation.
+    """
+    if isinstance(scaf, bio.Structure.Structure):
+        return scaffold.Scaffold(scaf)
+
+    if not isinstance(scaf, str):
+        raise ValueError("input must be a string")
+
+    try:
+        mol = make_molecule(scaf)
+        return scaffold.Scaffold(mol.structure)
+    except:
+        raise ValueError(f"Could not generate scaffold from input: {scaf}")
+
+
 def polymerize(
     molecule: molecule.Molecule, n: int, patch_or_recipe=None, inplace: bool = False
 ) -> molecule.Molecule:
@@ -115,3 +132,10 @@ def polymerize(
             "No patch or recipe provided and no default is set on the molecule"
         )
     return molecule.repeat(n, patch_or_recipe, inplace=inplace)
+
+
+__all__ = [
+    "read_pdb",
+    "make_molecule",
+    "polymerize",
+]

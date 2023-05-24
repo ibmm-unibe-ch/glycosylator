@@ -22,6 +22,10 @@ from glycosylator.utils import (
 has_compound = resources.has_compound
 get_compound = resources.get_compound
 
+has_patch = resources.has_patch
+get_patch = resources.get_patch
+add_patch = resources.add_patch
+
 __all__ = [
     # Drawer,
     # Glycosylator,
@@ -42,4 +46,7 @@ __all__ = [
     set_default_compounds,
     has_compound,
     get_compound,
+    has_patch,
+    get_patch,
+    add_patch,
 ]
