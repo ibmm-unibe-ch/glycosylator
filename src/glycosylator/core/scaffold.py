@@ -123,6 +123,7 @@ For convenience, the `attach` method accepts a `sequon` argument where a regex p
 
 """
 
+from collections import defaultdict
 from copy import deepcopy
 from typing import Union
 
@@ -149,9 +150,8 @@ class Scaffold(entity.BaseEntity):
         self._excluded_chains = set()
         self._excluded_residues = set()
 
-        self._molecule_residues = set()
+        self._attached_molecules = defaultdict(dict)
         self._internal_residues = set()
-        self._molecule_connections = set()
 
     @property
     def seq(self) -> str:
@@ -172,6 +172,34 @@ class Scaffold(entity.BaseEntity):
             seqs[chain.get_id()] = "".join(ids)
 
         return seqs
+
+    @property
+    def attached_molecules(self) -> dict:
+        """
+        Returns a dictionary of all molecules that have been attached to the scaffold
+        The dictionary contains the ids of molecules as keys and dictionaries of the associated
+        scaffold residues and the molecule's residues and bonds as values.
+
+        Returns
+        -------
+        dict
+            A dictionary of all molecules that have been attached to the scaffold
+        """
+        return self._attached_molecules
+
+    @property
+    def internal_residues(self) -> set:
+        """
+        Returns a set of all residues that have been labelled as "internal" based on
+        Solvent Accessible Surface Area (SASA) calculations. These residues are excluded from the main
+        scaffold structure by default.
+
+        Returns
+        -------
+        set
+            A set of all residues that have been added to the scaffold
+        """
+        return self._internal_residues
 
     def exclude_chain(self, chain: Union[str, bio.Chain.Chain]):
         """
@@ -571,8 +599,11 @@ class Scaffold(entity.BaseEntity):
 
         connections = _mol.infer_residue_connections(triplet=True)
         connections.append(s._anchors)
-        connections = set((i.serial_number, j.serial_number) for i, j in connections)
-        scaffold._molecule_connections.update(connections)  # I THINK WE DON'T NEED THIS
+        scaffold._attached_molecules[_mol.id][scaffold.root_atom.get_parent()] = (
+            _mol.residues,
+            _mol.bonds,
+            connections,
+        )
 
         scaffold.add_residues(*_mol.residues, chain=chain)
         scaffold._bonds.extend(_mol.bonds)
