@@ -71,10 +71,61 @@ import pickle
 import re
 import warnings
 import glycosylator.utils.abstract as _abstract
+import glycosylator.utils.defaults as _defaults
 
 # ===================================================================
 # Base Parser
 # ===================================================================
+
+
+def has_patch(name: str) -> bool:
+    """
+    Check if a patch is defined in the CHARMM topology file.
+
+    Parameters
+    ----------
+    name: str
+        The name of the patch
+
+    Returns
+    -------
+    bool
+        `True` if the patch is defined, `False` otherwise
+    """
+    return name in _defaults.get_default_topology().patches
+
+
+def get_patch(name: str):
+    """
+    Get a patch from the CHARMM topology file.
+
+    Parameters
+    ----------
+    name: str
+        The name of the patch
+
+    Returns
+    -------
+    Patch
+        The patch object
+    """
+    return _defaults.get_default_topology().get_patch(name)
+
+
+def add_patch(patch, overwrite: bool = False):
+    """
+    Add a patch to the CHARMM topology file.
+
+    Parameters
+    ----------
+    patch: Patch
+        The patch object
+    overwrite: bool
+        If `True`, the topology with the added patch is saved to a pickle file and will be used as the default topology for all future sessions.
+    """
+    top = _defaults.get_default_topology()
+    top.add_patch(patch)
+    _defaults.set_default_topology(top, overwrite)
 
 
 class CHARMMParser:

@@ -40,3 +40,7 @@ SEQUONS = sequons.SEQUONS
 
 has_compound = pdbe_compounds.has_compound
 get_compound = pdbe_compounds.get_compound
+
+has_patch = charmm.has_patch
+get_patch = charmm.get_patch
+add_patch = charmm.add_patch
