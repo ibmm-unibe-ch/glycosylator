@@ -585,8 +585,10 @@ class PDBECompounds:
 
             pdb = {
                 "atoms": {
-                    "full_ids": atoms["atom_id"],
-                    "ids": atoms["pdbx_component_atom_id"],
+                    "full_ids": [i.replace(",", "'") for i in atoms["atom_id"]],
+                    "ids": [
+                        i.replace(",", "'") for i in atoms["pdbx_component_atom_id"]
+                    ],
                     "serials": np.array(atoms["pdbx_ordinal"], dtype=int),
                     "coords": np.array(
                         [
@@ -603,7 +605,8 @@ class PDBECompounds:
                     "residue": atoms["pdbx_component_comp_id"],
                 },
                 "bonds": [
-                    (a, b) for a, b in zip(bonds["atom_id_1"], bonds["atom_id_2"])
+                    (a.replace(",", "'"), b.replace(",", "'"))
+                    for a, b in zip(bonds["atom_id_1"], bonds["atom_id_2"])
                 ],
             }
             self._pdb[key] = pdb
