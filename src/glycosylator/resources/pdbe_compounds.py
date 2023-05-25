@@ -174,6 +174,7 @@ def has_compound(compound: str, search_by: str = None) -> bool:
     for by in __search_by__:
         if defaults.get_default_compounds().has_residue(compound, by=by):
             return True
+    return False
 
 
 def get_compound(
