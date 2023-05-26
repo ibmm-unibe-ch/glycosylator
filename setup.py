@@ -38,6 +38,7 @@ setuptools.setup(
         "alive_progress",
         "pyswarms",
         "gym",
+        "pubchempy",
         # "openbabel",
         # "mdtraj",
         # "prody",
@@ -45,6 +46,9 @@ setuptools.setup(
         "nglview",
         "ipywidgets<8.0",
     ],
+    optional_requires={
+        "openbabel": ["openbabel"],
+    },
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
