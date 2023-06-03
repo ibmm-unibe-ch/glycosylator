@@ -78,6 +78,124 @@ import glycosylator.utils.defaults as _defaults
 # ===================================================================
 
 
+def load_topology(filename: str, set_default: bool = True) -> "CHARMMTopology":
+    """
+    Load a CHARMM topology from a pickle file.
+
+    Parameters
+    ----------
+    filename: str
+        The name of the topology file
+    set_default: bool
+        If `True`, the topology is set as the default topology
+
+    Returns
+    -------
+    CHARMMTopology
+        The topology object
+    """
+    top = CHARMMTopology.load(filename)
+    if set_default:
+        _defaults.set_default_topology(top)
+    return top
+
+
+def read_topology(filename: str, set_default: bool = True) -> "CHARMMTopology":
+    """
+    Read a CHARMM topology file.
+
+    Parameters
+    ----------
+    filename: str
+        The name of the topology file
+    set_default: bool
+        If `True`, the topology is set as the default topology
+
+    Returns
+    -------
+    CHARMMTopology
+        The parsed topology object
+    """
+    top = CHARMMTopology.from_file(filename)
+    if set_default:
+        _defaults.set_default_topology(top)
+    return top
+
+
+def save_topology(filename: str, topology: "CHARMMTopology" = None):
+    """
+    Save a CHARMM topology to a pickle file.
+
+    Parameters
+    ----------
+    filename: str
+        The name of the topology file
+    topology: CHARMMTopology
+        The topology object. If `None`, the default topology is used.
+    """
+    if topology is None:
+        topology = _defaults.get_default_topology()
+    topology.save(filename)
+
+
+def load_parameters(filename: str, set_default: bool = True) -> "CHARMMParameters":
+    """
+    Load a CHARMM parameters from a pickle file.
+
+    Parameters
+    ----------
+    filename: str
+        The name of the parameters file
+    set_default: bool
+        If `True`, the parameters are set as the default parameters
+    Returns
+    -------
+    CHARMMParameters
+        The parameters object
+    """
+    par = CHARMMParameters.load(filename)
+    if set_default:
+        _defaults.set_default_parameters(par)
+    return par
+
+
+def read_parameters(filename: str, set_default: bool = True) -> "CHARMMParameters":
+    """
+    Read a CHARMM parameters file.
+
+    Parameters
+    ----------
+    filename: str
+        The name of the parameters file
+    set_default: bool
+        If `True`, the parameters are set as the default parameters.
+    Returns
+    -------
+    CHARMMParameters
+        The parsed parameters object
+    """
+    par = CHARMMParameters.from_file(filename)
+    if set_default:
+        _defaults.set_default_parameters(par)
+    return par
+
+
+def save_parameters(filename: str, parameters: "CHARMMParameters" = None):
+    """
+    Save a CHARMM parameters to a pickle file.
+
+    Parameters
+    ----------
+    filename: str
+        The name of the parameters file
+    parameters: CHARMMParameters
+        The parameters object. If `None`, the default parameters are used.
+    """
+    if parameters is None:
+        parameters = _defaults.get_default_parameters()
+    parameters.save(filename)
+
+
 def has_patch(name: str) -> bool:
     """
     Check if a patch is defined in the CHARMM topology file.

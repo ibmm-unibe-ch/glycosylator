@@ -38,8 +38,21 @@ CHARMMTopology = charmm.CHARMMTopology
 CHARMMParameters = charmm.CHARMMParameters
 SEQUONS = sequons.SEQUONS
 
+pubchem_query = pubchem.query
+
+read_topology = charmm.read_topology
+read_parameters = charmm.read_parameters
+load_topology = charmm.load_topology
+load_parameters = charmm.load_parameters
+save_topology = charmm.save_topology
+save_parameters = charmm.save_parameters
+
+read_compounds = pdbe_compounds.read_compounds
+load_compounds = pdbe_compounds.load_compounds
+save_compounds = pdbe_compounds.save_compounds
 has_compound = pdbe_compounds.has_compound
 get_compound = pdbe_compounds.get_compound
+
 
 has_patch = charmm.has_patch
 get_patch = charmm.get_patch

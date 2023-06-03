@@ -154,6 +154,70 @@ __needs_to_have__ = set(
 __search_by__ = ("id", "name", "formula", "smiles")
 
 
+def read_compounds(filename: str, set_default: bool = True) -> PDBECompounds:
+    """
+    Reads a PDBECompounds object from a CIF file.
+
+    Parameters
+    ----------
+    filename : str
+        The path to the CIF file to read.
+    set_default : bool, optional
+        Whether to set the read PDBECompounds object as the default.
+        Defaults to True.
+
+    Returns
+    -------
+    PDBECompounds
+        The PDBECompounds object parsed from the CIF file.
+    """
+    compounds = PDBECompounds.from_file(filename)
+    if set_default:
+        defaults.set_default_compounds(compounds)
+    return compounds
+
+
+def load_compounds(filename: str, set_default: bool = True):
+    """
+    Loads a PDBECompounds object from a pickle file.
+
+    Parameters
+    ----------
+    filename : str
+        The path to the pickle file to load.
+    set_default : bool, optional
+        Whether to set the loaded PDBECompounds object as the default.
+        Defaults to True.
+
+    Returns
+    -------
+    PDBECompounds
+        The PDBECompounds object loaded from the pickle file.
+    """
+    compounds = PDBECompounds.load(filename)
+    if set_default:
+        defaults.set_default_compounds(compounds)
+    return compounds
+
+
+def save_compounds(filename: str, compounds: "PDBECompounds" = None):
+    """
+    Saves a PDBECompounds object to a file.
+
+    Parameters
+    ----------
+    filename : str
+        The path to the pickle file to save to.
+
+    compounds : PDBECompounds, optional
+        The PDBECompounds object to save. If not provided, the default
+        PDBECompounds object is used.
+    """
+    if compounds is None:
+        compounds = defaults.get_default_compounds()
+    compounds.save(filename)
+
+
 def has_compound(compound: str, search_by: str = None) -> bool:
     """
     Checks if a given compound is available in the currently loaded default
