@@ -188,5 +188,5 @@ if __name__ == "__main__":
     string = "F(b1-4)[E(a2-3)D(a1-4)]C(a1-6)B(b1-4)A(a1-"
 
     p = IUPACParser()
-    g = p.parse(string)
+    g = p.parse(string2)
     print(g)
