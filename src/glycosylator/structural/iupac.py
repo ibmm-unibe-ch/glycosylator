@@ -26,7 +26,7 @@ def reformat_link(string):
 
 class IUPACParser:
     """
-    A parser for IUPAC glycan nomenclature strings. This class will generate
+    A parser for condensed IUPAC glycan nomenclature strings. This class will generate
     a list of connecting glycan segments from a string from which a Molecule can be built.
     """
 
@@ -37,6 +37,10 @@ class IUPACParser:
     @property
     def _current(self):
         return self._string[-self._idx]
+
+    @property
+    def _next(self):
+        return self._string[-self._idx - 1]
 
     @property
     def _can_shift(self):
@@ -59,7 +63,7 @@ class IUPACParser:
         return (
             not self._is_still_parsing
             and len(self._latest_residue) >= 1
-            and len(self._latest_linkage) > 3
+            and len(self._latest_linkage) >= 3
             and len(self._second_latest_residue) >= 1
         )
 
@@ -83,7 +87,7 @@ class IUPACParser:
         list
             A list of tuples where each segment is a tuple of (residue1, residue2, linkage).
         """
-        self._string = string
+        self._string = self._prep_greek_letters(string)
         self.reset()
         self._parse()
         return self._glycan
@@ -96,9 +100,12 @@ class IUPACParser:
         self._idx = 1
         self._residue_counts = {}
         self._latest_residue = ""
+        self._latest_conformation = ""
         self._latest_linkage = ""
         self._second_latest_residue = ""
+        self._second_latest_conformation = ""
         self._latest_residue_before_square_bracket = ""
+        self._latest_conformation_before_square_bracket = ""
 
     def _shift(self):
         self._idx += 1
@@ -106,6 +113,8 @@ class IUPACParser:
     def _shift_residue(self):
         self._second_latest_residue = self._latest_residue
         self._latest_residue = ""
+        self._second_latest_conformation = self._latest_conformation
+        self._latest_conformation = ""
 
     def _parse(self):
         self._crop_end()
@@ -114,8 +123,8 @@ class IUPACParser:
                 self._store()
                 continue
             if self._is_at_bracket:
-                self._latest_linkage = self._parse_linkage()
                 self._shift_residue()
+                self._latest_linkage = self._parse_linkage()
                 self._shift()
                 continue
             if self._is_at_open_square_bracket:
@@ -123,11 +132,18 @@ class IUPACParser:
                     self._latest_residue, increase_count=False
                 )
                 self._latest_residue = self._latest_residue_before_square_bracket
+                self._latest_conformation_before_square_bracket = (
+                    self._latest_conformation
+                )
                 self._shift()
                 continue
             if self._is_at_close_square_bracket:
                 self._latest_residue = self._latest_residue_before_square_bracket
+                self._latest_conformation = (
+                    self._latest_conformation_before_square_bracket
+                )
                 self._second_latest_residue = ""
+                self._second_latest_conformation = ""
                 self._shift()
                 continue
             self._latest_residue += self._current
@@ -146,7 +162,7 @@ class IUPACParser:
             second = self._fit_residue(second)
             self._second_latest_residue = second
 
-        branch = (second, latest, reformat_link(self._latest_linkage[::-1]))
+        branch = (second, latest, self._reformat_link(self._latest_linkage))
         self._glycan.append(branch)
         self._latest_linkage = ""
 
@@ -170,14 +186,27 @@ class IUPACParser:
         while self._can_shift and not self._is_at_bracket:
             linkage += self._current
             self._shift()
+        self._latest_conformation = linkage[-1]
+        linkage = linkage[:-1]
         return linkage
 
     def _crop_end(self):
         if self._string[-1] == "-":
-            while self._current != "(":
+            while self._next != "(":
                 self._shift()
+            self._latest_conformation = self._current
+            self._shift()
             self._string = self._string[: -self._idx]
             self._idx = 1
+
+    def _reformat_link(self, link):
+        link = link[::-1].replace("-", "")
+        link = link + self._second_latest_conformation + self._latest_conformation
+        return link
+
+    def _prep_greek_letters(self, string):
+        string = string.replace("α", "a").replace("β", "b")
+        return string
 
     def __call__(self, *args: Any, **kwds: Any) -> Any:
         return self.parse(*args, **kwds)
@@ -188,5 +217,5 @@ if __name__ == "__main__":
     string = "F(b1-4)[E(a2-3)D(a1-4)]C(a1-6)B(b1-4)A(a1-"
 
     p = IUPACParser()
-    g = p.parse(string2)
+    g = p.parse(string)
     print(g)
