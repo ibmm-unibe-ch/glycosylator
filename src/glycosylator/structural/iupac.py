@@ -175,8 +175,8 @@ class IUPACParser:
     def _crop_end(self):
         if self._string[-1] == "-":
             while self._current != "(":
-                self._idx -= 1
-            self._string = self._string[: self._idx - 1]
+                self._shift()
+            self._string = self._string[: -self._idx]
             self._idx = 1
 
     def __call__(self, *args: Any, **kwds: Any) -> Any:
@@ -185,8 +185,8 @@ class IUPACParser:
 
 if __name__ == "__main__":
     string2 = "Man(a1-3)[Neu5Ac(a2-3)Gal(b1-4)GlcNAc(b1-2)Man(a1-6)]Man(b1-4)GlcNAc(b1-4)[Fuc(a1-6)]GlcNAc(b1-"
-    string = "F(b1-4)[E(a2-3)D(a1-4)]C(a1-6)B(b1-4)A"
+    string = "F(b1-4)[E(a2-3)D(a1-4)]C(a1-6)B(b1-4)A(a1-"
 
     p = IUPACParser()
-    g = p.parse(string2)
+    g = p.parse(string)
     print(g)
