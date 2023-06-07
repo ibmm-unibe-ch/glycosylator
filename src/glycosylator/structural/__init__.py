@@ -22,3 +22,7 @@ from glycosylator.structural.neighbors import (
     compute_triplets,
     generate_triplets,
 )
+
+from glycosylator.structural.iupac import (
+    IUPACParser,
+)
