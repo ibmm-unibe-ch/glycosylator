@@ -154,7 +154,7 @@ __needs_to_have__ = set(
 __search_by__ = ("id", "name", "formula", "smiles")
 
 
-def read_compounds(filename: str, set_default: bool = True) -> PDBECompounds:
+def read_compounds(filename: str, set_default: bool = True) -> "PDBECompounds":
     """
     Reads a PDBECompounds object from a CIF file.
 
@@ -177,7 +177,7 @@ def read_compounds(filename: str, set_default: bool = True) -> PDBECompounds:
     return compounds
 
 
-def load_compounds(filename: str, set_default: bool = True):
+def load_compounds(filename: str, set_default: bool = True) -> "PDBECompounds":
     """
     Loads a PDBECompounds object from a pickle file.
 
@@ -668,10 +668,13 @@ class PDBECompounds:
                     "charges": np.array(atoms["charge"], dtype=float),
                     "residue": atoms["pdbx_component_comp_id"],
                 },
-                "bonds": [
-                    (a.replace(",", "'"), b.replace(",", "'"))
-                    for a, b in zip(bonds["atom_id_1"], bonds["atom_id_2"])
-                ],
+                "bonds": {
+                    "bonds": [
+                        (a.replace(",", "'"), b.replace(",", "'"))
+                        for a, b in zip(bonds["atom_id_1"], bonds["atom_id_2"])
+                    ],
+                    "orders": np.array(bonds["value_order"], dtype=int),
+                },
             }
             self._pdb[key] = pdb
 
@@ -692,7 +695,7 @@ class PDBECompounds:
         struct = self._make_structure(compound)
         mol = molecule.Molecule(struct)
         pdb = self._pdb[compound["id"]]
-        for bond in pdb["bonds"]:
+        for bond in pdb["bonds"]["bonds"]:
             mol.add_bond(*bond)
 
         return mol
