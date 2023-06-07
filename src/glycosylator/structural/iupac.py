@@ -58,9 +58,9 @@ class IUPACParser:
     def _can_store(self):
         return (
             not self._is_still_parsing
-            and len(self._latest_residue) >= 3
+            and len(self._latest_residue) >= 1
             and len(self._latest_linkage) > 3
-            and len(self._second_latest_residue) >= 3
+            and len(self._second_latest_residue) >= 1
         )
 
     @property
@@ -176,8 +176,8 @@ class IUPACParser:
         if self._string[-1] == "-":
             while self._current != "(":
                 self._idx -= 1
-        self._string = self._string[: self._idx - 1]
-        self._idx = 1
+            self._string = self._string[: self._idx - 1]
+            self._idx = 1
 
     def __call__(self, *args: Any, **kwds: Any) -> Any:
         return self.parse(*args, **kwds)
@@ -185,6 +185,7 @@ class IUPACParser:
 
 if __name__ == "__main__":
     string2 = "Man(a1-3)[Neu5Ac(a2-3)Gal(b1-4)GlcNAc(b1-2)Man(a1-6)]Man(b1-4)GlcNAc(b1-4)[Fuc(a1-6)]GlcNAc(b1-"
+    string = "F(b1-4)[E(a2-3)D(a1-4)]C(a1-6)B(b1-4)A"
 
     p = IUPACParser()
     g = p.parse(string2)
