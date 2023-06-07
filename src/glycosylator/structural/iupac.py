@@ -24,33 +24,10 @@ def reformat_link(string):
     return a + b + type * 2
 
 
-class GlycanSegment:
-    """
-    One segment of a glycan structure, with a parent residue, a child residue, and a linkage between them.
-
-    Parameters
-    ----------
-    parent : str
-        The parent residue.
-    child : str
-        The child residue.
-    linkage : str
-        The linkage between the parent and child residues.
-    """
-
-    def __init__(self, parent: str, child: str = None, linkage: str = None):
-        self.parent = parent
-        self.child = child
-        self.linkage = linkage
-
-    def __repr__(self):
-        return f"{self.parent}-({self.linkage})-{self.child}"
-
-
 class IUPACParser:
     """
     A parser for IUPAC glycan nomenclature strings. This class will generate
-    a list of connecting GlycanSegments from a string from which a Molecule can be built.
+    a list of connecting glycan segments from a string from which a Molecule can be built.
     """
 
     def __init__(self):
@@ -94,7 +71,7 @@ class IUPACParser:
 
     def parse(self, string):
         """
-        Parse a string of IUPAC glycan nomenclature into a list of GlycanSegments.
+        Parse a string of IUPAC glycan nomenclature into a list of glycan segments.
 
         Parameters
         ----------
@@ -104,7 +81,7 @@ class IUPACParser:
         Returns
         -------
         list
-            A list of GlycanSegments.
+            A list of tuples where each segment is a tuple of (residue1, residue2, linkage).
         """
         self._string = string
         self.reset()
@@ -158,8 +135,6 @@ class IUPACParser:
         self._latest_residue += self._current
         self._store()
 
-        pass
-
     def _store(self):
         latest = self._latest_residue
         if not "@" in latest:
@@ -171,11 +146,7 @@ class IUPACParser:
             second = self._fit_residue(second)
             self._second_latest_residue = second
 
-        branch = GlycanSegment(
-            parent=second,
-            child=latest,
-            linkage=reformat_link(self._latest_linkage[::-1]),
-        )
+        branch = (second, latest, reformat_link(self._latest_linkage[::-1]))
         self._glycan.append(branch)
         self._latest_linkage = ""
 
