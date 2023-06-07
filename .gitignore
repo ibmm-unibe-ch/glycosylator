@@ -170,6 +170,13 @@ cython_debug/
 
 # End of https://www.toptal.com/developers/gitignore/api/python
 __dev
+__meta*
+__tools
 pdbs/*
 wrapped/*
 .dvc*
+.lprof*
+/*.pdb
+*.prof
+/*.pkl
+/*.mol
