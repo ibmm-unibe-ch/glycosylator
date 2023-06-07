@@ -1172,3 +1172,39 @@ def test_relabel_Hydrogens():
         assert h.id.startswith("H")
         assert h.id[1].isdigit() or h.id[1] in ("C", "O", "N", "S")
         assert h.id[-1].isdigit()
+
+
+def test_parse_iupac_simple():
+    string = "F(b1-4)[E(a2-3)D(a1-4)]C(a1-6)B(b1-4)A"
+    graph = gl.structural.IUPACParser().parse(string)
+    assert len(graph) == 5
+    assert ("A@1", "B@1", "14bb") in graph
+    assert ("B@1", "C@1", "16aa") in graph
+    assert ("C@1", "D@1", "14aa") in graph
+    assert ("D@1", "E@1", "23aa") in graph
+    assert ("C@1", "F@1", "14bb") in graph
+
+
+def test_parse_iupac_with_repeat():
+    #                 two different 'C' residues
+    #                        *       *
+    string = "F(b1-4)[E(a2-3)C(a1-4)]C(a1-6)B(b1-4)A"
+    graph = gl.structural.IUPACParser().parse(string)
+    assert len(graph) == 5
+    assert ("A@1", "B@1", "14bb") in graph
+    assert ("B@1", "C@1", "16aa") in graph
+    assert ("C@1", "C@2", "14aa") in graph
+    assert ("C@2", "E@1", "23aa") in graph
+    assert ("C@1", "F@1", "14bb") in graph
+
+
+def test_parse_iupac_with_crop_start():
+    #                   'start' to remove    ->     ****
+    string = "F(b1-4)[E(a2-3)D(a1-4)]C(a1-6)B(b1-4)A(a1-"
+    graph = gl.structural.IUPACParser().parse(string)
+    assert len(graph) == 5
+    assert ("A@1", "B@1", "14bb") in graph
+    assert ("B@1", "C@1", "16aa") in graph
+    assert ("C@1", "D@1", "14aa") in graph
+    assert ("D@1", "E@1", "23aa") in graph
+    assert ("C@1", "F@1", "14bb") in graph
