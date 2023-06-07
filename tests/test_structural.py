@@ -1178,11 +1178,11 @@ def test_parse_iupac_simple():
     string = "F(b1-4)[E(a2-3)D(a1-4)]C(a1-6)B(b1-4)A"
     graph = gl.structural.IUPACParser().parse(string)
     assert len(graph) == 5
-    assert ("A@1", "B@1", "14bb") in graph
-    assert ("B@1", "C@1", "16aa") in graph
+    assert ("A@1", "B@1", "14b") in graph
+    assert ("B@1", "C@1", "16ba") in graph
     assert ("C@1", "D@1", "14aa") in graph
     assert ("D@1", "E@1", "23aa") in graph
-    assert ("C@1", "F@1", "14bb") in graph
+    assert ("C@1", "F@1", "14ab") in graph
 
 
 def test_parse_iupac_with_repeat():
@@ -1191,11 +1191,11 @@ def test_parse_iupac_with_repeat():
     string = "F(b1-4)[E(a2-3)C(a1-4)]C(a1-6)B(b1-4)A"
     graph = gl.structural.IUPACParser().parse(string)
     assert len(graph) == 5
-    assert ("A@1", "B@1", "14bb") in graph
-    assert ("B@1", "C@1", "16aa") in graph
+    assert ("A@1", "B@1", "14b") in graph
+    assert ("B@1", "C@1", "16ba") in graph
     assert ("C@1", "C@2", "14aa") in graph
     assert ("C@2", "E@1", "23aa") in graph
-    assert ("C@1", "F@1", "14bb") in graph
+    assert ("C@1", "F@1", "14ab") in graph
 
 
 def test_parse_iupac_with_crop_start():
@@ -1203,8 +1203,8 @@ def test_parse_iupac_with_crop_start():
     string = "F(b1-4)[E(a2-3)D(a1-4)]C(a1-6)B(b1-4)A(a1-"
     graph = gl.structural.IUPACParser().parse(string)
     assert len(graph) == 5
-    assert ("A@1", "B@1", "14bb") in graph
-    assert ("B@1", "C@1", "16aa") in graph
+    assert ("A@1", "B@1", "14ab") in graph
+    assert ("B@1", "C@1", "16ba") in graph
     assert ("C@1", "D@1", "14aa") in graph
     assert ("D@1", "E@1", "23aa") in graph
-    assert ("C@1", "F@1", "14bb") in graph
+    assert ("C@1", "F@1", "14ab") in graph
