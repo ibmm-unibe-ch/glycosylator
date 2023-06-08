@@ -533,6 +533,24 @@ class CHARMMTopology(CHARMMParser):
             return [self.get_patch(i) for i in id]
         return self._dict["patches"].get(id)
 
+    def has_patch(self, id):
+        """
+        Check if a patch is in the topology
+
+        Parameters
+        ----------
+        id : str
+            The ID of the patch
+
+        Returns
+        -------
+        bool
+            True if the patch is in the topology
+        """
+        if isinstance(id, (list, tuple)):
+            return all(self.has_patch(i) for i in id)
+        return id in self._dict["patches"]
+
     def add_patch(self, patch):
         """
         Add a patch to the topology
