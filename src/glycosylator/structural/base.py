@@ -42,7 +42,8 @@ def rename_residue(residue: "bio.Residue.Residue", new_name: str):
     """
     residue.resname = new_name
     residue.id = ("H_" + new_name, *residue.id[1:])
-    residue.full_id = (new_name, *residue.full_id[1:])
+    for atom in residue.get_atoms():
+        atom.full_id = (*residue.full_id, atom.full_id[-1])
     return residue
 
 
