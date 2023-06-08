@@ -23,6 +23,29 @@ def make_empty_structure(id: str = "empty"):
     return s
 
 
+def rename_residue(residue: "bio.Residue.Residue", new_name: str):
+    """
+    Rename a biopython residue object.
+    This happens in-place.
+
+    Parameters
+    ----------
+    residue : Bio.PDB.Residue.Residue
+        The residue to rename.
+    new_name : str
+        The new name of the residue.
+
+    Returns
+    -------
+    residue : Bio.PDB.Residue.Residue
+        The renamed residue.
+    """
+    residue.resname = new_name
+    residue.id = ("H_" + new_name, *residue.id[1:])
+    residue.full_id = (new_name, *residue.full_id[1:])
+    return residue
+
+
 def vector_between(atom1, atom2):
     """
     Compute the vector between two atoms.
