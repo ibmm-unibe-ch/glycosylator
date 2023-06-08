@@ -673,7 +673,7 @@ class PDBECompounds:
                         (a.replace(",", "'"), b.replace(",", "'"))
                         for a, b in zip(bonds["atom_id_1"], bonds["atom_id_2"])
                     ],
-                    "orders": np.array(bonds["value_order"], dtype=int),
+                    "orders": np.array(bonds["value_order"]),
                 },
             }
             self._pdb[key] = pdb
