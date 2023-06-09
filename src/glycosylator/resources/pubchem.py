@@ -63,7 +63,7 @@ _sdf_charge_map = {
 Mapping of SDF charge types to proper values.
 """
 
-_cif_template_file = os.path.join(os.path.dirname(__file__), "template.cif")
+_cif_template_file = os.path.join(os.path.dirname(__file__), "pdbe_template.cif")
 """
 Path to the CIF template file.
 """
