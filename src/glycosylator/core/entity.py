@@ -12,6 +12,7 @@ import numpy as np
 import glycosylator.structural as structural
 import glycosylator.utils as utils
 import glycosylator.graphs as graphs
+import glycosylator.resources as resources
 
 
 class BaseEntity:
@@ -71,6 +72,34 @@ class BaseEntity:
             id = utils.filename_to_id(filename)
         struct = utils.defaults.__bioPDBParser__.get_structure(id, filename)
         return cls(struct)
+
+    @classmethod
+    def from_cif(cls, filename: str, id: str = None):
+        """
+        Load a Molecule from a CIF file
+
+        Parameters
+        ----------
+        filename : str
+            Path to the CIF file
+        id : str
+            The id of the Molecule. By default an id is inferred from the filename.
+        """
+        if id is None:
+            id = utils.filename_to_id(filename)
+        try:
+            struct = utils.defaults.get_default_instance(
+                "bioMMCIFParser"
+            ).get_structure(id, filename)
+            return cls(struct)
+        except KeyError:
+            try:
+                c = resources.PDBECompounds.from_file(filename)
+                if len(c) == 0:
+                    raise ValueError(f"No compounds found in {filename}")
+                return c.get(c.ids[0])
+            except Exception as e:
+                raise e
 
     @classmethod
     def load(cls, filename: str):
