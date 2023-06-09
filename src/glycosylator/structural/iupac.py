@@ -152,15 +152,15 @@ class IUPACParser:
         self._store()
 
     def _store(self):
-        latest = self._latest_residue
-        if not "@" in latest:
-            latest = self._fit_residue(latest)
-            self._latest_residue = latest
-
         second = self._second_latest_residue
         if "@" not in second:
             second = self._fit_residue(second)
             self._second_latest_residue = second
+
+        latest = self._latest_residue
+        if not "@" in latest:
+            latest = self._fit_residue(latest)
+            self._latest_residue = latest
 
         branch = (second, latest, self._reformat_link(self._latest_linkage))
         self._glycan.append(branch)
@@ -213,9 +213,9 @@ class IUPACParser:
 
 
 if __name__ == "__main__":
-    string2 = "Man(a1-3)[Neu5Ac(a2-3)Gal(b1-4)GlcNAc(b1-2)Man(a1-6)]Man(b1-4)GlcNAc(b1-4)[Fuc(a1-6)]GlcNAc(b1-"
+    string2 = "Man(b1-6)[Man(b1-3)]BMA(b1-4)GlcNAc(b1-4)GlcNAc(b1-"
     string = "F(b1-4)[E(a2-3)D(a1-4)]C(a1-6)B(b1-4)A(a1-"
 
     p = IUPACParser()
-    g = p.parse(string)
+    g = p.parse(string2)
     print(g)
