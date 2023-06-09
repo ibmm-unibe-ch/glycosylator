@@ -5,14 +5,14 @@ with open("README.md", "r") as f:
 
 setuptools.setup(
     name="glycosylator",
-    version="2.0.40-alpha",
+    version="2.0.43-alpha",
     author="Noah H. Kleinschmidt",
     author_email="noah.kleinschmidt@students.unibe.ch",
     description="A python package for structural simulation of protein glycosylation",
     long_description=long_description,
     long_description_content_type="text/markdown",
     package_data={
-        "glycosylator.resources": ["*.pkl"],
+        "glycosylator.resources": ["*.pkl", "*.cif"],
     },
     url="TBA",
     packages=[
@@ -39,6 +39,7 @@ setuptools.setup(
         "pyswarms",
         "gym",
         "pubchempy",
+        "tabulate",
         # "openbabel",
         # "mdtraj",
         # "prody",
