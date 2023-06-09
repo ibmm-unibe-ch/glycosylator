@@ -1059,7 +1059,7 @@ def _molecule_from_pubchem(id, comp):
             np.array((atom.x, atom.y, atom.z)),
             1.0,
             1.0,
-            None,
+            0,
             element,
             atom.aid,
             element=element,
