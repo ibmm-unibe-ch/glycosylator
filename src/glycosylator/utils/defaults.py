@@ -46,6 +46,7 @@ The default number of points used to calculate solvent accessible surface area
 
 __default_instances__ = dict(
     bioPDBParser=bio.PDBParser(),
+    bioMMCIFParser=bio.MMCIFParser(),
     bioSASA=bio.SASA.ShrakeRupley(DEFAULT_SASA_PROBE_RADIUS, DEFAULT_SASA_N),
     Topology=charmm.CHARMMTopology.load(DEFAULT_CHARMM_TOPOLOGY_FILE),
     Parameters=charmm.CHARMMParameters.load(DEFAULT_CHARMM_PARAMETERS_FILE),
@@ -190,3 +191,19 @@ def set_default_compounds(obj, overwrite: bool = False):
     __default_instances__["PDBECompounds"] = obj
     if overwrite:
         obj.save(DEFAULT_PDBE_COMPOUNDS_FILE)
+
+
+# =================================================================
+# Default values
+# =================================================================
+
+GLYCAN_RESIDUES = set(
+    (
+        "BMA",
+        "BGC",
+        "BGC",
+        "BMA",
+        "BGC",
+        "BGC",
+    )
+)
