@@ -5,6 +5,7 @@ if it is missing.
 
 import argparse
 import re
+import os
 
 
 def setup():
@@ -31,6 +32,8 @@ def get_snfg_symbol(line):
 
 def main(args):
     conf = None
+    if args.input == args.output:
+        args.output += ".tmp"
     with open(args.input, "r") as fi:
         with open(args.output, "w") as fo:
             for line in fi:
@@ -42,6 +45,10 @@ def main(args):
                         symbol = "b-" + symbol
                     line = line.replace(get_snfg_symbol(line), symbol)
                 fo.write(line)
+    if args.output.endswith(".tmp"):
+        args.output = args.output[:-4]
+        os.rename(args.output + ".tmp", args.output)
+    print(f"Saved to {args.output}")
 
 
 if __name__ == "__main__":
