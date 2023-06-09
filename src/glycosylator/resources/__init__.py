@@ -16,7 +16,8 @@ Since this database is queried online and not integrated directly in glycosylato
 PubChem follows a different atom labelling convention than the CHARMM force field. Hence, many compounds may not be compatible
 with the pre-set `Patches` in _glycosylator_ and may thus not work at all or produce erroneous results. To assist in importing 
 PubChem compounds anyway, _glycosylator_ provides a function `pubchem_to_cif` that can be used to convert PubChem compound
-data into a CIF file which can be more easily edited and subsequently loaded into _glycosylator_ using the `PDBECompounds` class.
+data into a CIF file which can be more easily edited and subsequently loaded into _glycosylator_ using the `PDBECompounds` class
+or using `Molecule.from_cif()`.
 
 CHARMM
 ======
