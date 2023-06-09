@@ -112,6 +112,8 @@ def set_default_topology(obj, overwrite: bool = False):
     """
     if not isinstance(obj, charmm.CHARMMTopology):
         raise TypeError("The object must be a CHARMMTopology instance.")
+    if overwrite:
+        __default_instances__["Topology"].save(DEFAULT_CHARMM_TOPOLOGY_FILE + ".bak")
     __default_instances__["Topology"] = obj
     if overwrite:
         obj.save(DEFAULT_CHARMM_TOPOLOGY_FILE)
@@ -132,6 +134,10 @@ def set_default_parameters(obj, overwrite: bool = False):
     """
     if not isinstance(obj, charmm.CHARMMParameters):
         raise TypeError("The object must be a CHARMMParameters instance.")
+    if overwrite:
+        __default_instances__["Parameters"].save(
+            DEFAULT_CHARMM_PARAMETERS_FILE + ".bak"
+        )
     __default_instances__["Parameters"] = obj
     if overwrite:
         obj.save(DEFAULT_CHARMM_PARAMETERS_FILE)
@@ -188,9 +194,43 @@ def set_default_compounds(obj, overwrite: bool = False):
     """
     if not obj.__class__.__name__ == "PDBECompounds":
         raise TypeError("The object must be a PDBECompounds instance.")
+    if overwrite:
+        __default_instances__["PDBECompounds"].save(
+            DEFAULT_PDBE_COMPOUNDS_FILE + ".bak"
+        )
     __default_instances__["PDBECompounds"] = obj
     if overwrite:
         obj.save(DEFAULT_PDBE_COMPOUNDS_FILE)
+
+
+def restore_default_topology():
+    """
+    Restore the default CHARMMTopology object from the backup file
+    """
+    __default_instances__["Topology"] = charmm.CHARMMTopology.load(
+        DEFAULT_CHARMM_TOPOLOGY_FILE + ".bak"
+    )
+    os.remove(DEFAULT_CHARMM_TOPOLOGY_FILE + ".bak")
+
+
+def restore_default_parameters():
+    """
+    Restore the default CHARMMParameters object from the backup file
+    """
+    __default_instances__["Parameters"] = charmm.CHARMMParameters.load(
+        DEFAULT_CHARMM_PARAMETERS_FILE + ".bak"
+    )
+    os.remove(DEFAULT_CHARMM_PARAMETERS_FILE + ".bak")
+
+
+def restore_default_compounds():
+    """
+    Restore the default PDBECompounds object from the backup file
+    """
+    __default_instances__["PDBECompounds"] = pickle.load(
+        open(DEFAULT_PDBE_COMPOUNDS_FILE + ".bak", "rb")
+    )
+    os.remove(DEFAULT_PDBE_COMPOUNDS_FILE + ".bak")
 
 
 # =================================================================
