@@ -558,7 +558,12 @@ class Molecule(entity.BaseEntity):
         if id is None:
             id = utils.filename_to_id(filename)
         struct = utils.defaults.__bioPDBParser__.get_structure(id, filename)
-        return cls(struct, root_atom, model=model, chain=chain)
+        new = cls(struct, root_atom, model=model, chain=chain)
+        bonds = structural.pdb.parse_connect_lines(filename)
+        if len(bonds) != 0:
+            for b in bonds:
+                new.add_bond(*b)
+        return new
 
     @classmethod
     def from_compound(

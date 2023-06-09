@@ -1,6 +1,7 @@
 from glycosylator.structural.infer import *
 from glycosylator.structural.smiles import *
 from glycosylator.structural.base import *
+import glycosylator.structural.pdb
 from glycosylator.structural.patch import (
     Patcher,
     patch,

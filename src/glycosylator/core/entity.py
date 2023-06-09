@@ -71,7 +71,12 @@ class BaseEntity:
         if id is None:
             id = utils.filename_to_id(filename)
         struct = utils.defaults.__bioPDBParser__.get_structure(id, filename)
-        return cls(struct)
+        new = cls(struct)
+        bonds = structural.pdb.parse_connect_lines(filename)
+        if len(bonds) != 0:
+            for b in bonds:
+                new.add_bond(*b)
+        return new
 
     @classmethod
     def from_cif(cls, filename: str, id: str = None):
@@ -1705,6 +1710,20 @@ class BaseEntity:
             Path to the PDB file
         """
         io = bio.PDBIO()
+        io.set_structure(self._base_struct)
+        io.save(filename)
+        structural.pdb.write_connect_lines(self, filename)
+
+    def to_cif(self, filename: str):
+        """
+        Write the molecule to a CIF file
+
+        Parameters
+        ----------
+        filename : str
+            Path to the CIF file
+        """
+        io = bio.MMCIFIO()
         io.set_structure(self._base_struct)
         io.save(filename)
 
