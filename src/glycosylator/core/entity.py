@@ -96,7 +96,12 @@ class BaseEntity:
             struct = utils.defaults.get_default_instance(
                 "bioMMCIFParser"
             ).get_structure(id, filename)
-            return cls(struct)
+            new = cls(struct)
+            bonds = utils.cif.parse_bond_table(filename)
+            if len(bonds) != 0:
+                for b in bonds:
+                    new.add_bond(*b)
+            return new
         except KeyError:
             try:
                 c = resources.PDBECompounds.from_file(filename)
