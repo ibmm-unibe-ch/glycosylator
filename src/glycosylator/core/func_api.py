@@ -127,7 +127,7 @@ def glycan(id: str, g: Union[str, list], _topology=None):
     return mol
 
 
-def make_molecule(mol: str):
+def make_molecule(mol: str) -> "molecule.Molecule":
     """
     Generate a molecule from an input string. This string can be a PDB id, filename, SMILES or InChI string, IUPAC name or abbreviation.
     This function will try its best to automatically generate the molecule with minimal user effort. However, using a dedicated class method is
@@ -137,6 +137,11 @@ def make_molecule(mol: str):
     ----------
     mol : str
         The input string
+
+    Returns
+    -------
+    molecule : Molecule
+        The generated molecule
     """
     if isinstance(mol, bio.Structure.Structure):
         return molecule.Molecule(mol)
@@ -152,7 +157,12 @@ def make_molecule(mol: str):
             return resources.get_compound(mol)
 
     if os.path.isfile(mol):
-        return molecule.Molecule.from_pdb(mol)
+        if mol.endswith(".pdb"):
+            return molecule.Molecule.from_pdb(mol)
+        elif mol.endswith(".cif"):
+            return molecule.Molecule.from_cif(mol)
+        elif mol.endswith(".pkl"):
+            return molecule.Molecule.load(mol)
 
     try:
         return molecule.Molecule.from_pubchem(mol)
@@ -167,9 +177,19 @@ def make_molecule(mol: str):
     raise ValueError(f"Could not generate molecule from input: {mol}")
 
 
-def make_scaffold(scaf: str):
+def make_scaffold(scaf: str) -> "scaffold.Scaffold":
     """
     Generate a scaffold from an input string. This string can be a PDB id, filename, a SMILES or InChI string, or a IUPAC name or abbreviation.
+
+    Parameters
+    ----------
+    scaf : str
+        The input string
+
+    Returns
+    -------
+    scaffold : Scaffold
+
     """
     if isinstance(scaf, bio.Structure.Structure):
         return scaffold.Scaffold(scaf)
@@ -179,7 +199,7 @@ def make_scaffold(scaf: str):
 
     try:
         mol = make_molecule(scaf)
-        return scaffold.Scaffold(mol.structure)
+        return scaffold.Scaffold.from_molecule(mol)
     except:
         raise ValueError(f"Could not generate scaffold from input: {scaf}")
 
