@@ -90,7 +90,7 @@ def glycan(id: str, g: Union[str, list], _topology=None):
                                MAN
     ```
     the IUPAC string would be:
-    >>> iupac = "Man(a1-6)[Man(a1-3)]Man(b1-4)Nag(b1-4)Nag(b1-" # notice the final "b1-" to indicate where the glycan attaches to a scaffold
+    >>> iupac = "Man(a1-6)[Man(a1-3)]b-Man(a1-4)GlcNAc(b1-4)GlcNAc(b1-" # notice the final "b1-" to indicate where the glycan attaches to a scaffold
 
     Which can be parsed into a molecule with:
     >>> mol = glycan("my_glycan", iupac)
@@ -150,13 +150,14 @@ def make_molecule(mol: str):
     if len(mol) == 3:
         if resources.has_compound(mol):
             return resources.get_compound(mol)
+
+    if os.path.isfile(mol):
+        return molecule.Molecule.from_pdb(mol)
+
     try:
         return molecule.Molecule.from_pubchem(mol)
     except:
         pass
-
-    if os.path.isfile(mol):
-        return molecule.Molecule.from_pdb(mol)
 
     try:
         return molecule.Molecule.from_smiles(mol)
@@ -235,6 +236,13 @@ def _parse_iupac_graph(id, glycan_segments, _topology=None):
     for segment in glycan_segments:
         link = segment[-1]
         if not _topology.has_patch(link):
+            f = make_molecule(segment[0])
+            t = make_molecule(segment[1])
+            f.show()
+            t.show()
+            print("MISSING: ", link)
+            if input("Next: (y)").lower() == "y":
+                continue
             raise ValueError(
                 f"No patch/recipe available for linkage: {link}. Try adding a patch or recipe to the topology."
             )
@@ -256,6 +264,8 @@ def _parse_iupac_graph(id, glycan_segments, _topology=None):
             first_mol = mol
         else:
             first_mol = make_molecule(first_name)
+            if isinstance(first_mol, list):
+                first_mol = first_mol[0]
             residue_id_mapping[first] = len(residue_id_mapping) + 1
             at_residue = None
 
@@ -264,6 +274,8 @@ def _parse_iupac_graph(id, glycan_segments, _topology=None):
             second_mol = mol
         else:
             second_mol = make_molecule(second_name)
+            if isinstance(second_mol, list):
+                second_mol = second_mol[0]
             residue_id_mapping[second] = len(residue_id_mapping) + 1
             other_residue = None
 
@@ -310,7 +322,11 @@ if __name__ == "__main__":
     # mol = _parse_iupac_graph("test", glycans)
     # mol.show()
 
-    iupac = "Man(a1-6)[Man(a1-3)]Man(b1-4)Nag(b1-4)Nag(b1-"
+    all_carb_file = "/Users/noahhk/Downloads/charmm.carbs.36.all.txt"
+    alltop = resources.CHARMMTopology.from_file(all_carb_file)
+    utils.defaults.set_default_topology(alltop)
+
+    iupac = "Man(b1-6)[Man(b1-3)]b-Man(b1-4)GlcNAc(b1-4)GlcNAc(b1-"
     mol = glycan("test", iupac)
     mol.show()
 
