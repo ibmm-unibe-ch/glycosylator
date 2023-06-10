@@ -201,6 +201,26 @@ class Scaffold(entity.BaseEntity):
         """
         return self._internal_residues
 
+    @classmethod
+    def from_molecule(cls, mol) -> "Scaffold":
+        """
+        Create a Scaffold from a Molecule
+
+        Parameters
+        ----------
+        mol : Molecule
+            The molecule to create the scaffold from
+
+        Returns
+        -------
+        Scaffold
+            A scaffold created from the molecule
+        """
+        new = cls(mol._base_struct, model=mol._model)
+        for bond in mol.bonds:
+            new.add_bond(*bond)
+        return new
+
     def exclude_chain(self, chain: Union[str, bio.Chain.Chain]):
         """
         Exclude a chain from the scaffold from letting any
