@@ -38,7 +38,7 @@ element_connectivity = {
 }
 
 
-def relabel_hydrogrens(molecule):
+def relabel_hydrogens(molecule):
     """
     Relabel hydrogen atoms in a structure to match the CHARMM naming scheme.
 
