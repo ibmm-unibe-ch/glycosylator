@@ -1714,7 +1714,7 @@ class BaseEntity:
         io = bio.PDBIO()
         io.set_structure(self._base_struct)
         io.save(filename)
-        structural.pdb.write_connect_lines(self, filename)
+        utils.pdb.write_connect_lines(self, filename)
 
     def to_cif(self, filename: str):
         """
@@ -1728,6 +1728,7 @@ class BaseEntity:
         io = bio.MMCIFIO()
         io.set_structure(self._base_struct)
         io.save(filename)
+        utils.cif.write_bond_table(self, filename)
 
     def infer_missing_atoms(self, _topology=None, _compounds=None):
         """
