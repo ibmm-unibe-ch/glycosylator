@@ -1253,10 +1253,12 @@ class BaseEntity:
         atom1 = self.get_atom(atom1)
         atom2 = self.get_atom(atom2)
 
-        if (atom1, atom2) not in self._bonds:
-            self._bonds.append((atom1, atom2))
+        # if (atom1, atom2) not in self._bonds:
+        self._bonds.append((atom1, atom2))
         if not self._AtomGraph.has_edge(atom1, atom2):
-            self._AtomGraph.add_edge(atom1, atom2)
+            self._AtomGraph.add_edge(atom1, atom2, bond_order=1)
+        else:
+            self._AtomGraph.edges[atom1, atom2]["bond_order"] += 1
 
     def add_bonds(self, *bonds):
         """
@@ -1796,23 +1798,28 @@ class BaseEntity:
         for bond in bonds:
             self._remove_bond(*bond)
 
-    def _remove_bond(self, atom1, atom2):
+    def _remove_bond(self, atom1, atom2, either_way: bool = False):
         """
         The core function of `remove_bond` which expects atoms to be provided as Atom objects.
         """
         b = (atom1, atom2)
         if b in self._bonds:
             self._bonds.remove(b)
-        if b[::-1] in self._bonds:
-            self._bonds.remove(b[::-1])
         if self._AtomGraph.has_edge(atom1, atom2):
-            self._AtomGraph.remove_edge(atom1, atom2)
-        if self._AtomGraph.has_edge(atom2, atom1):
-            self._AtomGraph.remove_edge(atom2, atom1)
+            if self._AtomGraph[atom1][atom2]["bond_order"] == 1:
+                self._AtomGraph.remove_edge(atom1, atom2)
+            else:
+                self._AtomGraph[atom1][atom2]["bond_order"] -= 1
         if b in self.locked_bonds:
             self.locked_bonds.remove(b)
-        if b[::-1] in self.locked_bonds:
-            self.locked_bonds.remove(b[::-1])
+
+        if either_way:
+            if b[::-1] in self._bonds:
+                self._bonds.remove(b[::-1])
+            if b[::-1] in self.locked_bonds:
+                self.locked_bonds.remove(b[::-1])
+            if self._AtomGraph.has_edge(atom2, atom1):
+                self._AtomGraph.remove_edge(atom2, atom1)
 
     def _remove_atoms(self, *atoms):
         """

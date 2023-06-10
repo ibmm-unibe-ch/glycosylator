@@ -44,12 +44,18 @@ def parse_connect_lines(filename):
     with open(filename, "r") as f:
         lines = f.readlines()
     bonds = []
+    known_bonds = set()
     for line in lines:
         if line.startswith("CONECT"):
             tokens = line.split()[1:]
             atom_a = int(tokens[0])
             for token in tokens[1:]:
-                bonds.append((atom_a, int(token)))
+                b = (atom_a, int(token))
+                # make sure we don't add the same bond twice
+                if b[::-1] in known_bonds:
+                    continue
+                bonds.append(b)
+                known_bonds.add(b)
     return bonds
 
 
@@ -92,5 +98,9 @@ def _make_molecule_connect_lines(mol):
 if __name__ == "__main__":
     import glycosylator as gl
 
-    glc = parse_connect_lines("/Users/noahhk/GIT/iupac_labeller/data/myglc3.pdb")
+    glc = gl.make_molecule(
+        "GLC"
+    )  # ("/Users/noahhk/GIT/iupac_labeller/data/myglc3.pdb")
+    b = _make_molecule_connect_lines(glc)
+    print(b)
     glc.show()
