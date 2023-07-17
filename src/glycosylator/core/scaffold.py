@@ -124,23 +124,23 @@ For convenience, the `attach` method accepts a `sequon` argument where a regex p
 """
 
 from collections import defaultdict
-from copy import deepcopy
 from typing import Union
 
-import Bio.PDB as bio
+
+import biobuild.core.entity as entity
+import biobuild.core.base_classes as base_classes
+import biobuild.structural as structural
+import biobuild.utils.auxiliary as aux
 
 import glycosylator.resources as resources
-import glycosylator.utils.defaults as defaults
-import glycosylator.structural as structural
-import glycosylator.utils.auxiliary as aux
-import glycosylator.core.entity as entity
+
 
 import re
 
 
 class Scaffold(entity.BaseEntity):
     """
-    The :class:`Scaffold` class is used to represent a scaffold structure such as a protein or membrane on to which a
+    The :class:`Scaffold` class is used to represent a scaffold structure such as a protein or membrane onto which a
     modification in form of one or more :class:`glycosylator.core.molecule.Molecule`s can be added.
     """
 
@@ -164,7 +164,7 @@ class Scaffold(entity.BaseEntity):
         dict
             A dictionary of the sequences of the scaffold for each chain in the structure
         """
-        compounds = defaults.get_default_compounds()
+        compounds = resources.get_default_compounds()
         seqs = {}
         for chain in self._base_struct.get_chains():
             ids = [residue.resname for residue in chain.get_residues()]
@@ -221,7 +221,7 @@ class Scaffold(entity.BaseEntity):
             new.add_bond(*bond)
         return new
 
-    def exclude_chain(self, chain: Union[str, bio.Chain.Chain]):
+    def exclude_chain(self, chain: Union[str, base_classes.Chain]):
         """
         Exclude a chain from the scaffold from letting any
         molecules attach to any of its residues. This will also
@@ -239,7 +239,7 @@ class Scaffold(entity.BaseEntity):
         else:
             raise ValueError(f"Chain '{chain}' not found")
 
-    def include_chain(self, chain: Union[str, bio.Chain.Chain]):
+    def include_chain(self, chain: Union[str, base_classes.Chain]):
         """
         Include a previously excluded chain in the scaffold again to let molecules
         attach to its residues. This will also
@@ -257,7 +257,7 @@ class Scaffold(entity.BaseEntity):
         elif _chain in self._excluded_chains:
             self._excluded_chains.remove(_chain)
 
-    def exclude_residue(self, residue: Union[int, bio.Residue.Residue]):
+    def exclude_residue(self, residue: Union[int, base_classes.Residue]):
         """
         Exclude a residue of the scaffold from modification
         by a molecule
@@ -273,7 +273,7 @@ class Scaffold(entity.BaseEntity):
         else:
             raise ValueError(f"Residue '{residue}' not found")
 
-    def include_residue(self, residue: Union[int, bio.Residue.Residue]):
+    def include_residue(self, residue: Union[int, base_classes.Residue]):
         """
         Include a previously excluded residue of the scaffold again for modification
         by a molecule
@@ -339,7 +339,7 @@ class Scaffold(entity.BaseEntity):
 
     def add_residues(
         self,
-        *residues: bio.Residue.Residue,
+        *residues: base_classes.Residue,
         chain: str = None,
         adjust_seqid: bool = True,
         _copy: bool = False,
@@ -349,7 +349,7 @@ class Scaffold(entity.BaseEntity):
 
         Parameters
         ----------
-        residues : bio.Residue.Residue
+        residues : Residue
             The residues to add
         chain : str
             The chain to add the residues to. If None, the residues are added to the last chain
@@ -359,9 +359,9 @@ class Scaffold(entity.BaseEntity):
             (i.e. a new residue can be given seqid 1, and it will be adjusted
             to the correct value of 3 if there are already two other residues in the molecule).
         _copy : bool
-            If True, the residues are copied before adding them to the molecule.
+            If True, the residues are copied before adding them to the structure.
             This is useful if you want to add the same residue to multiple molecules, while leaving
-            them and their original parent structures intakt.
+            them and their original parent structures intact.
         """
         if chain is None:
             chain = self._chain
@@ -379,7 +379,7 @@ class Scaffold(entity.BaseEntity):
         """
         Remove all residues and atoms from the structure that are not accessible on the surface.
         This is useful for creating a simplified representation of the structure, which will ease
-        the computational load for structure optimization of attached molecules.
+        the computational load for structure optimization of attached glycan molecules.
 
         Parameters
         ----------
@@ -442,8 +442,8 @@ class Scaffold(entity.BaseEntity):
 
     def attach(
         self,
-        mol: "Molecule",
-        recipe: "AbstractRecipe" = None,
+        mol: "Glycan",
+        recipe: "Linkage" = None,
         remove_atoms: tuple = None,
         mol_remove_atoms: tuple = None,
         residues: list = None,
@@ -457,16 +457,16 @@ class Scaffold(entity.BaseEntity):
 
         Parameters
         ----------
-        mol : Molecule
-            The molecule to attach
-        recipe : Recipe
-            The recipe to use when stitching. If None, the default recipe that was set earlier on the molecule is used (if defined).
+        mol : Glycan
+            The glycan molecule to attach
+        recipe : Linkage
+            The recipe to use when stitching. If None, the default recipe that was set earlier on the scaffold is used (if defined).
         remove_atoms : tuple
             The atoms to remove from the scaffold while stitching the molecule to it. These must be the atom ids (e.g. "HO4")
-            and they must be part of the scaffold's root residue.
+            and they must be part of the scaffold's root residue. (This is used *instead* of specifying a recipe).
         mol_remove_atoms : tuple
             The atoms to remove from the molecule while stitching it to the scaffold. These must be the atom ids (e.g. "HO4")
-            and they must be part of the molecule's root residue.
+            and they must be part of the molecule's root residue. (This is used *instead* of specifying a recipe).
         residues : list
             A list of residues at which to attach copies of the molecule. This is an alternative to using a sequon.
         sequon : str
@@ -475,10 +475,10 @@ class Scaffold(entity.BaseEntity):
         at_atom: str
             In case a sequon or a list of residues are provided, this specifies the atom of the matching residues that shall be used for stitching.
             This must be the atom's id (e.g. "CA"). If no sequon and no residue list is provided, this parameter is ignored and the root atom of the scaffold is used for attachment.
-        chain : str or int or bio.PDB.Chain.Chain
+        chain : str or int or Chain
             The chain to which the molecule should be attached. If None, the molecule is attached to the same chain as the root residue.
             This can be set to "new" to create a new chain for the molecule, or "each" to create a new chain for each molecule that is attached
-            if a sequon is provided. If a sequon is provided and this is set to "new" all molecules will be attached to the same new chain.
+            if a sequon is provided. If a sequon is provided and this is set to "new" all glycans will be attached to the same new chain.
 
         _copy : bool
             Whether to copy the scaffold before attaching the molecule(s) at the specified residue(s).
@@ -511,7 +511,7 @@ class Scaffold(entity.BaseEntity):
             )
 
         if _copy:
-            scaffold = deepcopy(self)
+            scaffold = self.copy()
         else:
             scaffold = self
 
@@ -530,7 +530,7 @@ class Scaffold(entity.BaseEntity):
 
             _chain = chain
             if chain == "new":
-                _chain = bio.Chain.Chain(chr(65 + len(scaffold.chains)))
+                _chain = base_classes.Chain(chr(65 + len(scaffold.chains)))
                 self._model.add(_chain)
             if chain == "each":
                 _chain = "new"
@@ -562,7 +562,7 @@ class Scaffold(entity.BaseEntity):
                 for res in residues:
                     if res not in scaffold.get_residues():
                         res = scaffold.get_residue(res)
-                    root = res.child_dict.get(at_atom)
+                    root = scaffold.get_atom(at_atom, residue=res)
                     if root is None:
                         raise ValueError(
                             f"No atom with id '{at_atom}' found in residue {res}"
@@ -600,12 +600,15 @@ class Scaffold(entity.BaseEntity):
                 f"'mol_remove_atoms' must be a list or tuple (got {type(mol_remove_atoms)})"
             )
 
-        s = structural.__default_keep_copy_stitcher__
+        s = structural.__default_keep_keep_stitcher__
+
+        # copy the molecule to avoid changing the original
+        mol = mol.copy()
 
         if chain is None:
             chain = scaffold.root_residue.get_parent()
         if chain == "new":
-            chain = bio.Chain.Chain(chr(65 + len(scaffold.chains)))
+            chain = base_classes.Chain(chr(65 + len(scaffold.chains)))
             self._model.add(chain)
 
         scaffold, _mol = s.apply(
@@ -627,7 +630,7 @@ class Scaffold(entity.BaseEntity):
 
         scaffold.add_residues(*_mol.residues, chain=chain)
         scaffold._bonds.extend(_mol.bonds)
-        scaffold._AtomGraph.add_edges_from(_mol._AtomGraph.edges)
+        scaffold._AtomGraph.migrate_bonds(_mol._AtomGraph)
         scaffold.add_bond(s._anchors[0].serial_number, s._anchors[1].serial_number)
 
         return scaffold
@@ -667,9 +670,7 @@ if __name__ == "__main__":
     # _s.bonds = s.bonds
     # s = _s
 
-    mol = gl.Molecule.from_pdb(
-        "/Users/noahhk/GIT/glycosylator/support/examples/man9.pdb"
-    )
+    mol = gl.Glycan.from_pdb("/Users/noahhk/GIT/glycosylator/support/examples/man9.pdb")
     mol.infer_bonds(restrict_residues=False)
     mol.reindex()
 
@@ -677,6 +678,7 @@ if __name__ == "__main__":
 
     import time
 
+    print("Start attaching...")
     t1 = time.time()
     s.attach(
         mol,
