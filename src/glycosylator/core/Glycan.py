@@ -5,19 +5,22 @@ from typing import Union
 import warnings
 
 import biobuild.core as core
-import biobuild.utils as utils
 import biobuild.structural as structural
 import biobuild.resources as resources
 
+import glycosylator.utils as utils
 
-def glycan(id: str, g: Union[str, list]):
+
+def glycan(id: str, g: Union[str, list] = None):
     """
-    The toplevel function to generate an entire glycan molecule from either an IUPAC/SNFG string or a list of residues from a graph structure.
+    The toplevel function to generate an entire glycan molecule from either an IUPAC/SNFG string, a list of residues from a graph structure, or just get a single residue glycan molecule (e.g. one Glucose, etc.).
 
     Parameters
     ----------
     id : str
-        The id of the molecule to create
+        The id of the molecule to create.
+        If no further arguments are passed, this function is used like the `biobuild.molecule` function to obtain a single residue molecule (e.g. `glycan("glucose", "GLC")`).
+
     g : str or list
         The glycan string to parse.
         The string must be in IUPAC condensed format - currently, neither extended nor short formats are supported (refer to the `read_snfg` function for more information).
@@ -28,13 +31,24 @@ def glycan(id: str, g: Union[str, list]):
     molecule : Glycan
         The created Glycan molecule.
     """
+    if g is None:
+        mol = core.molecule(id)
+        mol = Glycan(mol)
+        return mol
+
     if isinstance(g, str):
         try:
             return read_snfg(id, g)
         except:
-            warnings.warn(
-                "Failed to parse IUPAC/SNFG string. Perhaps one of the residues could not be found in the database?"
-            )
+            try:
+                mol = bb.molecule(g)
+                mol.id = id
+                mol = Glycan(mol)
+                return mol
+            except:
+                raise ValueError(
+                    f"Failed to interpret input '{g}'. Could not parse as IUPAC/SNFG string and not get a molecule from it. If it is a IUPAC/SNFG string, perhaps one of the residues could not be found in the database? Try building the glycan directly."
+                )
     elif isinstance(g, list):
         return read_graph(id, g)
 
@@ -83,11 +97,7 @@ def read_snfg(id: str, snfg: str, _topology=None) -> "Glycan":
     >>> mol = read_snfg("my_glycan", iupac)
     """
     if isinstance(g, str):
-        g = structural.IUPACParser().parse(snfg)
-    elif not isinstance(g, list):
-        raise ValueError("g must be either a string or a list")
-    if not isinstance(g[0], (tuple, list)) or len(g[0]) != 3:
-        raise ValueError("g must be a list of tuples of length 3")
+        g = utils.IUPACParser().parse(snfg)
     mol = _parse_iupac_graph(id, g, _topology)
     return mol
 
@@ -157,6 +167,12 @@ def read_graph(id: str, g: list, _topology=None) -> "Glycan":
     we can then create a molecule using:
     >>> mol = read_graph("my_glycan", graph)
     """
+    if not isinstance(g, list):
+        raise ValueError("g must be either a string or a list")
+    if not isinstance(g[0], (tuple, list)) or len(g[0]) != 3:
+        raise ValueError("g must be a list of tuples of length 3")
+    mol = _parse_iupac_graph(id, g, _topology)
+    return mol
 
 
 class GlycanTree:
@@ -317,7 +333,7 @@ def _parse_iupac_graph(id, glycan_segments, _topology=None):
         The molecule
     """
     if not _topology:
-        _topology = utils.defaults.get_default_topology()
+        _topology = bb.get_default_topology()
 
     # Check that all segments have a known patch
     for segment in glycan_segments:
