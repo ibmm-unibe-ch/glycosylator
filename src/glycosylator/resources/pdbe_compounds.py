@@ -13,7 +13,14 @@ The path to the glycosylator-curated compounds file (JSON)
 """
 
 core.defaults.DEFAULT_PDBE_COMPONENT_FILES["glycosylator"] = GLYCOSYLATOR_COMPOUNDS_FILE
-core.set_default_compounds(core.PDBECompounds.from_json(GLYCOSYLATOR_COMPOUNDS_FILE))
+
+
+def load_glycosylator_compounds():
+    """
+    Load the glycosylator compounds library
+    """
+    compounds = core.PDBECompounds.from_json(GLYCOSYLATOR_COMPOUNDS_FILE)
+    core.set_default_compounds(compounds)
 
 
 def set_default_compounds(compounds: core.PDBECompounds, overwrite: bool = False):
@@ -57,4 +64,5 @@ __all__ = [
     "GLYCOSYLATOR_COMPOUNDS_FILE",
     "set_default_compounds",
     "restore_default_compounds",
+    "load_glycosylator_compounds",
 ]
