@@ -1,0 +1,4 @@
+{
+    "N-linked": "(N)(?=[A-OQ-Z][ST])",
+    "O-linked": "(S|T)(?=[A-OQ-Z][ST])"
+}
