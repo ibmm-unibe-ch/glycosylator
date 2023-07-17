@@ -3,6 +3,8 @@ Functions to work with the IUPAC glycan nomenclature.
 """
 import re
 from typing import Any
+import networkx as nx
+import glycosylator.resources.names as names
 
 
 def reformat_link(string):
@@ -46,9 +48,9 @@ def reverse_format_link(string, pretty: bool = False):
         return string
     a, b, type = match.groups()
     if pretty:
-        pre = "α" if type[0] == "a" else "β"
+        pre = "α" if type[1] == "a" else "β"
         return pre + "(" + a + "→" + b + ")"
-    return type[0] + a + "-" + b
+    return type[1] + a + "-" + b
 
 
 class IUPACParser:
@@ -225,6 +227,10 @@ class IUPACParser:
             self._shift()
             self._string = self._string[: -self._idx]
             self._idx = 1
+        else:
+            self._latest_conformation = (
+                "a"  # assume alpha conformation if not specified
+            )
 
     def _reformat_link(self, link):
         link = link[::-1].replace("-", "")
@@ -257,10 +263,162 @@ def parse_iupac(string):
     return p.parse(string)
 
 
-if __name__ == "__main__":
-    string2 = "Man(b1-6)[Man(b1-3)]BMA(b1-4)GlcNAc(b1-4)GlcNAc(b1-"
-    string = "F(b1-4)[E(a2-3)D(a1-4)]C(a1-6)B(b1-4)A(a1-"
+class IUPACStringMaker:
+    """
+    This class generates IUPAC strings from a list of glycan molecule.
+    """
 
-    p = IUPACParser()
-    g = p.parse(string)
-    print(g)
+    def write_string(self, glycan: "Glycan") -> str:
+        """
+        Write the IUPAC string for a glycan molecule.
+
+        Parameters
+        ----------
+        glycan : Glycan
+            The glycan molecule to write the IUPAC string for.
+
+        Returns
+        -------
+        str
+            The IUPAC string for the glycan molecule.
+        """
+        # setup the class
+        self._setup(glycan)
+
+        # generate the string (in reverse order)
+        self._string = self._write_string(self.root_residue)
+
+        # fill in all branch-place holders
+        for key, value in self._sub_branch_mapping.items():
+            self._string = self._string.replace(key, "]" + value + "[")
+
+        return self._string[::-1]
+
+    def _setup(self, glycan):
+        """Setup the class for writing the IUPAC string."""
+        self.root = glycan.get_root() or glycan.get_atom(1)
+        self.root_residue = self.root.get_parent()
+        self.graph = nx.Graph(
+            glycan._glycan_tree._segments,
+        )
+        nx.set_edge_attributes(
+            self.graph,
+            {
+                i: j
+                for i, j in zip(
+                    glycan._glycan_tree._segments, glycan._glycan_tree._linkages
+                )
+            },
+            "linkage",
+        )
+        self._string = ""
+        self._child_mapping = self._make_child_mapping()
+        self._sub_branch_mapping = {}
+        self.idx = 0
+
+    def _make_child_mapping(self):
+        """Make a mapping of each residue to its children."""
+        graph = nx.dfs_tree(self.graph, self.root_residue)
+        child_mapping = {residue: [] for residue in graph.nodes}
+        for node in child_mapping.keys():
+            children = list(graph[node].keys())
+            child_mapping[node] = children
+        return child_mapping
+
+    def _write_string(self, parent, residue=None):
+        """Write the IUPAC string for a residue."""
+        # start of the string at the root residue
+        if parent and not residue:
+            string = self._get_name(parent)
+            children = self._child_mapping[parent]
+            if len(children) != 0:
+                for child in children:
+                    string += self._write_string(parent, child)
+            return string
+
+        # recursive part for residues that are children of other residues
+        name_residue = self._get_name(residue)
+        linkage = self._get_linkage(self.graph[parent][residue]["linkage"])
+        string = linkage + name_residue
+
+        children = self._child_mapping[residue]
+        if len(children) != 0:
+            for child in children:
+                # if we have a branch, we just set a placeholder and later fill them all in at once...
+                if self._should_open_branch(residue, child):
+                    string += f"<{self.idx}>"
+                    self._sub_branch_mapping[f"<{self.idx}>"] = self._write_string(
+                        residue, child
+                    )
+                    self.idx += 1
+                else:
+                    string += self._write_string(residue, child)
+        return string
+
+    def _should_open_branch(self, parent, residue=None) -> bool:
+        """Check if we should open a branch."""
+        child_mapping = self._child_mapping[parent]
+        verdict = len(child_mapping) > 1
+        if residue:
+            verdict = verdict and child_mapping.index(residue) != len(child_mapping) - 1
+        return verdict
+
+    @staticmethod
+    def _get_name(residue):
+        return names.id_to_name(residue.resname)[::-1]
+
+    @staticmethod
+    def _get_linkage(linkage):
+        return f"({reverse_format_link(linkage.id)})"[::-1]
+
+
+def make_iupac_string(glycan):
+    """
+    Make an IUPAC/SNFG string from a glycan molecule.
+
+    Parameters
+    ----------
+    glycan : Glycan
+        The glycan molecule to make the IUPAC string for.
+
+    Returns
+    -------
+    str
+        The IUPAC string for the glycan molecule.
+    """
+    if len(glycan._glycan_tree._segments) == 0:
+        raise ValueError(
+            "This glycan does not have any entries in its glycan tree. Make sure it was generated using glycosylator! Currently, only glycans generated using glycosylator are supported."
+        )
+    m = IUPACStringMaker()
+    return m.write_string(glycan)
+
+
+__all__ = ["IUPACParser", "IUPACStringMaker", "parse_iupac", "make_iupac_string"]
+
+if __name__ == "__main__":
+    # string2 = "Man(b1-6)[Man(b1-3)]BMA(b1-4)GlcNAc(b1-4)GlcNAc(b1-"
+    # string = "F(b1-4)[E(a2-3)D(a1-4)]C(a1-6)B(b1-4)A"
+    # string3 = "Glc(b1-3)[Gal(a1-4)Man(b1-6)]GlcNAc(a1-4)Man(b1-4)Glc(b1-"
+
+    # p = IUPACParser()
+    # g = p.parse(string3)
+    # print(g)
+
+    import glycosylator as gl
+
+    mol = gl.glycan(
+        "Glc(a1-4)[Gal(b1-4)[Man(a1-2)]b-Man(a1-2)Gal(b1-6)][b-Man(b1-4)Gal(a1-2)]Man(a1-3)GlcNAc(b1-4)Man(b1-4)Glc(a1-",
+    )
+    out = IUPACStringMaker().write_string(mol)
+    mol2 = gl.glycan(out)
+    import matplotlib.pyplot as plt
+
+    fig, axs = plt.subplots(1, 2)
+    mol.draw2d(ax=axs[0])
+    mol2.draw2d(ax=axs[1])
+    axs[0].set_title("Original")
+    axs[1].set_title("Reconstructed")
+    plt.show()
+    print(out)
+    pass
