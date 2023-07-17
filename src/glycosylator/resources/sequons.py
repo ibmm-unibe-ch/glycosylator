@@ -99,6 +99,9 @@ def restore_sequons(overwrite: bool = True):
 
 
 SEQUONS = load_sequons(GLYCOSYLATOR_SEQUONS_FILE)
+"""
+Default sequons for protein glycosylation sites
+"""
 
 __all__ = [
     "SEQUONS",
