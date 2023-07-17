@@ -2,4 +2,5 @@
 Glycosylator utilities
 """
 
-from glycosylator.utils.iupac import IUPACParser, parse_iupac
+from glycosylator.utils.iupac import *
+import glycosylator.utils.visual as visual
