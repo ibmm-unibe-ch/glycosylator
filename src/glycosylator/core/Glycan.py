@@ -11,46 +11,47 @@ import biobuild.resources as resources
 import glycosylator.utils as utils
 
 
-def glycan(id: str, g: Union[str, list] = None):
+def glycan(g: Union[str, list], id: str = None, _topology=None):
     """
     The toplevel function to generate an entire glycan molecule from either an IUPAC/SNFG string, a list of residues from a graph structure, or just get a single residue glycan molecule (e.g. one Glucose, etc.).
 
     Parameters
     ----------
-    id : str
-        The id of the molecule to create.
-        If no further arguments are passed, this function is used like the `biobuild.molecule` function to obtain a single residue molecule (e.g. `glycan("glucose")`).
-
     g : str or list
         The glycan string to parse.
-        The string must be in IUPAC condensed format - currently, neither extended nor short formats are supported (refer to the `read_snfg` function for more information).
+        The string may be a single sugar residue's name, in which case this function is used like `biobuild.molecule`, or can be an entire glycan structure in IUPAC/SNFG condensed format - currently, neither extended nor short formats are supported (refer to the `read_snfg` function for more information).
         Alternatively, a list of residues from a graph structure can be passed (refer to the `read_graph` function for more information).
+    id : str
+        The id of the molecule to create.
+        If not provided, the id will be the same as the input string.
+    _topology
+        A particular topology to use. If None, the default topology is used.
 
     Returns
     -------
     molecule : Glycan
         The created Glycan molecule.
     """
-    if g is None:
-        mol = core.molecule(id)
-        mol = Glycan(mol)
-        return mol
-
     if isinstance(g, str):
         try:
-            return read_snfg(id, g)
-        except:
+            return read_snfg(id, g, _topology)
+        except Exception as e:
+            warnings.warn(
+                f"Failed to interpret input '{g}' as IUPAC/SNFG string. Trying to interpret as a single residue name instead.\nDetails on error:\n{e}"
+            )
             try:
-                mol = bb.molecule(g)
+                mol = core.molecule(g)
                 mol.id = id
                 mol = Glycan(mol)
                 return mol
             except:
                 raise ValueError(
-                    f"Failed to interpret input '{g}'. Could not parse as IUPAC/SNFG string and not get a molecule from it. If it is a IUPAC/SNFG string, perhaps one of the residues could not be found in the database? Try building the glycan directly."
+                    f"Failed to interpret input '{g}'. Could not parse as IUPAC/SNFG string and not get a molecule from it. If it is a IUPAC/SNFG string, perhaps one of the residues could not be found in the database or a linkage is not available in the used topology? Try building the glycan directly."
                 )
+
     elif isinstance(g, list):
-        return read_graph(id, g)
+        mol = read_graph(id, g)
+        return mol
 
 
 def read_snfg(id: str, snfg: str, _topology=None) -> "Glycan":
@@ -96,10 +97,18 @@ def read_snfg(id: str, snfg: str, _topology=None) -> "Glycan":
     Which can be parsed into a molecule with:
     >>> mol = read_snfg("my_glycan", iupac)
     """
-    if isinstance(g, str):
-        g = utils.IUPACParser().parse(snfg)
-    mol = _parse_iupac_graph(id, g, _topology)
+    if isinstance(snfg, str):
+        snfg = utils.IUPACParser().parse(snfg)
+    else:
+        raise TypeError(
+            f"Expected string, got {type(snfg)} instead. Perhaps you meant to use the `read_graph` function?"
+        )
+    mol = _parse_iupac_graph(id, snfg, _topology)
     return mol
+
+
+# Alias
+read_iupac = read_snfg
 
 
 def read_graph(id: str, g: list, _topology=None) -> "Glycan":
@@ -254,6 +263,20 @@ class Glycan(core.Molecule):
         # this is the only method that does not use cls() to create a new instance in the biobuild implementation...
         return cls(new)
 
+    @classmethod
+    def from_iupac(cls, id: str, iupac: str, _topology=None) -> "Glycan":
+        """
+        Generate a glycan molecule from an IUPAC/SNFG string
+        """
+        new = read_snfg(id, iupac, _topology)
+        return new
+
+    def make_iupac_string(self):
+        """
+        Generate an IUPAC/SNFG string from the glycan molecule
+        """
+        return utils.make_iupac_string(self)
+
     def attach(
         self,
         other: "core.Molecule",
@@ -312,6 +335,151 @@ class Glycan(core.Molecule):
             self._glycan_tree.remove(*s)
         return residues
 
+    def draw2d(
+        self,
+        ax=None,
+        axis="y",
+        node_size: int = 20,
+        draw_edge_labels: bool = False,
+        edge_label_kws: dict = None,
+        **kwargs,
+    ) -> "utils.visual.plt.Axes":
+        """
+        Draw the 2D schematic of the glycan
+
+        Parameters
+        ----------
+        ax : matplotlib.Axes
+            The axes to draw on
+        axis : str
+            The orientation of the glycan y-axis = vertical, x-axis = horizontal.
+        node_size : int
+            The size of the nodes
+        draw_edge_labels : bool
+            Whether to draw the edge labels
+        edge_label_kws : dict
+            The keyword arguments for the edge labels
+        kwargs
+            The keyword arguments for the drawing of the networkx graph edges
+
+        Returns
+        -------
+        matplotlib.Axes
+            The axes
+        """
+        v = utils.visual.GlycanViewer2D(self)
+        return v.draw(
+            ax=ax,
+            axis=axis,
+            node_size=node_size,
+            draw_edge_labels=draw_edge_labels,
+            edge_label_kws=edge_label_kws,
+            **kwargs,
+        )
+
+    def show2d(
+        self,
+        axis="y",
+        node_size: int = 20,
+        draw_edge_labels: bool = False,
+        edge_label_kws: dict = None,
+        **kwargs,
+    ):
+        """
+        Draw and show the 2D schematic of the glycan
+
+        Parameters
+        ----------
+        axis : str
+            The orientation of the glycan y-axis = vertical, x-axis = horizontal.
+        node_size : int
+            The size of the nodes
+        draw_edge_labels : bool
+            Whether to draw the edge labels
+        edge_label_kws : dict
+            The keyword arguments for the edge labels
+        kwargs
+            The keyword arguments for the drawing of the networkx graph edges
+        """
+        ax = self.draw2d(
+            axis=axis,
+            node_size=node_size,
+            draw_edge_labels=draw_edge_labels,
+            edge_label_kws=edge_label_kws,
+            **kwargs,
+        )
+        utils.visual.plt.show()
+
+    def draw3d(self, residue_graph: bool = False) -> "plotly.graphs_objs.Figure":
+        """
+        Draw the 3D structure of the molecule
+
+        Parameters
+        ----------
+        residue_graph : bool
+            Whether to show the residue graph only
+
+        Returns
+        -------
+        plotly.Figure
+            The figure
+        """
+        return super().draw(residue_graph=residue_graph)
+
+    def show3d(self, residue_graph: bool = False):
+        """
+        Draw and show the 3D structure of the molecule
+
+        Parameters
+        ----------
+        residue_graph : bool
+            Whether to show the residue graph only
+        """
+        super().show(residue_graph=residue_graph)
+
+    def draw(self, representation: str = "2d", residue_graph: bool = False):
+        """
+        Draw the molecule
+
+        Parameters
+        ----------
+        representation : str
+            The representation to draw
+        residue_graph : bool
+            Whether to show the residue graph only (3D only)
+
+        Returns
+        -------
+        matplotlib.Axes or plotly.Figure
+            The axes or figure
+        """
+        if representation == "2d":
+            return self.draw2d()
+        elif representation == "3d":
+            return self.draw3d(residue_graph=residue_graph)
+        elif isinstance(representation, bool):
+            return self.draw3d(residue_graph=representation)
+        else:
+            raise ValueError(f"Representation {representation} not supported")
+
+    def show(self, representation: str = "2d", residue_graph: bool = False):
+        """
+        Draw and show the molecule
+
+        Parameters
+        ----------
+        representation : str
+            The representation to draw
+        residue_graph : bool
+            Whether to show the residue graph only (3D only)
+        """
+        if representation == "2d":
+            self.show2d()
+        elif representation == "3d":
+            self.show3d(residue_graph=residue_graph)
+        else:
+            raise ValueError(f"Representation {representation} not supported")
+
     def __repr__(self):
         return f"Glycan({self.id})"
 
@@ -326,14 +494,13 @@ def _parse_iupac_graph(id, glycan_segments, _topology=None):
         The id of the molecule
     glycan_segments : list
         A list of glycan segments
-
     Returns
     -------
     Molecule
         The molecule
     """
     if not _topology:
-        _topology = bb.get_default_topology()
+        _topology = resources.get_default_topology()
 
     # Check that all segments have a known patch
     for segment in glycan_segments:
@@ -343,13 +510,6 @@ def _parse_iupac_graph(id, glycan_segments, _topology=None):
             # ---------------------------- TO REMOVE LATER ----------------------------
             # STILL SOME DEBUG STUFF HERE
             # ---------------------------- TO REMOVE LATER ----------------------------
-            f = core.molecule(segment[0])
-            t = core.molecule(segment[1])
-            f.show()
-            t.show()
-            print("MISSING: ", link)
-            if input("Next: (y)").lower() == "y":
-                continue
             raise ValueError(
                 f"No patch/recipe available for linkage: {link}. Try adding a patch or recipe to the topology."
             )
@@ -373,9 +533,11 @@ def _parse_iupac_graph(id, glycan_segments, _topology=None):
             first_mol = core.molecule(first_name)
             if isinstance(first_mol, list):
                 first_mol = first_mol[0]
+
             # if we did not get the compound from the PDBE compounds,
             # we probably got them from PubChem, in which case we need to autolabel them
-            if not bb.has_compound(first_mol.id):
+            first_mol = Glycan(first_mol)
+            if not resources.has_compound(first_mol.id):
                 first_mol.autolabel()
             residue_id_mapping[first] = len(residue_id_mapping) + 1
             at_residue = None
@@ -387,7 +549,9 @@ def _parse_iupac_graph(id, glycan_segments, _topology=None):
             second_mol = core.molecule(second_name)
             if isinstance(second_mol, list):
                 second_mol = second_mol[0]
-            if not bb.has_compound(second_mol.id):
+
+            second_mol = Glycan(second_mol)
+            if not resources.has_compound(second_mol.id):
                 second_mol.autolabel()
             residue_id_mapping[second] = len(residue_id_mapping) + 1
             other_residue = None
@@ -406,18 +570,19 @@ def _parse_iupac_graph(id, glycan_segments, _topology=None):
     return mol
 
 
-__all__ = ["Glycan", "read_snfg", "read_graph", "glycan"]
+__all__ = ["Glycan", "read_snfg", "read_graph", "glycan", "read_iupac"]
 
 if __name__ == "__main__":
     import biobuild as bb
 
     bb.load_sugars()
     glc = Glycan.from_compound("GLC")
-    read_snfg = bb.connect(glc, glc, "14bb")
-    read_snfg = bb.connect(read_snfg, glc, "16ab")
-    read_snfg = bb.connect(read_snfg, glc, "12ab", at_residue_a=-2)
-    out = bb.connect(read_snfg, read_snfg, "13ab")
+    _read_snfg = bb.connect(glc, glc, "14bb")
+    _read_snfg = bb.connect(_read_snfg, glc, "16ab")
+    _read_snfg = bb.connect(_read_snfg, glc, "12ab", at_residue_a=-2)
+    out = bb.connect(_read_snfg, _read_snfg, "13ab")
     # out.show()
-    _removed = out.remove_residues(4)
-    print(out._glycan_tree)
+    # _removed = out.remove_residues(4)
+    # print(out._glycan_tree)
+    # out.show2d()
     pass
