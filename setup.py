@@ -5,7 +5,7 @@ with open("README.md", "r") as f:
 
 setuptools.setup(
     name="glycosylator",
-    version="4.0.20",
+    version="4.1.0",
     author="Noah H. Kleinschmidt",
     author_email="noah.kleinschmidt@students.unibe.ch",
     description="A python package for structural simulation of protein glycosylation",
@@ -23,6 +23,7 @@ setuptools.setup(
         "glycosylator.resources",
         "glycosylator.optimizers",
         "glycosylator.resources.icons",
+        "glycosylator.resources.names",
     ],
     install_requires=[
         "biobuild",
