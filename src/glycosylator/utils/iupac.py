@@ -24,6 +24,33 @@ def reformat_link(string):
     return a + b + type * 2
 
 
+def reverse_format_link(string, pretty: bool = False):
+    """
+    Reverse format a linkage string from the glycosylator (CHARMM force field) format to IUPAC format.
+    If the string cannot be formatted, it is returned as is.
+
+    Parameters
+    ----------
+    string : str
+        The linkage string in Glycosylator format.
+    pretty : bool
+        If True, returns a prettier formatted version with `α` and `β` instead of `a` and `b`, and an actual arrow instead of a dash.
+
+    Returns
+    -------
+    str
+        The linkage string in IUPAC format if possible, otherwise the original string.
+    """
+    match = re.match("(\d+)(\d+)([ab]{2})", string)
+    if match is None:
+        return string
+    a, b, type = match.groups()
+    if pretty:
+        pre = "α" if type[0] == "a" else "β"
+        return pre + "(" + a + "→" + b + ")"
+    return type[0] + a + "-" + b
+
+
 class IUPACParser:
     """
     A parser for condensed IUPAC glycan nomenclature strings. This class will generate
@@ -235,5 +262,5 @@ if __name__ == "__main__":
     string = "F(b1-4)[E(a2-3)D(a1-4)]C(a1-6)B(b1-4)A(a1-"
 
     p = IUPACParser()
-    g = p.parse(string2)
+    g = p.parse(string)
     print(g)
