@@ -19,7 +19,7 @@ def glycan(id: str, g: Union[str, list] = None):
     ----------
     id : str
         The id of the molecule to create.
-        If no further arguments are passed, this function is used like the `biobuild.molecule` function to obtain a single residue molecule (e.g. `glycan("glucose", "GLC")`).
+        If no further arguments are passed, this function is used like the `biobuild.molecule` function to obtain a single residue molecule (e.g. `glycan("glucose")`).
 
     g : str or list
         The glycan string to parse.
