@@ -61,7 +61,6 @@ def restore_default_compounds(overwrite: bool = True):
 
 
 __all__ = [
-    "GLYCOSYLATOR_COMPOUNDS_FILE",
     "set_default_compounds",
     "restore_default_compounds",
     "load_glycosylator_compounds",
