@@ -41,7 +41,7 @@ def glycan(g: Union[str, list], id: str = None, _topology=None):
             )
             try:
                 mol = core.molecule(g)
-                mol.id = id
+                mol.id = id if id is not None else g
                 mol = Glycan(mol)
                 return mol
             except:
