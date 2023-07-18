@@ -10,5 +10,5 @@ from glycosylator.resources import *
 # from the resources module
 load_glycosylator_compounds()
 
-__version__ = "4.1.16"
+__version__ = "4.1.17"
 __author__ = "Noah Kleinschmidt"
