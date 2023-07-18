@@ -283,6 +283,7 @@ class Glycan(core.Molecule):
         link: Union[str, "core.Linkage"] = None,
         at_residue: Union[int, "core.base_classes.Residue"] = None,
         other_residue: Union[int, "core.base_classes.Residue"] = None,
+        use_patch: bool = True,
         inplace: bool = True,
         other_inplace: bool = False,
         _topology=None,
@@ -293,6 +294,7 @@ class Glycan(core.Molecule):
             link,
             at_residue,
             other_residue,
+            use_patch,
             inplace,
             other_inplace,
             _topology,
@@ -307,7 +309,7 @@ class Glycan(core.Molecule):
             link = _topology.get_patch(link)
         factory = (
             structural.__default_keep_keep_patcher__
-            if link.has_IC
+            if link.has_IC and use_patch
             else structural.__default_keep_keep_stitcher__
         )
         at_residue = factory._target_residue
@@ -573,14 +575,15 @@ def _parse_iupac_graph(id, glycan_segments, _topology=None):
 __all__ = ["Glycan", "read_snfg", "read_graph", "glycan", "read_iupac"]
 
 if __name__ == "__main__":
-    import biobuild as bb
+    import glycosylator as gl
 
-    bb.load_sugars()
     glc = Glycan.from_compound("GLC")
-    _read_snfg = bb.connect(glc, glc, "14bb")
-    _read_snfg = bb.connect(_read_snfg, glc, "16ab")
-    _read_snfg = bb.connect(_read_snfg, glc, "12ab", at_residue_a=-2)
-    out = bb.connect(_read_snfg, _read_snfg, "13ab")
+    glc2 = glc % "14bb" + glc
+
+    # _read_snfg = gl.connect(glc, glc, "14bb")
+    # _read_snfg = gl.connect(_read_snfg, glc, "16ab")
+    # _read_snfg = gl.connect(_read_snfg, glc, "12ab", at_residue_a=-2)
+    # out = gl.connect(_read_snfg, _read_snfg, "13ab")
     # out.show()
     # _removed = out.remove_residues(4)
     # print(out._glycan_tree)
