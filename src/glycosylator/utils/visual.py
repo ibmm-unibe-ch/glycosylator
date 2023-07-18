@@ -217,14 +217,14 @@ class GlycanViewer2D:
 
     def _make_graph(self, glycan):
         src = glycan._glycan_tree._segments
-        label_src = glycan._glycan_tree._linkages
+        label_src = (i.id for i in glycan._glycan_tree._linkages)
         if len(src) == 0:
             if len(glycan.residues) == 1:
                 src = [(glycan.residues[0], glycan.residues[0])]
-                label_src = [""]
+                label_src = ["<NaN>"]
             else:
                 src = glycan.make_residue_graph().edges
-                label_src = ["" for _ in src]
+                label_src = ("<NaN>" for _ in src)
         graph = nx.Graph(src)
 
         nx.set_edge_attributes(
