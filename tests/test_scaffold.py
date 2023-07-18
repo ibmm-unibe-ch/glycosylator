@@ -528,3 +528,19 @@ def test_fill():
     for chain in scaffold.chains:
         new_residues_dict[chain] = set(chain.child_list)
     assert new_residues_dict == old_residues_dict
+
+
+def test_find_glycans():
+    scaffold = gl.Scaffold.from_pdb(base.PDB_GLYCOSYLATED_PROTEIN)
+    assert len(scaffold.glycans) == 0, "glycans found in scaffold without searching"
+
+    glycans = scaffold.find_glycans()
+    assert len(glycans) == 3, "glycans not found in scaffold"
+
+    import matplotlib.pyplot as plt
+
+    fig, axs = plt.subplots(1, 3, figsize=(15, 5))
+    for i, glycan in enumerate(glycans):
+        glycan.draw2d(ax=axs[i])
+        axs[i].set_title(f"glycan {i+1}")
+    plt.show()

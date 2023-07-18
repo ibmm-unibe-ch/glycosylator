@@ -41,3 +41,7 @@ PDBE_TEST_FILE = os.path.join(HOME, "support/pdbe_compounds/test.cif")
 """
 The path to the test file for the PDBe compounds
 """
+
+PDB_GLYCOSYLATED_PROTEIN = os.path.join(
+    HOME, "support/examples/4tvp.glycosylated.3.pdb"
+)
