@@ -60,8 +60,31 @@ def restore_default_compounds(overwrite: bool = True):
         os.rename(GLYCOSYLATOR_COMPOUNDS_FILE + ".bak", GLYCOSYLATOR_COMPOUNDS_FILE)
 
 
+def reference_glycan_residue_ids(acceptable_types: list = None):
+    """
+    A set of compound ids (residue names), which are considered to be glycans.
+
+    Note
+    ----
+    This assumes that the compounds and their residue share the same name as is the default case for the PDBE compounds library.
+
+    Parameters
+    ----------
+    acceptable_types : list
+        A list of acceptable compound types. If None, "SACCHARIDE" is used.
+    """
+    if acceptable_types is None:
+        acceptable_types = ["SACCHARIDE"]
+    compounds = core.get_default_compounds()
+    ids = [
+        c for c in compounds.ids if compounds._compounds[c]["type"] in acceptable_types
+    ]
+    return set(ids)
+
+
 __all__ = [
     "set_default_compounds",
     "restore_default_compounds",
     "load_glycosylator_compounds",
+    "reference_glycan_residue_ids",
 ]
