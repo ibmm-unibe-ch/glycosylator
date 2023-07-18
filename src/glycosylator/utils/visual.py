@@ -33,19 +33,7 @@ class GlycanViewer2D:
         self.glycan = glycan
         self.root = glycan.get_root() or glycan.get_atom(1)
         self.root_residue = self.root.get_parent()
-        self.graph = nx.Graph(
-            glycan._glycan_tree._segments,
-        )
-        nx.set_edge_attributes(
-            self.graph,
-            {
-                i: j
-                for i, j in zip(
-                    glycan._glycan_tree._segments, glycan._glycan_tree._linkages
-                )
-            },
-            "linkage",
-        )
+        self.graph = self._make_graph(glycan)
 
     def layout(self, graph) -> dict:
         """
@@ -227,24 +215,51 @@ class GlycanViewer2D:
         )
         plt.show()
 
+    def _make_graph(self, glycan):
+        src = glycan._glycan_tree._segments
+        label_src = glycan._glycan_tree._linkages
+        if len(src) == 0:
+            if len(glycan.residues) == 1:
+                src = [(glycan.residues[0], glycan.residues[0])]
+                label_src = [""]
+            else:
+                src = glycan.make_residue_graph().edges
+                label_src = ["" for _ in src]
+        graph = nx.Graph(src)
+
+        nx.set_edge_attributes(
+            graph,
+            {
+                i: j
+                for i, j in zip(
+                    src, [iupac.reverse_format_link(i, pretty=True) for i in label_src]
+                )
+            },
+            "linkage",
+        )
+        return graph
+
 
 if __name__ == "__main__":
     import glycosylator as gl
 
-    man = gl.glycan("MAN")
-    glc = gl.glycan("GLC")
-    gulnac = gl.glycan("GulNAc")
+    # man = gl.glycan("MAN")
+    # glc = gl.glycan("GLC")
+    # gulnac = gl.glycan("GulNAc")
 
-    glycan = man % "14bb" + glc + glc + man + glc + glc
-    glycan @ -4
-    glycan % "16ab"
-    glycan += man + glc + gulnac
-    glycan % "12bb"
-    glycan += man + gulnac + glc + man
-    glycan = glycan @ -6 + glycan
+    # glycan = man % "14bb" + glc + glc + man + glc + glc
+    # glycan @ -4
+    # glycan % "16ab"
+    # glycan += man + glc + gulnac
+    # glycan % "12bb"
+    # glycan += man + gulnac + glc + man
+    # glycan = glycan @ -6 + glycan
 
-    print(glycan)
-    viewer = GlycanViewer2D(glycan)
-    viewer.draw(axis="y", node_size=20)
-    plt.show()
-    pass
+    # viewer = GlycanViewer2D(glycan)
+    # viewer.show()
+
+    mol = gl.glycan(
+        "Glc(a1-4)[Gal(a1-2)]Man(a1-3)GlcNAc(b1-4)Man(b1-4)Glc(b1-",
+    )
+    v = GlycanViewer2D(mol)
+    v.show()
