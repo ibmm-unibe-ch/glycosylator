@@ -3,11 +3,12 @@ The glycosylator PDBE compounds library with additional curated sugars
 """
 
 import os
+from biobuild.resources.pdbe_compounds import *
 import biobuild.resources.pdbe_compounds as core
 
-DIR = os.path.dirname(__file__)
+_DIR = os.path.dirname(__file__)
 
-GLYCOSYLATOR_COMPOUNDS_FILE = os.path.join(DIR, "compounds.json")
+GLYCOSYLATOR_COMPOUNDS_FILE = os.path.join(_DIR, "compounds.json")
 """
 The path to the glycosylator-curated compounds file (JSON)
 """
@@ -19,11 +20,11 @@ def load_glycosylator_compounds():
     """
     Load the glycosylator compounds library
     """
-    compounds = core.PDBECompounds.from_json(GLYCOSYLATOR_COMPOUNDS_FILE)
+    compounds = PDBECompounds.from_json(GLYCOSYLATOR_COMPOUNDS_FILE)
     core.set_default_compounds(compounds)
 
 
-def set_default_compounds(compounds: core.PDBECompounds, overwrite: bool = False):
+def set_default_compounds(compounds: PDBECompounds, overwrite: bool = False):
     """
     Set the default compounds library
 
@@ -53,9 +54,7 @@ def restore_default_compounds(overwrite: bool = True):
     """
     if not os.path.isfile(GLYCOSYLATOR_COMPOUNDS_FILE + ".bak"):
         raise FileNotFoundError("No backup file found")
-    set_default_compounds(
-        core.PDBECompounds.from_json(GLYCOSYLATOR_COMPOUNDS_FILE + ".bak")
-    )
+    set_default_compounds(PDBECompounds.from_json(GLYCOSYLATOR_COMPOUNDS_FILE + ".bak"))
     if overwrite:
         os.rename(GLYCOSYLATOR_COMPOUNDS_FILE + ".bak", GLYCOSYLATOR_COMPOUNDS_FILE)
 
@@ -83,8 +82,6 @@ def reference_glycan_residue_ids(acceptable_types: list = None):
 
 
 __all__ = [
-    "set_default_compounds",
-    "restore_default_compounds",
     "load_glycosylator_compounds",
     "reference_glycan_residue_ids",
-]
+] + core.__all__

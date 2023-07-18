@@ -5,7 +5,7 @@ Icons for drawing glycan structures in 2D
 import os
 import matplotlib.pyplot as plt
 
-DIR = os.path.dirname(__file__)
+_DIR = os.path.dirname(__file__)
 
 __loaded_icons__ = {}
 
@@ -366,7 +366,7 @@ def get_icon_path(name: str) -> str:
     -------
     str
     """
-    return os.path.join(DIR, name + ".png")
+    return os.path.join(_DIR, name + ".png")
 
 
 def get_icon(name: str) -> "ndarray":
