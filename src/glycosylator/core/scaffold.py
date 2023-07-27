@@ -503,7 +503,7 @@ class Scaffold(entity.BaseEntity):
 
     def to_pdb(self, filename: str):
         self.fill()  # fill the structure before writing it to a file
-        return super().to_pdb(filename)
+        super().to_pdb(filename)
 
     def make_residue_graph(self, detailed: bool = False, locked: bool = True):
         graph = super().make_residue_graph(detailed, locked)
@@ -513,6 +513,8 @@ class Scaffold(entity.BaseEntity):
             if residue not in graph:
                 graph.add_node(residue)
         return graph
+
+    get_residue_graph = make_residue_graph
 
     def attach(
         self,
@@ -677,7 +679,7 @@ class Scaffold(entity.BaseEntity):
         s = structural.__default_keep_keep_stitcher__
 
         # copy the molecule to avoid changing the original
-        mol = mol.copy()
+        _mol = mol.copy()
 
         if chain is None:
             chain = scaffold.root_residue.get_parent()
@@ -687,11 +689,11 @@ class Scaffold(entity.BaseEntity):
 
         scaffold, _mol = s.apply(
             scaffold,
-            mol,
+            _mol,
             remove_atoms,
             mol_remove_atoms,
             scaffold.root_atom,
-            mol.root_atom,
+            _mol.root_atom,
         )
 
         scaffold.add_residues(*_mol.residues, chain=chain)
@@ -721,26 +723,26 @@ class Scaffold(entity.BaseEntity):
 if __name__ == "__main__":
     import glycosylator as gl
 
-    # f1 = "/Users/noahhk/GIT/glycosylator/support/examples/4tvp.prot.pdb"
-    # s = Scaffold.from_pdb(f1)
-    # s.reindex()
-    # s.infer_bonds(restrict_residues=True)
+    f1 = "/Users/noahhk/GIT/glycosylator/support/examples/4tvp.prot.pdb"
+    s = Scaffold.from_pdb(f1)
+    s.reindex()
+    s.infer_bonds(restrict_residues=True)
 
     # sequon = "(N)(?=[A-OQ-Z][ST])"
     # residues = s.find(sequon)
 
-    # f = "/Users/oahhk/GIT/glycosylator/test.prot"
+    # f = "/Users/noahhk/GIT/glycosylator/scaffold.pkl"
     # s.save(f)
 
-    s = Scaffold.load("scaffold.pkl")
+    # s = Scaffold.load("scaffold.pkl")
     # _s = Scaffold(s.structure)
     # _s.bonds = s.bonds
     # s = _s
 
-    # mol = gl.Glycan.from_pdb("/Users/noahhk/GIT/glycosylator/support/examples/man9.pdb")
-    # mol.infer_bonds(restrict_residues=False)
-    # mol.reindex()
-    mol = gl.Glycan.load("glycan.pkl")
+    mol = gl.Glycan.from_pdb("/Users/noahhk/GIT/glycosylator/support/examples/man9.pdb")
+    mol.infer_bonds(restrict_residues=False)
+    mol.reindex()
+    # mol = gl.Glycan.load("glycan.pkl")
 
     mol.root_atom = 1
 
