@@ -7,11 +7,24 @@ from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 
 import numpy as np
 from biobuild.utils.visual import *
-import glycosylator.utils.iupac as iupac
+import glycosylator.utils.snfg as snfg
 import glycosylator.resources.icons as icons
 
+import os
+
+try:
+    from glycowork.motif.draw import GlycoDraw
+except ImportError:
+    GlycoDraw = None
+
+
+use_glycowork = GlycoDraw is not None
+"""
+Whether to use GlycoWork from glycowork to draw glycan structures
+"""
+
 edge_label_defaults = {
-    "font_size": 5,
+    "font_size": 7,
     "font_color": "k",
     "font_weight": "normal",
     "alpha": 1.0,
@@ -34,6 +47,29 @@ class GlycanViewer2D:
         self.root = glycan.get_root() or glycan.get_atom(1)
         self.root_residue = self.root.get_parent()
         self.graph = self._make_graph(glycan)
+
+        if use_glycowork:
+            self.draw = self._glycowork_draw
+            self.show = self._glycowork_show
+        else:
+            self.draw = self._native_draw
+            self.show = self._native_show
+
+    def disable_glycowork(self):
+        """
+        Disable the use of GlycoWork for drawing (if available)
+        """
+        self.draw = self._native_draw
+        self.show = self._native_show
+
+    def enable_glycowork(self):
+        """
+        Enable the use of GlycoWork for drawing (if available)
+        """
+        if GlycoDraw is None:
+            raise ImportError("GlycoWork is not available")
+        self.draw = self._glycowork_draw
+        self.show = self._glycowork_show
 
     def layout(self, graph) -> dict:
         """
@@ -108,7 +144,7 @@ class GlycanViewer2D:
                 return parent_idx + dist
             dist += 1
 
-    def draw(
+    def _native_draw(
         self,
         ax=None,
         axis="y",
@@ -157,7 +193,7 @@ class GlycanViewer2D:
 
             edge_labels = nx.get_edge_attributes(self.graph, "linkage")
             edge_labels = {
-                k: iupac.reverse_format_link(v.id, pretty=True)
+                k: snfg.reverse_format_link(getattr(v, "id", v), pretty=True)
                 for k, v in edge_labels.items()
             }
             nx.draw_networkx_edge_labels(
@@ -177,7 +213,7 @@ class GlycanViewer2D:
             ax.add_artist(ab)
         return ax
 
-    def show(
+    def _native_show(
         self,
         ax=None,
         axis="y",
@@ -194,7 +230,7 @@ class GlycanViewer2D:
         ax : matplotlib.axes.Axes
             The axes to draw on
         axis : str
-            The axis to draw on, either "x" or "y".
+            The axis to draw along, either "x" (horizontal) or "y" (vertical).
         node_size : int
             The size of the nodes
         draw_edge_labels : bool
@@ -205,7 +241,7 @@ class GlycanViewer2D:
         kwargs : dict
             Keyword arguments to pass to `nx.draw_networkx_edges`
         """
-        self.draw(
+        self._native_draw(
             ax=ax,
             axis=axis,
             node_size=node_size,
@@ -214,6 +250,94 @@ class GlycanViewer2D:
             **kwargs,
         )
         plt.show()
+
+    def _glycowork_draw(
+        self,
+        ax=None,
+        axis="x",
+        compact: bool = True,
+        draw_edge_labels: bool = True,
+        svg: bool = False,
+    ):
+        """
+        Draw the glycan structure using GlycoWork
+
+        Parameters
+        ----------
+        ax : matplotlib.axes.Axes
+            The axes to draw on
+        axis : str
+            The axis to draw along, either "x" (horizontal) or "y" (vertical).
+        compact : bool
+            Whether to draw the glycan in a compact form.
+        draw_edge_labels : bool
+            Whether to draw the id labels of the connecting edges.
+        svg : bool
+            Whether to draw the structure as an SVG image. If True,
+            this method will return the SVG as created by GlycoDraw.
+            If False, it will return a matplotlib.Axes object.
+        """
+        vertical = axis == "y"
+        img = GlycoDraw(
+            self.glycan.to_snfg(),
+            compact=compact,
+            vertical=vertical,
+            show_linkage=draw_edge_labels,
+        )
+        if not svg:
+            img = self._glycowork_to_plt(img)
+            if ax is None:
+                fig, ax = plt.subplots()
+            ax.imshow(img)
+            ax.axis("off")
+            return ax
+        return img
+
+    def _glycowork_show(
+        self,
+        ax=None,
+        axis="x",
+        compact: bool = False,
+        draw_edge_labels: bool = True,
+        svg: bool = False,
+    ):
+        """
+        Draw and show the glycan structure using GlycoWork
+
+        Parameters
+        ----------
+        ax : matplotlib.axes.Axes
+            The axes to draw on
+        axis : str
+            The axis to draw along, either "x" (horizontal) or "y" (vertical).
+        compact : bool
+            Whether to draw the glycan in a compact form.
+        draw_edge_labels : bool
+            Whether to draw the id labels of the connecting edges.
+        svg : bool
+            Whether to draw the structure as an SVG image. If True,
+            this method will return the SVG as created by GlycoDraw.
+            If False, it will show the matplotlib figure.
+
+        """
+        img = self._glycowork_draw(
+            ax=ax,
+            axis=axis,
+            compact=compact,
+            draw_edge_labels=draw_edge_labels,
+            svg=svg,
+        )
+        if svg:
+            return img
+        plt.show()
+
+    @staticmethod
+    def _glycowork_to_plt(img):
+        """Convert a drawing to a matplotlib image"""
+        img.save_png("tmp.glycan.png")
+        img = plt.imread("tmp.glycan.png")
+        os.remove("tmp.glycan.png")
+        return img
 
     def _make_graph(self, glycan):
         src = glycan._glycan_tree._segments
@@ -232,7 +356,7 @@ class GlycanViewer2D:
             {
                 i: j
                 for i, j in zip(
-                    src, [iupac.reverse_format_link(i, pretty=True) for i in label_src]
+                    src, [snfg.reverse_format_link(i, pretty=True) for i in label_src]
                 )
             },
             "linkage",
