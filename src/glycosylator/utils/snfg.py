@@ -53,7 +53,7 @@ def reverse_format_link(string, pretty: bool = False):
     return type[1] + a + "-" + b
 
 
-class IUPACParser:
+class SNFGParser:
     """
     A parser for condensed IUPAC glycan nomenclature strings. This class will generate
     a list of connecting glycan segments from a string from which a Molecule can be built.
@@ -245,9 +245,9 @@ class IUPACParser:
         return self.parse(*args, **kwds)
 
 
-def parse_iupac(string):
+def parse_snfg(string):
     """
-    Parse a string of IUPAC glycan nomenclature into a list of glycan segments.
+    Parse a string of IUPAC/SNFG glycan nomenclature into a list of glycan segments.
 
     Parameters
     ----------
@@ -259,13 +259,16 @@ def parse_iupac(string):
     list
         A list of tuples where each segment is a tuple of (residue1, residue2, linkage).
     """
-    p = IUPACParser()
+    p = SNFGParser()
     return p.parse(string)
 
 
-class IUPACStringMaker:
+parse_iupac = parse_snfg
+
+
+class SNFGStringMaker:
     """
-    This class generates IUPAC strings from a list of glycan molecule.
+    This class generates IUPAC/SNFG strings from a list of glycan molecule.
     """
 
     def write_string(self, glycan: "Glycan") -> str:
@@ -372,7 +375,7 @@ class IUPACStringMaker:
         return f"({reverse_format_link(linkage.id)})"[::-1]
 
 
-def make_iupac_string(glycan):
+def make_snfg_string(glycan):
     """
     Make an IUPAC/SNFG string from a glycan molecule.
 
@@ -390,18 +393,20 @@ def make_iupac_string(glycan):
         raise ValueError(
             "This glycan does not have any entries in its glycan tree. Make sure it was generated using glycosylator! Currently, only glycans generated using glycosylator are supported."
         )
-    m = IUPACStringMaker()
+    m = SNFGStringMaker()
     return m.write_string(glycan)
 
 
-__all__ = ["IUPACParser", "IUPACStringMaker", "parse_iupac", "make_iupac_string"]
+make_iupac_string = make_snfg_string
+
+__all__ = ["SNFGParser", "SNFGStringMaker", "parse_snfg", "make_snfg_string"]
 
 if __name__ == "__main__":
     # string2 = "Man(b1-6)[Man(b1-3)]BMA(b1-4)GlcNAc(b1-4)GlcNAc(b1-"
     # string = "F(b1-4)[E(a2-3)D(a1-4)]C(a1-6)B(b1-4)A"
     # string3 = "Glc(b1-3)[Gal(a1-4)Man(b1-6)]GlcNAc(a1-4)Man(b1-4)Glc(b1-"
 
-    # p = IUPACParser()
+    # p = SNFGParser()
     # g = p.parse(string3)
     # print(g)
 
@@ -410,7 +415,7 @@ if __name__ == "__main__":
     mol = gl.glycan(
         "Glc(a1-4)[Gal(b1-4)[Man(a1-2)]b-Man(a1-2)Gal(b1-6)][b-Man(b1-4)Gal(a1-2)]Man(a1-3)GlcNAc(b1-4)Man(b1-4)Glc(a1-",
     )
-    out = IUPACStringMaker().write_string(mol)
+    out = SNFGStringMaker().write_string(mol)
     mol2 = gl.glycan(out)
     import matplotlib.pyplot as plt
 
