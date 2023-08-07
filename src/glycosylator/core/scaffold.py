@@ -501,9 +501,9 @@ class Scaffold(entity.BaseEntity):
 
         self._internal_residues.clear()
 
-    def to_pdb(self, filename: str):
+    def to_pdb(self, filename: str, symmetric: bool = False):
         self.fill()  # fill the structure before writing it to a file
-        super().to_pdb(filename)
+        super().to_pdb(filename, symmetric=symmetric)
 
     def make_residue_graph(self, detailed: bool = False, locked: bool = True):
         graph = super().make_residue_graph(detailed, locked)
