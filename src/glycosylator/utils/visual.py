@@ -189,8 +189,9 @@ class GlycanViewer2D:
 
         if draw_edge_labels:
             if edge_label_kws:
-                edge_label_defaults.update(edge_label_kws)
-
+                _edge_kws = dict(edge_label_defaults).update(edge_label_kws)
+            else:
+                _edge_kws = edge_label_defaults
             edge_labels = nx.get_edge_attributes(self.graph, "linkage")
             edge_labels = {
                 k: snfg.reverse_format_link(getattr(v, "id", v), pretty=True)
@@ -201,7 +202,7 @@ class GlycanViewer2D:
                 pos=pos,
                 edge_labels=edge_labels,
                 ax=ax,
-                **edge_label_defaults,
+                **_edge_kws,
             )
 
         # Add the respective image to each node
@@ -255,7 +256,7 @@ class GlycanViewer2D:
         self,
         ax=None,
         axis="x",
-        compact: bool = True,
+        compact: bool = False,
         draw_edge_labels: bool = True,
         svg: bool = False,
     ):
