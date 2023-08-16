@@ -108,6 +108,26 @@ def read_snfg(id: str, snfg: str, _topology=None) -> "Glycan":
 read_iupac = read_snfg
 
 
+def write_snfg(mol: "Glycan") -> str:
+    """
+    Write a molecule as an IUPAC/SNFG string in condensed format.
+
+    Parameters
+    ----------
+    mol : Glycan
+        The molecule to write.
+
+    Returns
+    -------
+    iupac : str
+        The IUPAC/SNFG string in condensed format.
+    """
+    return mol.to_snfg()
+
+
+write_iupac = write_snfg
+
+
 def read_graph(id: str, g: list, _topology=None) -> "Glycan":
     """
     Build a molecule from a glycan graph.
@@ -268,11 +288,15 @@ class Glycan(core.Molecule):
         new = read_snfg(id, iupac, _topology)
         return new
 
+    from_iupac = from_snfg
+
     def to_snfg(self) -> str:
         """
         Generate an IUPAC/SNFG string from the glycan molecule
         """
         return utils.make_snfg_string(self)
+
+    to_iupac = to_snfg
 
     def attach(
         self,
@@ -337,10 +361,7 @@ class Glycan(core.Molecule):
     def draw2d(
         self,
         ax=None,
-        axis="y",
-        node_size: int = 20,
-        draw_edge_labels: bool = False,
-        edge_label_kws: dict = None,
+        axis="x",
         **kwargs,
     ) -> "utils.visual.plt.Axes":
         """
@@ -352,14 +373,6 @@ class Glycan(core.Molecule):
             The axes to draw on
         axis : str
             The orientation of the glycan y-axis = vertical, x-axis = horizontal.
-        node_size : int
-            The size of the nodes
-        draw_edge_labels : bool
-            Whether to draw the edge labels
-        edge_label_kws : dict
-            The keyword arguments for the edge labels
-        kwargs
-            The keyword arguments for the drawing of the networkx graph edges
 
         Returns
         -------
@@ -370,18 +383,12 @@ class Glycan(core.Molecule):
         return v.draw(
             ax=ax,
             axis=axis,
-            node_size=node_size,
-            draw_edge_labels=draw_edge_labels,
-            edge_label_kws=edge_label_kws,
             **kwargs,
         )
 
     def show2d(
         self,
-        axis="y",
-        node_size: int = 20,
-        draw_edge_labels: bool = False,
-        edge_label_kws: dict = None,
+        axis="x",
         **kwargs,
     ):
         """
@@ -393,20 +400,13 @@ class Glycan(core.Molecule):
             The orientation of the glycan y-axis = vertical, x-axis = horizontal.
         node_size : int
             The size of the nodes
-        draw_edge_labels : bool
-            Whether to draw the edge labels
-        edge_label_kws : dict
-            The keyword arguments for the edge labels
-        kwargs
-            The keyword arguments for the drawing of the networkx graph edges
         """
         ax = self.draw2d(
             axis=axis,
-            node_size=node_size,
-            draw_edge_labels=draw_edge_labels,
-            edge_label_kws=edge_label_kws,
             **kwargs,
         )
+        if kwargs.get("svg", False):
+            return ax
         utils.visual.plt.show()
 
     def draw3d(self, residue_graph: bool = False) -> "plotly.graphs_objs.Figure":
@@ -569,7 +569,15 @@ def _parse_iupac_graph(id, glycan_segments, _topology=None):
     return mol
 
 
-__all__ = ["Glycan", "read_snfg", "read_graph", "glycan"]
+__all__ = [
+    "Glycan",
+    "read_snfg",
+    "read_iupac",
+    "write_snfg",
+    "write_iupac",
+    "read_graph",
+    "glycan",
+]
 
 if __name__ == "__main__":
     import glycosylator as gls
