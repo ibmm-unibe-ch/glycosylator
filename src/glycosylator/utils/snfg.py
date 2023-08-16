@@ -334,9 +334,19 @@ class SNFGStringMaker:
         if parent and not residue:
             string = self._get_name(parent)
             children = self._child_mapping[parent]
-            if len(children) != 0:
+            if len(children) > 1:
+                cdx = 0
                 for child in children:
-                    string += self._write_string(parent, child)
+                    if cdx < len(children) - 1:
+                        string += f"<{self.idx}>"
+                        self._sub_branch_mapping[f"<{self.idx}>"] = self._write_string(
+                            parent, child
+                        )
+                        self.idx += 1
+                        cdx += 1
+                    else:
+                        string += self._write_string(parent, child)
+
             return string
 
         # recursive part for residues that are children of other residues
@@ -399,7 +409,7 @@ def make_snfg_string(glycan):
 
 make_iupac_string = make_snfg_string
 
-__all__ = ["SNFGParser", "SNFGStringMaker", "parse_snfg", "make_snfg_string"]
+__all__ = ["SNFGParser", "SNFGStringMaker", "parse_snfg", "parse_iupac", "make_iupac_string", "make_snfg_string"]
 
 if __name__ == "__main__":
     # string2 = "Man(b1-6)[Man(b1-3)]BMA(b1-4)GlcNAc(b1-4)GlcNAc(b1-"
@@ -412,9 +422,9 @@ if __name__ == "__main__":
 
     import glycosylator as gl
 
-    mol = gl.glycan(
-        "Glc(a1-4)[Gal(b1-4)[Man(a1-2)]b-Man(a1-2)Gal(b1-6)][b-Man(b1-4)Gal(a1-2)]Man(a1-3)GlcNAc(b1-4)Man(b1-4)Glc(a1-",
-    )
+    s = "GalNAc(b1-4)[Fuc(a1-3)]GlcNAc(b1-2)Man(a1-6)[GalNAc(b1-2)Man(a1-3)]Man(b1-4)GlcNAc(b1-4)[Fuc(a1-6)]GlcNAc(b1-"
+
+    mol = gl.glycan(s)
     out = SNFGStringMaker().write_string(mol)
     mol2 = gl.glycan(out)
     import matplotlib.pyplot as plt
