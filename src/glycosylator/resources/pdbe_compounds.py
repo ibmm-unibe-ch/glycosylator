@@ -8,9 +8,9 @@ import biobuild.resources.pdbe_compounds as core
 
 _DIR = os.path.dirname(__file__)
 
-GLYCOSYLATOR_COMPOUNDS_FILE = os.path.join(_DIR, "compounds.json")
+GLYCOSYLATOR_COMPOUNDS_FILE = os.path.join(_DIR, "compounds.pkl")
 """
-The path to the glycosylator-curated compounds file (JSON)
+The path to the glycosylator-curated compounds file (pickle)
 """
 
 core.defaults.DEFAULT_PDBE_COMPONENT_FILES["glycosylator"] = GLYCOSYLATOR_COMPOUNDS_FILE
@@ -20,7 +20,7 @@ def load_glycosylator_compounds():
     """
     Load the glycosylator compounds library
     """
-    compounds = PDBECompounds.from_json(GLYCOSYLATOR_COMPOUNDS_FILE)
+    compounds = PDBECompounds.load(GLYCOSYLATOR_COMPOUNDS_FILE)
     core.set_default_compounds(compounds)
 
 
@@ -39,8 +39,8 @@ def set_default_compounds(compounds: PDBECompounds, overwrite: bool = False):
         current = core.get_default_compounds()
     core.set_default_compounds(compounds, overwrite=False)
     if overwrite:
-        current.to_json(GLYCOSYLATOR_COMPOUNDS_FILE + ".bak")
-        compounds.to_json(GLYCOSYLATOR_COMPOUNDS_FILE)
+        current.save(GLYCOSYLATOR_COMPOUNDS_FILE + ".bak")
+        compounds.save(GLYCOSYLATOR_COMPOUNDS_FILE)
 
 
 def restore_default_compounds(overwrite: bool = True):
@@ -54,7 +54,7 @@ def restore_default_compounds(overwrite: bool = True):
     """
     if not os.path.isfile(GLYCOSYLATOR_COMPOUNDS_FILE + ".bak"):
         raise FileNotFoundError("No backup file found")
-    set_default_compounds(PDBECompounds.from_json(GLYCOSYLATOR_COMPOUNDS_FILE + ".bak"))
+    set_default_compounds(PDBECompounds.load(GLYCOSYLATOR_COMPOUNDS_FILE + ".bak"))
     if overwrite:
         os.rename(GLYCOSYLATOR_COMPOUNDS_FILE + ".bak", GLYCOSYLATOR_COMPOUNDS_FILE)
 
