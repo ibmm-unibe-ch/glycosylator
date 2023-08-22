@@ -157,7 +157,9 @@ def scaffold(scaf=None) -> "Scaffold":
     """
     try:
         mol = molecule(scaf)
-        scaf = Scaffold(mol)
+        scaf = Scaffold(mol.structure)
+        scaf._add_bonds(*mol.get_bonds())
+        return scaf
     except:
         raise ValueError("Could not make a Scaffold from the input.")
 
@@ -258,16 +260,24 @@ class Scaffold(entity.BaseEntity):
         return self._attached_glycans
 
     @property
+    def glycan_residues(self) -> set:
+        """
+        Returns a set of all residues that belong to an attached glycan.
+        """
+        return set(
+            [
+                res
+                for glycan in self._attached_glycans.values()
+                for res in glycan.get_residues()
+            ]
+        )
+
+    @property
     def internal_residues(self) -> set:
         """
         Returns a set of all residues that have been labelled as "internal" based on
         Solvent Accessible Surface Area (SASA) calculations. These residues are excluded from the main
         scaffold structure by default.
-
-        Returns
-        -------
-        set
-            A set of all residues that have been added to the scaffold
         """
         return self._internal_residues
 
@@ -303,7 +313,9 @@ class Scaffold(entity.BaseEntity):
             The chain to exclude
         """
         if isinstance(chain, str):
-            _chain = self._model.child_dict.get(chain)
+            _chain = next((i for i in self._model.get_chains() if i.id == chain), None)
+        else:
+            _chain = chain
         if _chain is not None:
             self._excluded_chains.add(_chain)
         else:
@@ -321,7 +333,9 @@ class Scaffold(entity.BaseEntity):
             The chain to include
         """
         if isinstance(chain, str):
-            _chain = self._model.child_dict.get(chain)
+            _chain = next((i for i in self._model.get_chains() if i.id == chain), None)
+        else:
+            _chain = chain
         if _chain is None:
             raise ValueError(f"Chain '{chain}' not found")
         elif _chain in self._excluded_chains:
@@ -538,8 +552,9 @@ class Scaffold(entity.BaseEntity):
             percentage of the maximal SASA value in the structure.
         """
         # get surface residues
+        _attached_residues = self.glycan_residues
         structure = aux.DummyStructure(
-            [res for res in self.residues if res not in self._molecule_residues]
+            [res for res in self.residues if res not in _attached_residues]
         )
         residues = structural.infer_surface_residues(structure, cutoff=cutoff)
 
@@ -547,12 +562,12 @@ class Scaffold(entity.BaseEntity):
         to_remove = (
             res
             for res in self.residues
-            if res not in residues and res not in self._molecule_residues
+            if res not in residues and res not in _attached_residues
         )
 
         for residue in to_remove:
-            chain = residue.get_parent()
-            chain.detach_child(residue.id)
+            chain = residue.parent
+            chain.detach_child(residue.get_id())
             residue.set_parent(chain)
 
             for atom in residue.get_atoms():
@@ -566,7 +581,7 @@ class Scaffold(entity.BaseEntity):
         Fill the structure with the residues that were removed by the `hollow_out` method.
         """
         for residue in self._internal_residues:
-            chain = residue.get_parent()
+            chain = residue.parent
             chain.add(residue)
             for atom in residue.get_atoms():
                 self._AtomGraph.add_node(atom)
@@ -583,7 +598,7 @@ class Scaffold(entity.BaseEntity):
         graph = super().make_residue_graph(detailed, locked)
         # also add all remaining non connected (scaffold residues)
         for residue in self.residues:
-            if residue not in graph:
+            if residue not in self._internal_residues and residue not in graph:
                 graph.add_node(residue)
         return graph
 
@@ -642,7 +657,7 @@ class Scaffold(entity.BaseEntity):
         # ==========================================================
         #                    check input parameters
         # ==========================================================
-        if not link and not remove_atoms and not sequon:
+        if not link and remove_atoms is None and not sequon:
             if not self._linkage:
                 raise AttributeError(
                     "No recipe was set for this molecule and no manual instructions were found. Either set a default recipe, provide a recipe when stitching, or provide the information about removed and bonded atoms directly."
@@ -699,19 +714,26 @@ class Scaffold(entity.BaseEntity):
                         and sequon in resources.SEQUONS
                     ):
                         sequon = resources.SEQUONS[sequon]
+                        use_sequon = True
                     else:
                         raise ValueError(
                             f"The provided sequon '{sequon}' is not registered so no refernce linkages can be found. Please, register the sequon or specify an 'at_atom'."
                         )
+                else:
+                    use_sequon = False
 
                 for res in residues:
                     if res not in scaffold.get_residues():
                         res = scaffold.get_residue(res)
-                    if sequon is not None:
+                    if any(i is res.parent for i in scaffold._excluded_chains) or any(
+                        i is res for i in scaffold._excluded_residues
+                    ):
+                        continue
+                    if use_sequon:
                         link = sequon.get_linkage(res.resname, _topology)
-                        at_atom = at_atom or link.bond[0]
-                        remove_atoms = remove_atoms or link.deletes[0]
-                        mol_remove_atoms = mol_remove_atoms or link.deletes[1]
+                        at_atom = link.bond[0]
+                        remove_atoms = link.deletes[0]
+                        mol_remove_atoms = link.deletes[1]
 
                     root = scaffold.get_atom(at_atom, residue=res)
                     if root is None:
@@ -780,7 +802,7 @@ class Scaffold(entity.BaseEntity):
         _mol = mol.copy()
 
         if chain is None:
-            chain = scaffold.root_residue.get_parent()
+            chain = scaffold.root_residue.parent
         if chain == "new":
             chain = base_classes.Chain(chr(65 + len(scaffold.chains)))
             scaffold._model.add(chain)
