@@ -557,7 +557,7 @@ def _parse_iupac_graph(id, glycan_segments, _topology=None):
 
         if not mol:
             mol = first_mol
-        first_mol.attach(
+        mol.attach(
             second_mol,
             link,
             at_residue=at_residue,
@@ -582,7 +582,8 @@ __all__ = [
 if __name__ == "__main__":
     import glycosylator as gls
 
-    glc = Glycan.from_compound("GLC")
+    s = "Gal(b1-3)GlcNAc(b1-3)[Gal(b1-3)GlcNAc(b1-3)[Gal(b1-4)GlcNAc(b1-6)]Gal(b1-4)GlcNAc(b1-6)][Gal(b1-4)GlcNAc(b1-2)]Gal(b1-4)Glc"
+    glc = Glycan.from_iupac(None, s)
     glc2 = glc % "14bb" + glc
 
     # _read_snfg = gl.connect(glc, glc, "14bb")
