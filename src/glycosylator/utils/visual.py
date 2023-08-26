@@ -294,7 +294,7 @@ class GlycanViewer2D:
         """
         vertical = axis == "y"
         img = GlycoDraw(
-            self.glycan.to_snfg(),
+            self.glycan.to_iupac(),
             compact=compact,
             vertical=vertical,
             show_linkage=draw_edge_labels,
