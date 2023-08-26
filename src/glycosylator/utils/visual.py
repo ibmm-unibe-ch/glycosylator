@@ -6,9 +6,9 @@ import matplotlib.pyplot as plt
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 
 import numpy as np
-from biobuild.utils.visual import *
-import glycosylator.utils.snfg as snfg
+import glycosylator.utils.iupac as iupac
 import glycosylator.resources.icons as icons
+from biobuild.utils.visual import *
 
 import os
 
@@ -114,7 +114,7 @@ class GlycanViewer2D:
         for child, parent in parent_mapping.items():
             parent_level = levels[parent]
             parent_idx = _all_nodes.index(parent) + 1
-            parent_grid_idx = int(np.argwhere(node_grid[parent_level] == parent_idx))
+            parent_grid_idx = int(np.argwhere(node_grid[parent_level] == parent_idx)[0])
             child_level = levels[child]
             y = self._y_pos(
                 node_grid,
@@ -126,7 +126,7 @@ class GlycanViewer2D:
         positions = {
             node: (
                 level,
-                int(np.argwhere(node_grid[level] == _all_nodes.index(node) + 1)),
+                int(np.argwhere(node_grid[level] == _all_nodes.index(node) + 1)[0]),
             )
             for node, level in levels.items()
         }
@@ -137,12 +137,26 @@ class GlycanViewer2D:
     def _y_pos(node_grid, level, parent_idx):
         row = node_grid[level]
         dist = 0
+        _evals = (
+            lambda parent_idx, dist: row[parent_idx - dist] == 0,
+            lambda parent_idx, dist: row[parent_idx + dist] == 0,
+        )
+        _new_dists = (
+            lambda parent_idx, dist: parent_idx - dist,
+            lambda parent_idx, dist: parent_idx + dist,
+        )
+        _dir = [0, 1]
         while True:
-            if row[parent_idx - dist] == 0:
-                return parent_idx - dist
-            elif row[parent_idx + dist] == 0:
-                return parent_idx + dist
+            if _evals[_dir[0]](parent_idx, dist):
+                return _new_dists[_dir[0]](parent_idx, dist)
+            elif _evals[_dir[1]](parent_idx, dist):
+                return _new_dists[_dir[1]](parent_idx, dist)
+            _dir = _dir[::-1]
             dist += 1
+            if dist > 3:
+                np.roll(row, 1)
+                dist = 0
+                node_grid[level] = row
 
     def _native_draw(
         self,
@@ -194,7 +208,7 @@ class GlycanViewer2D:
                 _edge_kws = edge_label_defaults
             edge_labels = nx.get_edge_attributes(self.graph, "linkage")
             edge_labels = {
-                k: snfg.reverse_format_link(getattr(v, "id", v), pretty=True)
+                k: iupac.reverse_format_link(getattr(v, "id", v), pretty=True)
                 for k, v in edge_labels.items()
             }
             nx.draw_networkx_edge_labels(
@@ -357,7 +371,7 @@ class GlycanViewer2D:
             {
                 i: j
                 for i, j in zip(
-                    src, [snfg.reverse_format_link(i, pretty=True) for i in label_src]
+                    src, [iupac.reverse_format_link(i, pretty=True) for i in label_src]
                 )
             },
             "linkage",
@@ -382,9 +396,12 @@ if __name__ == "__main__":
 
     # viewer = GlycanViewer2D(glycan)
     # viewer.show()
-
+    use_glycowork = False
     mol = gl.glycan(
-        "Glc(a1-4)[Gal(a1-2)]Man(a1-3)GlcNAc(b1-4)Man(b1-4)Glc(b1-",
+        # "Gal(a1-2)Man(a1-3)[Gal(a1-2)Man(a1-3)]Glc(a1-4)[Gal(a1-2)Man(a1-3)][Gal(a1-2)Man(a1-3)]GlcNAc(b1-4)Man(b1-4)Glc(b1-",
+        "Neu5Gc(a2-3)Gal(b1-4)[Fuc(a1-3)]GlcNAc(b1-2)[Neu5Gc(a2-3)Gal(b1-4)[Fuc(a1-3)]GlcNAc(b1-4)]Man(a1-3)[Neu5Ac(a2-8)Neu5Gc(a2-3)Gal(b1-4)GlcNAc(b1-3)Gal(b1-4)[Fuc(a1-3)]GlcNAc(b1-2)[Neu5Ac(a2-3)Gal(b1-4)[Fuc(a1-3)]GlcNAc(b1-6)]Man(a1-6)]Man(b1-4)GlcNAc(b1-4)GlcNAc"
     )
     v = GlycanViewer2D(mol)
     v.show()
+    plt.show()
+    pass
