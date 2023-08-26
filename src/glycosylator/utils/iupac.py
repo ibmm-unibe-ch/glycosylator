@@ -292,9 +292,13 @@ class IUPACStringMaker:
     double_beta_pattern = r"(b-(\w+\(b))"
     double_beta_replacement = r"\2"
     terminal_beta_pattern = r"b-(\w+)$"
-    terminal_beta_replacement = r"\1(b-"
+    terminal_beta_replacement = r"\1(b1-"
+    terminal_alpha_pattern = r"([\]\)]\w+)$"
+    terminal_alpha_replacement = r"\1(a1-"
 
-    def write_string(self, glycan: "Glycan") -> str:
+    def write_string(
+        self, glycan: "Glycan", add_terminal_conformation: bool = True
+    ) -> str:
         """
         Write the IUPAC string for a glycan molecule.
 
@@ -302,6 +306,8 @@ class IUPACStringMaker:
         ----------
         glycan : Glycan
             The glycan molecule to write the IUPAC string for.
+        add_terminal_conformation : bool
+            If True, adds the terminal conformation as `last(a1-` or `last(b1-` to the string.
 
         Returns
         -------
@@ -332,9 +338,13 @@ class IUPACStringMaker:
         #     self._string = self._string.replace(key, "]" + value + "[")
         string = self._string[::-1]
         string = re.sub(self.double_beta_pattern, self.double_beta_replacement, string)
-        string = re.sub(
-            self.terminal_beta_pattern, self.terminal_beta_replacement, string
-        )
+        if add_terminal_conformation:
+            string = re.sub(
+                self.terminal_alpha_pattern, self.terminal_alpha_replacement, string
+            )
+            string = re.sub(
+                self.terminal_beta_pattern, self.terminal_beta_replacement, string
+            )
         return string
 
     def _setup(self, glycan):
@@ -397,10 +407,9 @@ class IUPACStringMaker:
         children = self._child_mapping[parent]
         for child in children:
             if self._should_open_branch(parent, child):
-                string += f"<{self.idx}>"
-                self._sub_branch_mapping[f"<{self.idx}>"] = self._continue_string(
-                    parent, child
-                )
+                key = f"<{self.idx}>"
+                string += key
+                self._sub_branch_mapping[key] = self._continue_string(parent, child)
                 self.idx += 1
             else:
                 string += self._continue_string(parent, child)
@@ -457,7 +466,7 @@ def parse_iupac(string):
 parse_snfg = parse_iupac
 
 
-def make_iupac_string(glycan):
+def make_iupac_string(glycan, add_terminal_conformation: bool = True):
     """
     Make an IUPAC/SNFG string from a glycan molecule.
 
@@ -465,6 +474,8 @@ def make_iupac_string(glycan):
     ----------
     glycan : Glycan
         The glycan molecule to make the IUPAC string for.
+    add_terminal_conformation : bool
+        If True, adds the terminal conformation as `last(a1-` or `last(b1-` to the end of the string.
 
     Returns
     -------
@@ -475,7 +486,7 @@ def make_iupac_string(glycan):
         raise ValueError(
             "This glycan does not have any entries in its glycan tree. Make sure it was generated using glycosylator! Currently, only glycans generated using glycosylator are supported."
         )
-    return __default_IUPACStringMaker__.write_string(glycan)
+    return __default_IUPACStringMaker__.write_string(glycan, add_terminal_conformation)
 
 
 # def _write_string_backup(self, parent, residue=None):
@@ -542,11 +553,17 @@ if __name__ == "__main__":
 
     import glycosylator as gl
 
-    s = "Neu5Gc(a2-3/6)Gal(b1-4)[Fuc(a1-3)]GlcNAc(b1-2)[Neu5Gc(a2-3/6)Gal(b1-4)[Fuc(a1-3)]GlcNAc(b1-4)]Man(a1-3)[GlcNAc(b1-4)][Neu5Gc(a2-8)Neu5Gc(a2-3/6)Gal(b1-4)GlcNAc(b1-3)Gal(b1-4)[Fuc(a1-3)]GlcNAc(b1-2)[Neu5Ac(a2-3/6)Gal(b1-4)[Fuc(a1-3)]GlcNAc(b1-6)]Man(a1-6)]Man(b1-4)GlcNAc(b1-4)[Fuc(a1-6)]GlcNAc".replace(
-        "/6", ""
-    )
+    s1 = "Fuc(a1-2)Gal(b1-4)[Fuc(a1-3)]GlcNAc(b1-3)[Fuc(a1-2)Gal(b1-4)[Fuc(a1-3)]GlcNAc(b1-6)]GalNAc(a1-"
+
+    # s = "Neu5Gc(a2-3/6)Gal(b1-4)[Fuc(a1-3)]GlcNAc(b1-2)[Neu5Gc(a2-3/6)Gal(b1-4)[Fuc(a1-3)]GlcNAc(b1-4)]Man(a1-3)[GlcNAc(b1-4)][Neu5Gc(a2-8)Neu5Gc(a2-3/6)Gal(b1-4)GlcNAc(b1-3)Gal(b1-4)[Fuc(a1-3)]GlcNAc(b1-2)[Neu5Ac(a2-3/6)Gal(b1-4)[Fuc(a1-3)]GlcNAc(b1-6)]Man(a1-6)]Man(b1-4)GlcNAc(b1-4)[Fuc(a1-6)]GlcNAc".replace(
+    #     "/6", ""
+    # )
+
+    mol = gl.read_iupac(s1, s1)
+    out = IUPACStringMaker().write_string(mol)
+    print(out)
     #  Neu5Gc(a2-8)Neu5Gc(a2-3)Gal(b1-4)GlcNAc(b1-3)Gal(b1-4)[Fuc(a1-3)]GlcNAc(b1-2)[Neu5Ac(a2-3)Gal(b1-4)[Fuc(a1-3)]GlcNAc(b1-6)Man(a1-6)]Man(b1-4)GlcNAc(b1-4)[Fuc(a1-6)]GlcNAc
-    # s = "Neu5Gc(a2-8)Neu5Gc(a2-3)Gal(b1-4)GlcNAc(b1-3)Gal(b1-4)[Fuc(a1-3)]GlcNAc(b1-2)[Neu5Ac(a2-3)Gal(b1-4)[Fuc(a1-3)]GlcNAc(b1-6)Man(a1-6)]Man(b1-4)GlcNAc(b1-4)[Fuc(a1-6)]GlcNAc"
+    s = "Neu5Gc(a2-8)Neu5Gc(a2-3)Gal(b1-4)GlcNAc(b1-3)Gal(b1-4)[Fuc(a1-3)]GlcNAc(b1-2)[Neu5Ac(a2-3)Gal(b1-4)[Fuc(a1-3)]GlcNAc(b1-6)Man(a1-6)]Man(b1-4)GlcNAc(b1-4)[Fuc(a1-6)]GlcNAc"
     # g = p.parse(s)
     # print(g)
     link28 = gl.linkage("O8", "C2", ["HO8"], ["O2", "HO2"], id="28aa")
