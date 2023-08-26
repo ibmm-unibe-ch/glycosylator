@@ -2,45 +2,82 @@
 This module contains utility functions for the optimizers.
 """
 
-import numpy as np
-import glycosylator.optimizers.environments as environments
-import glycosylator.optimizers.agents as agents
 
-
-def apply_solution(sol: np.ndarray, env: "environments.Rotatron", obj):
+def make_scaffold_graph(
+    scaffold,
+    only_clashing_glycans: bool = False,
+    only_clashes_between_glycans: bool = False,
+) -> tuple:
     """
-    Apply a solution to an object
+    Make a ResidueGraph from a glycosylated scaffold in order to optimize the conformations of the attached glycans.
 
     Parameters
     ----------
-    sol : np.ndarray
-        The solution of rotational angles in radians to apply
-    env : environments.Rotatron
-        The environment used to find the solution
-    obj
-        The object to apply the solution to
+    scaffold: Scaffold
+        The glycosylated scaffold to optimize
+    only_clashing_glycans: bool
+        If True, only glycans that clash with the protein or each other will will contribute rotatable edges.
+    only_clashes_between_glycans: bool
+        If True, only clashes between glycans will be considered. This is useful for optimizing the conformations of glycans that are already in a good position.
 
     Returns
     -------
-    obj
-        The object with the solution applied
+    ResidueGraph
+        The graph of the glycosylated scaffold
+    list
+        The rotatable edges of the graph
     """
-    angles = np.degrees(sol)
-    bonds = env.rotatable_edges
-
-    if not len(angles) == len(bonds):
-        raise ValueError(
-            f"Solution and environment do not match (size mismatch): {len(angles)} != {len(bonds)}"
+    G = scaffold.make_residue_graph(True)
+    rotatable_edges = []
+    if only_clashing_glycans:
+        glycan_residues = {
+            glycan: [res for res in glycan.get_residues()]
+            for glycan in scaffold.glycans.values()
+        }
+        _residues_flat = set(
+            [res for glycan in glycan_residues.values() for res in glycan]
         )
+        _added_glycans = set()
+        if only_clashes_between_glycans:
+            for clash in scaffold.find_clashes():
+                a, b = clash
+                if a.parent in _residues_flat and b.parent in _residues_flat:
+                    for i in clash:
+                        glycan = next(
+                            glycan
+                            for glycan, residues in glycan_residues.items()
+                            if i.parent in residues
+                        )
+                        if glycan in _added_glycans:
+                            continue
+                        _g = glycan.make_residue_graph(True)
+                        _g.add_edge(glycan.root_atom, glycan.root_residue)
+                        rotatable_edges.extend(
+                            _g.find_rotatable_edges(glycan.root_atom)
+                        )
+                        _added_glycans.add(glycan)
+        else:
+            for clash in scaffold.find_clashes():
+                a, b = clash
+                for i in clash:
+                    if i.parent in _residues_flat:
+                        glycan = next(
+                            glycan
+                            for glycan, residues in glycan_residues.items()
+                            if i.parent in residues
+                        )
+                        if glycan in _added_glycans:
+                            continue
+                        _g = glycan.make_residue_graph(True)
+                        _g.add_edge(glycan.root_atom, glycan.root_residue)
+                        rotatable_edges.extend(
+                            _g.find_rotatable_edges(glycan.root_atom)
+                        )
+                        _added_glycans.add(glycan)
+    else:
+        for glycan in scaffold.glycans.values():
+            _g = glycan.make_residue_graph(True)
+            _g.add_edge(glycan.root_atom, glycan.root_residue)
+            rotatable_edges.extend(_g.find_rotatable_edges(glycan.root_atom))
 
-    for i, bond in enumerate(bonds):
-        angle = angles[i]
-        bond = obj.get_bonds(bond[0].full_id, bond[1].full_id)
-        if len(bond) == 0:
-            raise ValueError(
-                f"Object and environment do not match (bond mismatch): {bond}"
-            )
-        bond = bond[0]
-        obj.rotate_around_bond(*bond, angle, descendants_only=True)
-
-    return obj
+    return G, rotatable_edges
