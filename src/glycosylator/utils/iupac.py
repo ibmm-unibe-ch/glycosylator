@@ -428,12 +428,12 @@ class IUPACStringMaker:
 
 __default_IUPACParser__ = IUPACParser()
 """
-The default SNFGParser instance.
+The default IUPACParser instance.
 """
 
 __default_IUPACStringMaker__ = IUPACStringMaker()
 """
-The default SNFGStringMaker instance.
+The default IUPACStringMaker instance.
 """
 
 
