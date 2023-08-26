@@ -1,14 +1,13 @@
 """
-The basic glycan molecule class
+The Glycan is the main class of Glycosylator, representing a glycan molecule. It inherits from Biobuild's Molecule and can be used in the same way
 """
 from typing import Union
 import warnings
 
-import biobuild.core as core
-import biobuild.structural as structural
-import biobuild.resources as resources
-
 import glycosylator.utils as utils
+import biobuild.structural as structural
+import glycosylator.resources as resources
+import biobuild.core as core
 
 
 def glycan(g: Union[str, list], id: str = None, _topology=None):
@@ -34,10 +33,12 @@ def glycan(g: Union[str, list], id: str = None, _topology=None):
     """
     if isinstance(g, str):
         try:
-            return read_snfg(id, g, _topology)
+            return read_iupac(id, g, _topology)
         except:
             try:
                 mol = core.molecule(g)
+                if isinstance(mol, list):
+                    mol = mol[0]
                 mol.id = id if id is not None else g
                 mol = Glycan(mol)
                 return mol
@@ -51,19 +52,15 @@ def glycan(g: Union[str, list], id: str = None, _topology=None):
         return mol
 
 
-def read_snfg(id: str, snfg: str, _topology=None) -> "Glycan":
+def read_iupac(id: str, s: str, _topology=None) -> "Glycan":
     """
-    Make a molecule from an IUPAC/SNFG glycan string in condensed format.
-
-    Note
-    ----
-
+    Make a molecule from an IUPAC glycan string in condensed format.
 
     Parameters
     ----------
     id : str
         The id of the molecule to create
-    g : str
+    s : str
         The glycan string to parse.
         The string must be in IUPAC condensed format - currently, neither extended nor short formats are supported.
     _topology
@@ -92,25 +89,25 @@ def read_snfg(id: str, snfg: str, _topology=None) -> "Glycan":
     >>> iupac = "Man(a1-6)[Man(a1-3)]b-Man(a1-4)GlcNAc(b1-4)GlcNAc(b1-" # notice the final "b1-" to indicate where the glycan attaches to a scaffold
 
     Which can be parsed into a molecule with:
-    >>> mol = read_snfg("my_glycan", iupac)
+    >>> mol = read_iupac("my_glycan", iupac)
     """
-    if isinstance(snfg, str):
-        snfg = utils.SNFGParser().parse(snfg)
+    if isinstance(s, str):
+        s = utils.__default_IUPACParser__(s)
     else:
         raise TypeError(
-            f"Expected string, got {type(snfg)} instead. Perhaps you meant to use the `read_graph` function?"
+            f"Expected string, got {type(s)} instead. Perhaps you meant to use the `read_graph` function?"
         )
-    mol = _parse_iupac_graph(id, snfg, _topology)
+    mol = _parse_iupac_graph(id, s, _topology)
     return mol
 
 
 # Alias
-read_iupac = read_snfg
+read_snfg = read_iupac
 
 
-def write_snfg(mol: "Glycan") -> str:
+def write_iupac(mol: "Glycan") -> str:
     """
-    Write a molecule as an IUPAC/SNFG string in condensed format.
+    Write a molecule as an IUPAC string in condensed format.
 
     Parameters
     ----------
@@ -125,7 +122,7 @@ def write_snfg(mol: "Glycan") -> str:
     return mol.to_snfg()
 
 
-write_iupac = write_snfg
+write_snfg = write_iupac
 
 
 def read_graph(id: str, g: list, _topology=None) -> "Glycan":
@@ -217,6 +214,14 @@ class GlycanTree:
         self._segments = []
         self._linkages = []
 
+    @property
+    def segments(self):
+        return self._segments
+
+    @property
+    def linkages(self):
+        return self._linkages
+
     def add(self, residue1, residue2, linkage):
         self._segments.append((residue1, residue2))
         self._linkages.append(linkage)
@@ -281,22 +286,22 @@ class Glycan(core.Molecule):
         return cls(new)
 
     @classmethod
-    def from_snfg(cls, id: str, iupac: str, _topology=None) -> "Glycan":
+    def from_iupac(cls, id: str, iupac: str, _topology=None) -> "Glycan":
         """
         Generate a glycan molecule from an IUPAC/SNFG string
         """
-        new = read_snfg(id, iupac, _topology)
+        new = read_iupac(id, iupac, _topology)
         return new
 
-    from_iupac = from_snfg
+    from_snfg = from_iupac
 
-    def to_snfg(self) -> str:
+    def to_iupac(self) -> str:
         """
         Generate an IUPAC/SNFG string from the glycan molecule
         """
-        return utils.make_snfg_string(self)
+        return utils.make_iupac_string(self)
 
-    to_iupac = to_snfg
+    to_snfg = to_iupac
 
     def attach(
         self,
@@ -571,7 +576,7 @@ def _parse_iupac_graph(id, glycan_segments, _topology=None):
 
 __all__ = [
     "Glycan",
-    "read_snfg",
+    "read_iupac",
     "read_iupac",
     "write_snfg",
     "write_iupac",
