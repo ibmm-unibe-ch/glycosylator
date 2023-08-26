@@ -53,7 +53,7 @@ def reverse_format_link(string, pretty: bool = False):
     return type[1] + a + "-" + b
 
 
-class SNFGParser:
+class IUPACParser:
     """
     A parser for condensed IUPAC glycan nomenclature strings. This class will generate
     a list of connecting glycan segments from a string from which a Molecule can be built.
@@ -119,6 +119,7 @@ class SNFGParser:
         self._string = self._prep_greek_letters(string)
         self.reset()
         self._parse()
+        self._glycan = self._adjust_betas(self._glycan)
         return self._glycan
 
     def reset(self):
@@ -128,13 +129,35 @@ class SNFGParser:
         self._glycan = []
         self._idx = 1
         self._residue_counts = {}
+        self._past_residue_before_square_bracket = []
+        self._past_conformations_before_square_bracket = []
         self._latest_residue = ""
         self._latest_conformation = ""
         self._latest_linkage = ""
         self._second_latest_residue = ""
         self._second_latest_conformation = ""
-        self._latest_residue_before_square_bracket = ""
-        self._latest_conformation_before_square_bracket = ""
+        # self._latest_residue_before_square_bracket = ""
+        # self._latest_conformation_before_square_bracket = ""
+
+    @property
+    def _latest_residue_before_square_bracket(self):
+        return self._past_residue_before_square_bracket[-1]
+
+    @property
+    def _latest_conformation_before_square_bracket(self):
+        return self._past_conformations_before_square_bracket[-1]
+
+    def _push_residue_before_square_bracket(self, residue):
+        self._past_residue_before_square_bracket.append(residue)
+
+    def _push_conformation_before_square_bracket(self, conformation):
+        self._past_conformations_before_square_bracket.append(conformation)
+
+    def _pop_residue_before_square_bracket(self):
+        return self._past_residue_before_square_bracket.pop()
+
+    def _pop_conformation_before_square_bracket(self):
+        return self._past_conformations_before_square_bracket.pop()
 
     def _shift(self):
         self._idx += 1
@@ -157,20 +180,26 @@ class SNFGParser:
                 self._shift()
                 continue
             if self._is_at_open_square_bracket:
-                self._latest_residue_before_square_bracket = self._fit_residue(
+                _latest_residue_before_square_bracket = self._fit_residue(
                     self._latest_residue, increase_count=False
                 )
-                self._latest_residue = self._latest_residue_before_square_bracket
-                self._latest_conformation_before_square_bracket = (
-                    self._latest_conformation
-                )
+                self._latest_residue = _latest_residue_before_square_bracket
+                self._push_residue_before_square_bracket(self._latest_residue)
+                self._push_conformation_before_square_bracket(self._latest_conformation)
+                # self._latest_conformation_before_square_bracket = (
+                #     self._latest_conformation
+                # )
                 self._shift()
                 continue
             if self._is_at_close_square_bracket:
-                self._latest_residue = self._latest_residue_before_square_bracket
+                self._latest_residue = self._pop_residue_before_square_bracket()
                 self._latest_conformation = (
-                    self._latest_conformation_before_square_bracket
+                    self._pop_conformation_before_square_bracket()
                 )
+                # self._latest_residue = self._latest_residue_before_square_bracket
+                # self._latest_conformation = (
+                #     self._latest_conformation_before_square_bracket
+                # )
                 self._second_latest_residue = ""
                 self._second_latest_conformation = ""
                 self._shift()
@@ -241,35 +270,29 @@ class SNFGParser:
         string = string.replace("α", "a").replace("β", "b")
         return string
 
+    def _adjust_betas(self, segments):
+        for i in range(len(segments)):
+            a, b, link = segments[i]
+            if link[2] == "b" and not a.startswith("b-"):
+                a = "b-" + a
+            if link[3] == "b" and not b.startswith("b-"):
+                b = "b-" + b
+            segments[i] = (a, b, link)
+        return segments
+
     def __call__(self, *args: Any, **kwds: Any) -> Any:
         return self.parse(*args, **kwds)
 
 
-def parse_snfg(string):
-    """
-    Parse a string of IUPAC/SNFG glycan nomenclature into a list of glycan segments.
-
-    Parameters
-    ----------
-    string : str
-        The IUPAC glycan nomenclature string.
-
-    Returns
-    -------
-    list
-        A list of tuples where each segment is a tuple of (residue1, residue2, linkage).
-    """
-    p = SNFGParser()
-    return p.parse(string)
-
-
-parse_iupac = parse_snfg
-
-
-class SNFGStringMaker:
+class IUPACStringMaker:
     """
     This class generates IUPAC/SNFG strings from a list of glycan molecule.
     """
+
+    double_beta_pattern = r"(b-(\w+\(b))"
+    double_beta_replacement = r"\2"
+    terminal_beta_pattern = r"b-(\w+)$"
+    terminal_beta_replacement = r"\1(b-"
 
     def write_string(self, glycan: "Glycan") -> str:
         """
@@ -289,13 +312,30 @@ class SNFGStringMaker:
         self._setup(glycan)
 
         # generate the string (in reverse order)
-        self._string = self._write_string(self.root_residue)
+        self._string = self._init_string(self.root_residue)
 
-        # fill in all branch-place holders
+        # for child in self._child_mapping[self.root_residue]:
+        #     self._string += self._continue_string(self.root_residue, child)
+
+        # # fill in all branch-place holders
+        for key, value in self._sub_branch_mapping.items():
+            for key2, value2 in self._sub_branch_mapping.items():
+                if key in value2:
+                    # self._string = self._string.replace(key, key2)
+                    self._sub_branch_mapping[key2] = value2.replace(
+                        key, "]" + value + "["
+                    )
+                    # self._sub_branch_mapping[key] = self._sub_branch_mapping[key2]
         for key, value in self._sub_branch_mapping.items():
             self._string = self._string.replace(key, "]" + value + "[")
-
-        return self._string[::-1]
+        # for key, value in self._sub_branch_mapping.items():
+        #     self._string = self._string.replace(key, "]" + value + "[")
+        string = self._string[::-1]
+        string = re.sub(self.double_beta_pattern, self.double_beta_replacement, string)
+        string = re.sub(
+            self.terminal_beta_pattern, self.terminal_beta_replacement, string
+        )
+        return string
 
     def _setup(self, glycan):
         """Setup the class for writing the IUPAC string."""
@@ -319,6 +359,29 @@ class SNFGStringMaker:
         self._sub_branch_mapping = {}
         self.idx = 0
 
+    def _continue_string(self, parent, child):
+        """Continue the string with a new residue."""
+        string = self._make_one_string(parent, child)
+        children = self._child_mapping[child]
+        if children:
+            parent = child
+            for child in children:
+                if self._should_open_branch(parent, child):
+                    self.idx += 1
+                    key = f"<{self.idx}>"
+                    string += key
+                    self._sub_branch_mapping[key] = self._continue_string(parent, child)
+                else:
+                    string += self._continue_string(parent, child)
+        return string
+
+    def _make_one_string(self, parent, child):
+        """Make the string component for one residue."""
+        name_residue = self._get_name(child)
+        linkage = self._get_linkage(self.graph[parent][child]["linkage"])
+        string = linkage + name_residue
+        return string
+
     def _make_child_mapping(self):
         """Make a mapping of each residue to its children."""
         graph = nx.dfs_tree(self.graph, self.root_residue)
@@ -328,44 +391,19 @@ class SNFGStringMaker:
             child_mapping[node] = children
         return child_mapping
 
-    def _write_string(self, parent, residue=None):
-        """Write the IUPAC string for a residue."""
-        # start of the string at the root residue
-        if parent and not residue:
-            string = self._get_name(parent)
-            children = self._child_mapping[parent]
-            if len(children) > 1:
-                cdx = 0
-                for child in children:
-                    if cdx < len(children) - 1:
-                        string += f"<{self.idx}>"
-                        self._sub_branch_mapping[f"<{self.idx}>"] = self._write_string(
-                            parent, child
-                        )
-                        self.idx += 1
-                        cdx += 1
-                    else:
-                        string += self._write_string(parent, child)
-
-            return string
-
-        # recursive part for residues that are children of other residues
-        name_residue = self._get_name(residue)
-        linkage = self._get_linkage(self.graph[parent][residue]["linkage"])
-        string = linkage + name_residue
-
-        children = self._child_mapping[residue]
-        if len(children) != 0:
-            for child in children:
-                # if we have a branch, we just set a placeholder and later fill them all in at once...
-                if self._should_open_branch(residue, child):
-                    string += f"<{self.idx}>"
-                    self._sub_branch_mapping[f"<{self.idx}>"] = self._write_string(
-                        residue, child
-                    )
-                    self.idx += 1
-                else:
-                    string += self._write_string(residue, child)
+    def _init_string(self, parent):
+        """Start writing the string from the root residue."""
+        string = self._get_name(parent)
+        children = self._child_mapping[parent]
+        for child in children:
+            if self._should_open_branch(parent, child):
+                string += f"<{self.idx}>"
+                self._sub_branch_mapping[f"<{self.idx}>"] = self._continue_string(
+                    parent, child
+                )
+                self.idx += 1
+            else:
+                string += self._continue_string(parent, child)
         return string
 
     def _should_open_branch(self, parent, residue=None) -> bool:
@@ -384,8 +422,42 @@ class SNFGStringMaker:
     def _get_linkage(linkage):
         return f"({reverse_format_link(linkage.id)})"[::-1]
 
+    def __call__(self, glycan):
+        return self.write_string(glycan)
 
-def make_snfg_string(glycan):
+
+__default_IUPACParser__ = IUPACParser()
+"""
+The default SNFGParser instance.
+"""
+
+__default_IUPACStringMaker__ = IUPACStringMaker()
+"""
+The default SNFGStringMaker instance.
+"""
+
+
+def parse_iupac(string):
+    """
+    Parse a string of IUPAC/SNFG glycan nomenclature into a list of glycan segments.
+
+    Parameters
+    ----------
+    string : str
+        The IUPAC glycan nomenclature string.
+
+    Returns
+    -------
+    list
+        A list of tuples where each segment is a tuple of (residue1, residue2, linkage).
+    """
+    return __default_IUPACParser__.parse(string)
+
+
+parse_snfg = parse_iupac
+
+
+def make_iupac_string(glycan):
     """
     Make an IUPAC/SNFG string from a glycan molecule.
 
@@ -403,29 +475,92 @@ def make_snfg_string(glycan):
         raise ValueError(
             "This glycan does not have any entries in its glycan tree. Make sure it was generated using glycosylator! Currently, only glycans generated using glycosylator are supported."
         )
-    m = SNFGStringMaker()
-    return m.write_string(glycan)
+    return __default_IUPACStringMaker__.write_string(glycan)
 
 
-make_iupac_string = make_snfg_string
+# def _write_string_backup(self, parent, residue=None):
+#     """Write the IUPAC string for a residue."""
+#     # start of the string at the root residue
+#     if parent and not residue:
+#         string = self._get_name(parent)
+#         children = self._child_mapping[parent]
+#         for child in children:
+#             if self._should_open_branch(parent, child):
+#                 string += f"<{self.idx}>"
+#                 self._sub_branch_mapping[f"<{self.idx}>"] = self._make_one_string(
+#                     parent, child
+#                 )
+#                 self.idx += 1
+#             else:
+#                 string += self._make_one_string(parent, child)
+#         return string
 
-__all__ = ["SNFGParser", "SNFGStringMaker", "parse_snfg", "parse_iupac", "make_iupac_string", "make_snfg_string"]
+#     # recursive part for residues that are children of other residues
+#     name_residue = self._get_name(residue)
+#     linkage = self._get_linkage(self.graph[parent][residue]["linkage"])
+#     string = linkage + name_residue
+
+#     children = self._child_mapping[residue]
+#     if len(children) != 0:
+#         for child in children:
+#             # if we have a branch, we just set a placeholder and later fill them all in at once...
+#             if self._should_open_branch(residue, child):
+#                 string += f"<{self.idx}>"
+#                 self._sub_branch_mapping[f"<{self.idx}>"] = self._make_one_string(
+#                     residue, child
+#                 )
+#                 self.idx += 1
+#             else:
+#                 string += self._make_one_string(residue, child)
+#     return string
+
+
+make_iupac_string = make_iupac_string
+
+
+__all__ = [
+    "IUPACParser",
+    "IUPACStringMaker",
+    "parse_snfg",
+    "parse_iupac",
+    "make_iupac_string",
+    "make_iupac_string",
+    "__default_IUPACParser__",
+    "__default_IUPACStringMaker__",
+]
 
 if __name__ == "__main__":
-    # string2 = "Man(b1-6)[Man(b1-3)]BMA(b1-4)GlcNAc(b1-4)GlcNAc(b1-"
+    string2 = "Man(b1-6)[Man(b1-3)]Man(b1-4)GlcNAc(a1-4)GlcNAc(b1-"
     # string = "F(b1-4)[E(a2-3)D(a1-4)]C(a1-6)B(b1-4)A"
-    # string3 = "Glc(b1-3)[Gal(a1-4)Man(b1-6)]GlcNAc(a1-4)Man(b1-4)Glc(b1-"
+    string3 = "Gal(b1-3)GlcNAc(b1-3)[Gal(b1-3)GlcNAc(b1-3)[Gal(b1-4)GlcNAc(b1-6)]Gal(b1-4)GlcNAc(b1-6)][Gal(b1-4)GlcNAc(b1-2)]Gal(b1-4)Glc"
 
-    # p = SNFGParser()
+    p = IUPACParser()
+    g = p.parse(string2)
+    # print(g)
     # g = p.parse(string3)
     # print(g)
 
     import glycosylator as gl
 
-    s = "GalNAc(b1-4)[Fuc(a1-3)]GlcNAc(b1-2)Man(a1-6)[GalNAc(b1-2)Man(a1-3)]Man(b1-4)GlcNAc(b1-4)[Fuc(a1-6)]GlcNAc(b1-"
+    s = "Neu5Gc(a2-3/6)Gal(b1-4)[Fuc(a1-3)]GlcNAc(b1-2)[Neu5Gc(a2-3/6)Gal(b1-4)[Fuc(a1-3)]GlcNAc(b1-4)]Man(a1-3)[GlcNAc(b1-4)][Neu5Gc(a2-8)Neu5Gc(a2-3/6)Gal(b1-4)GlcNAc(b1-3)Gal(b1-4)[Fuc(a1-3)]GlcNAc(b1-2)[Neu5Ac(a2-3/6)Gal(b1-4)[Fuc(a1-3)]GlcNAc(b1-6)]Man(a1-6)]Man(b1-4)GlcNAc(b1-4)[Fuc(a1-6)]GlcNAc".replace(
+        "/6", ""
+    )
+    #  Neu5Gc(a2-8)Neu5Gc(a2-3)Gal(b1-4)GlcNAc(b1-3)Gal(b1-4)[Fuc(a1-3)]GlcNAc(b1-2)[Neu5Ac(a2-3)Gal(b1-4)[Fuc(a1-3)]GlcNAc(b1-6)Man(a1-6)]Man(b1-4)GlcNAc(b1-4)[Fuc(a1-6)]GlcNAc
+    # s = "Neu5Gc(a2-8)Neu5Gc(a2-3)Gal(b1-4)GlcNAc(b1-3)Gal(b1-4)[Fuc(a1-3)]GlcNAc(b1-2)[Neu5Ac(a2-3)Gal(b1-4)[Fuc(a1-3)]GlcNAc(b1-6)Man(a1-6)]Man(b1-4)GlcNAc(b1-4)[Fuc(a1-6)]GlcNAc"
+    # g = p.parse(s)
+    # print(g)
+    link28 = gl.linkage("O8", "C2", ["HO8"], ["O2", "HO2"], id="28aa")
+    gl.add_linkage(link28)
+    link23 = gl.linkage("C3", "O2", ["O3", "HO3"], ["HO2"], id="23ba")
+    gl.add_linkage(link23)
+    mol = gl.read_iupac(s, s)
+    out = IUPACStringMaker().write_string(mol)
 
-    mol = gl.glycan(s)
-    out = SNFGStringMaker().write_string(mol)
+    s2 = "Glc(a1-4)Glc(a1-4)Glc(a1-4)Glc(a1-4)Glc(a1-4)Glc"
+    mol2 = gl.glycan(s2)
+    out2 = IUPACStringMaker().write_string(mol2)
+    print(out2)
+
     mol2 = gl.glycan(out)
     import matplotlib.pyplot as plt
 
