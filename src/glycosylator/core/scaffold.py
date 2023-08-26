@@ -1,27 +1,25 @@
 """
-The `Scaffold` class is used to represent a scaffold structure such as a protein or membrane on to which a modification in form of one or more `Molecule`s can be added.
-As a class the `Scaffold` shares many features with the `Molecule` class, but it is not a subclass of it but a sister class. 
-
-As such it lacks certain features such as the `repeat` or `from_compound` methods. 
-A Scaffold can be edited just like a Molecule, so refer to the `Molecule` documentation for more information on how to do that.
+The `Scaffold` class is used to represent a scaffold structure such as a protein or membrane on to which a modification in form of one or more `Glycan`s can be added.
+The Scaffold also inherets from Biobuild and can be used in many ways similar to Molecules and Glycans. 
+However, it lacks some features such as `repeat` method.
 
 
-Attaching Molecules
-===================
+Attaching Glycans
+-----------------
 
-The primary purpose of the `Scaffold` is to have `Molecule`s attached to it.
-This is done by using the `attach` method, which offers a versatile interface to attach one or more `Molecule`s to the `Scaffold` structure.
+The primary purpose of the `Scaffold` is to have `Glycan`s attached to it.
+This is done by using the `attach` method, which offers a versatile interface to attach one or more `Glycan`s to the `Scaffold` structure.
 
 .. note:: 
 
-    Connecting a `Molecule` and `Scaffold` is based on `Recipe`s (not on `Patch`es!).
-    Furthermore, "attaching" a `Molecule` to a `Scaffold` is defined as "connecting the Molecule's and Scaffold's root atoms".
+    Connecting a `Glycan` and `Scaffold` is based on `Recipe`s (not on `Patch`es!).
+    Furthermore, "attaching" a `Glycan` to a `Scaffold` is defined as "connecting the Glycan's and Scaffold's root atoms".
     In practice, (re-)setting the objects' root atoms is handled behind the scenes, but is is important to keep this in
     mind when using the `attach` method and when writing `Recipe`s because they need to create bonds between the root atoms
     and cannot specify bonds between other atoms!
 
 
-We can attach molecules to scaffolds via the `attach` method to:
+We can attach Glycans to scaffolds via the `attach` method to:
 - one specific residue
 - a list of residues
 - all residues that match a specific sequence pattern (sequon, only for protein scaffolds)
@@ -36,9 +34,10 @@ In the first we use default "pythonistic" methods to properly attach the glycan 
 
     import glycosylator as gl
 
-    # load some molecules from pickle files
+    # load some Glycans from pickle files 
+    # (if we have already some processed ones...)
     my_prot = gl.Scaffold.load("my_protein.pkl")
-    my_glycan = gl.Molecule.load("my_glycan.pkl")
+    my_glycan = gl.Glycan.load("my_glycan.pkl")
 
     # set the root atom of the glycan (this is required for attaching to a scaffold)
     my_glycan.root_atom = my_glycan.get_atom("C1", residue=1) # get the C1 of the first atom
@@ -47,31 +46,17 @@ In the first we use default "pythonistic" methods to properly attach the glycan 
     # (just the first ASN we can find)
     asn = my_prot.get_residue("ASN")
 
-    # make a recipe for attaching to ASN
-    my_recipe = gl.Recipe(id="glycan_to_asn")
-    # ... add intstructions here ... 
-    
-    # now attach the glycan to the ASN residue
-    # (we use a list of the one residue here)
-    my_prot.attach(my_glycan, recipe=my_recipe, residues=[asn], at_atom="ND2")
-
-
-In the second example we make use of the fact that "attaching" always connects the 
-root atoms, which allows us to use the `attach` method without specifying the `at_atom` argument:
-
-.. code-block:: python
-
-    my_glycan.root_atom = my_glycan.get_atom("C1", residue=1)
-
-    # set the root atom on the protein as ND2 of the ASN residue
-    asn = my_prot.get_residue("ASN")
+    # and set the root atom to be the ASN's ND2 atom
     my_prot.root_atom = my_prot.get_atom("ND2", residue=asn)
 
-    # now we can directly attach
-    my_prot.attach(my_glycan, my_recipe)
+    # get a linkage
+    # (glycosylator already has a linkage for N-glycosylation)
+    link = gl.get_linkage("ASN-glyco")
 
+    # now attach the glycan to the protein
+    my_prot.attach(my_glycan, link)
 
-And in this final version we change the second example to use the operator "short-hand" syntax because we feel "extra cocky":
+In this second version we change we achieve the same but with an operator "short-hand" syntax because we feel "extra cocky":
 
 .. code-block:: python
 
@@ -82,8 +67,8 @@ And in this final version we change the second example to use the operator "shor
     asn = my_prot.get_residue("ASN")
     my_prot ^ my_prot.get_atom("ND2", residue=asn)
 
-    # set the recipe as default modifier
-    my_prot % my_recipe
+    # set the linkage as default modifier
+    my_prot % link
 
     # now attach the glycan to the ASN residue
     my_prot += my_glycan
@@ -94,15 +79,15 @@ Attaching to a list of residues
 
 Often we want to modify a number of residues in the same way, for example when we want to attach a glycan to all
 residues in a protein that match a specific sequence pattern (e.g. all N-glycosylation sequons). We can do this by providing
-a list of `residues` to the `attach` method:
+a list of `residues` to the `attach` method. 
 
 .. code-block:: python
 
     # find all ASN residues in the protein
-    residues_to_modify = [res for res in my_prot.get_residues() if res.resname == "ASN"]
+    residues_to_modify = my_prot.get_residues("ASN", by="name")
     
     # now attach the glycan to all ASN residues
-    my_prot.attach(my_glycan, recipe=my_recipe, residues=residues_to_modify, at_atom="ND2")
+    my_prot.attach(my_glycan, link, residues=residues_to_modify)
   
 This code will automatically add the glycan to all ASN residues in the list `residues_to_modify` and will use the `at_atom` argument to
 connect the glycan's root atom to the ND2 atom of each ASN residue.
@@ -126,14 +111,15 @@ For convenience, the `attach` method accepts a `sequon` argument where a regex p
 from collections import defaultdict
 from typing import Union
 
-from biobuild.core import molecule, Linkage
-import biobuild.core.entity as entity
-import biobuild.core.base_classes as base_classes
-import biobuild.structural as structural
-import biobuild.utils.auxiliary as aux
 
 from glycosylator.core.Glycan import Glycan
 import glycosylator.resources as resources
+
+from biobuild.core import Molecule, Linkage, molecule
+import biobuild.core.entity as entity
+import biobuild.core.base_classes as base_classes
+import biobuild.utils.auxiliary as aux
+import biobuild.structural as structural
 
 
 import re
@@ -200,21 +186,28 @@ def glycosylate(
             "Either a list of residues or a sequon pattern must be provided."
         )
     if not residues and sequon:
-        return scaffold.attach(glycan, link=link, sequon=sequon, _copy=not inplace)
+        return scaffold.attach(
+            glycan, link=link, sequon=sequon, _copy=not inplace, chain="new"
+        )
     else:
         if not link:
             raise ValueError(
                 "A Linkage must be provided when using a list of residues."
             )
         return scaffold.attach(
-            glycan, link, residues=residues, at_atom=link.bond[0], _copy=not inplace
+            glycan,
+            link,
+            residues=residues,
+            at_atom=link.bond[0],
+            _copy=not inplace,
+            chain="new",
         )
 
 
 class Scaffold(entity.BaseEntity):
     """
     The :class:`Scaffold` class is used to represent a scaffold structure such as a protein or membrane onto which a
-    modification in form of one or more :class:`glycosylator.core.molecule.Molecule`s can be added.
+    modification in form of one or more :class:`glycosylator.core.Glycan.Glycan`s can be added.
     """
 
     def __init__(self, structure, model: int = 0) -> None:
@@ -225,6 +218,7 @@ class Scaffold(entity.BaseEntity):
 
         self._attached_glycans = defaultdict(dict)
         self._internal_residues = set()
+        self._internal_bonds = set()
 
     @property
     def seq(self) -> str:
@@ -249,8 +243,8 @@ class Scaffold(entity.BaseEntity):
     @property
     def glycans(self) -> dict:
         """
-        Returns a dictionary of all glycan molecules that have been attached to the scaffold
-        The dictionary contains the atoms which are connected to the glycan molecules as keys and the glycan molecules as values.
+        Returns a dictionary of all glycan Glycans that have been attached to the scaffold
+        The dictionary contains the atoms which are connected to the glycan Glycans as keys and the glycan Glycans as values.
 
 
         Returns
@@ -304,7 +298,7 @@ class Scaffold(entity.BaseEntity):
     def exclude_chain(self, chain: Union[str, base_classes.Chain]):
         """
         Exclude a chain from the scaffold from letting any
-        molecules attach to any of its residues. This will also
+        Glycans attach to any of its residues. This will also
         prevent any sequon matches to be found by the `find` method.
 
         Parameters
@@ -323,7 +317,7 @@ class Scaffold(entity.BaseEntity):
 
     def include_chain(self, chain: Union[str, base_classes.Chain]):
         """
-        Include a previously excluded chain in the scaffold again to let molecules
+        Include a previously excluded chain in the scaffold again to let Glycans
         attach to its residues. This will also
         allow sequon matches to be found by the `find` method.
 
@@ -344,7 +338,7 @@ class Scaffold(entity.BaseEntity):
     def exclude_residue(self, residue: Union[int, base_classes.Residue]):
         """
         Exclude a residue of the scaffold from modification
-        by a molecule
+        by a Glycan
 
         Parameters
         ----------
@@ -360,7 +354,7 @@ class Scaffold(entity.BaseEntity):
     def include_residue(self, residue: Union[int, base_classes.Residue]):
         """
         Include a previously excluded residue of the scaffold again for modification
-        by a molecule
+        by a Glycan
 
         Parameters
         ----------
@@ -449,13 +443,13 @@ class Scaffold(entity.BaseEntity):
 
     def find(self, sequon: str = "N-linked") -> list:
         """
-        Find the residues at which molecules can be attached to the scaffold
+        Find the residues at which Glycans can be attached to the scaffold
 
         Parameters
         ----------
         sequon : str
             A regex pattern sequon to search for, which must contain a single capturing group
-            specifying the residue at which the molecule should be attached. Defaults to the "N-linked"
+            specifying the residue at which the Glycan should be attached. Defaults to the "N-linked"
             sequon which matches Asn-X-Ser/Thr sites. Alternatively, "O-linked" can be used, which matches
             Ser/Thr-X-Ser/Thr sites.
 
@@ -491,6 +485,8 @@ class Scaffold(entity.BaseEntity):
         _residues = {}
         for id, indices in sequons.items():
             chain = self._model.child_dict[id]
+            if not chain.child_list:
+                continue
             cdx = chain.child_list[0].id[1]
             _residues[id] = [
                 chain.child_list[idx - (cdx - 1)]
@@ -519,10 +515,10 @@ class Scaffold(entity.BaseEntity):
             If True, the seqid of the residues is adjusted to
             match the current number of residues in the structure
             (i.e. a new residue can be given seqid 1, and it will be adjusted
-            to the correct value of 3 if there are already two other residues in the molecule).
+            to the correct value of 3 if there are already two other residues in the Glycan).
         _copy : bool
             If True, the residues are copied before adding them to the structure.
-            This is useful if you want to add the same residue to multiple molecules, while leaving
+            This is useful if you want to add the same residue to multiple Glycans, while leaving
             them and their original parent structures intact.
         """
         if chain is None:
@@ -572,7 +568,10 @@ class Scaffold(entity.BaseEntity):
 
             for atom in residue.get_atoms():
                 self._AtomGraph.remove_node(atom)
-                self._purge_bonds(atom)
+                atom_bonds = self._get_bonds(atom, None)
+                self._internal_bonds.update(atom_bonds)
+                for b in atom_bonds:
+                    self._bonds.remove(b)
 
             self._internal_residues.add(residue)
 
@@ -585,9 +584,12 @@ class Scaffold(entity.BaseEntity):
             chain.add(residue)
             for atom in residue.get_atoms():
                 self._AtomGraph.add_node(atom)
-                bonds = self._get_bonds(atom, None)
-                self._AtomGraph.add_edges_from(bonds)
 
+        for bond in self._internal_bonds:
+            self._AtomGraph.add_edge(*bond)
+            self._bonds.append(bond)
+
+        self._internal_bonds.clear()
         self._internal_residues.clear()
 
     def to_pdb(self, filename: str, symmetric: bool = False):
@@ -618,41 +620,41 @@ class Scaffold(entity.BaseEntity):
         _topology=None,
     ):
         """
-        Attach a molecule to the scaffold via their root atoms.
+        Attach a Glycan to the scaffold via their root atoms.
 
         Parameters
         ----------
         mol : Glycan
-            The glycan molecule to attach
+            The Glycan to attach
         link : Linkage
             The linkage (recipe) to use when stitching. If None, the default recipe that was set earlier on the scaffold is used (if defined).
         remove_atoms : tuple
-            The atoms to remove from the scaffold while stitching the molecule to it. These must be the atom ids (e.g. "HO4")
+            The atoms to remove from the scaffold while stitching the Glycan to it. These must be the atom ids (e.g. "HO4")
             and they must be part of the scaffold's root residue. (This is used *instead* of specifying a recipe).
         mol_remove_atoms : tuple
-            The atoms to remove from the molecule while stitching it to the scaffold. These must be the atom ids (e.g. "HO4")
-            and they must be part of the molecule's root residue. (This is used *instead* of specifying a recipe).
+            The atoms to remove from the Glycan while stitching it to the scaffold. These must be the atom ids (e.g. "HO4")
+            and they must be part of the Glycan's root residue. (This is used *instead* of specifying a recipe).
         residues : list
-            A list of residues at which to attach copies of the molecule. This is an alternative to using a sequon.
+            A list of residues at which to attach copies of the Glycan. This is an alternative to using a sequon.
         sequon : str
-            Instead of providing one or multiple residues at which to attach the molecule, you can also provide a
-            sequon, which will be used to find the residues at which to attach the molecule.
+            Instead of providing one or multiple residues at which to attach the Glycan, you can also provide a
+            sequon, which will be used to find the residues at which to attach the Glycan.
         at_atom: str
             In case a sequon or a list of residues are provided, this specifies the atom of the matching residues that shall be used for stitching.
             This must be the atom's id (e.g. "CA"). If no sequon and no residue list is provided, this parameter is ignored and the root atom of the scaffold is used for attachment.
         chain : str or int or Chain
-            The chain to which the molecule should be attached. If None, the molecule is attached to the same chain as the root residue.
-            This can be set to "new" to create a new chain for the molecule, or "each" to create a new chain for each molecule that is attached
+            The chain to which the Glycan should be attached. If None, the Glycan is attached to the same chain as the root residue.
+            This can be set to "new" to create a new chain for the Glycan, or "each" to create a new chain for each Glycan that is attached
             if a sequon is provided. If a sequon is provided and this is set to "new" all glycans will be attached to the same new chain.
         _copy : bool
-            Whether to copy the scaffold before attaching the molecule(s) at the specified residue(s).
+            Whether to copy the scaffold before attaching the Glycan(s) at the specified residue(s).
         _topology
             A particular topology to use for referning linkages from (if a sequon is provided).
 
         Returns
         -------
         scaffold
-            The scaffold with the molecule(s) attached, which is either a copy of the original scaffold or the original.
+            The scaffold with the Glycan(s) attached, which is either a copy of the original scaffold or the original.
         """
         # ==========================================================
         #                    check input parameters
@@ -660,7 +662,7 @@ class Scaffold(entity.BaseEntity):
         if not link and remove_atoms is None and not sequon:
             if not self._linkage:
                 raise AttributeError(
-                    "No recipe was set for this molecule and no manual instructions were found. Either set a default recipe, provide a recipe when stitching, or provide the information about removed and bonded atoms directly."
+                    "No recipe was set for this Glycan and no manual instructions were found. Either set a default recipe, provide a recipe when stitching, or provide the information about removed and bonded atoms directly."
                 )
             link = self._linkage
 
@@ -687,7 +689,7 @@ class Scaffold(entity.BaseEntity):
             scaffold = self
 
         # ==========================================================
-        #          attach molecule to multiple residues
+        #          attach Glycan to multiple residues
         # ==========================================================
         if sequon is not None or residues is not None:
             _root = scaffold.root_atom
@@ -701,7 +703,7 @@ class Scaffold(entity.BaseEntity):
                 _chain = "new"
 
             # ----------------------------------------------------------
-            #           attach molecule using a list of residues
+            #           attach Glycan using a list of residues
             # ----------------------------------------------------------
             if residues is not None:
                 if not isinstance(at_atom, str) and sequon is None:
@@ -752,7 +754,7 @@ class Scaffold(entity.BaseEntity):
                     )
 
             # ----------------------------------------------------------
-            #                attach molecule using a sequon
+            #                attach Glycan using a sequon
             # ----------------------------------------------------------
             elif sequon is not None:
                 res_dict = scaffold.find(sequon)
@@ -779,13 +781,13 @@ class Scaffold(entity.BaseEntity):
             return scaffold
 
         # ==========================================================
-        #          attach molecule to a single residue
+        #          attach Glycan to a single residue
         # ==========================================================
 
         if scaffold.root_atom is None:
             raise ValueError("No root atom defined on the scaffold")
-        elif mol.root_atom is None:
-            raise ValueError("No root atom defined on the molecule")
+        if mol.root_atom is None:
+            raise ValueError("No root atom defined on the Glycan")
 
         if not isinstance(remove_atoms, (list, tuple)):
             raise ValueError(
@@ -798,7 +800,7 @@ class Scaffold(entity.BaseEntity):
 
         s = structural.__default_keep_keep_stitcher__
 
-        # copy the molecule to avoid changing the original
+        # copy the Glycan to avoid changing the original
         _mol = mol.copy()
 
         if chain is None:
@@ -826,13 +828,13 @@ class Scaffold(entity.BaseEntity):
 
     def __add__(self, mol):
         """
-        Attach a molecule to the scaffold via their root atoms.
+        Attach a Glycan to the scaffold via their root atoms.
         """
         return self.attach(mol, _copy=True)
 
     def __iadd__(self, mol):
         """
-        Attach a molecule to the scaffold via their root atoms.
+        Attach a Glycan to the scaffold via their root atoms.
         """
         return self.attach(mol, _copy=False)
 
