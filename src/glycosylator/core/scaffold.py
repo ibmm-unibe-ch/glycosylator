@@ -295,6 +295,31 @@ class Scaffold(entity.BaseEntity):
             new.add_bond(*bond)
         return new
 
+    def copy(self):
+        internal_residues = set(self._internal_residues)
+        internal_bonds = set(self._internal_bonds)
+
+        self.fill()
+        new = super().copy()
+        for bond in internal_bonds:
+            bond = new.get_atom(bond[0].serial_number), new.get_atom(
+                bond[1].serial_number
+            )
+            bond = new.get_bond(*bond)
+            new._internal_bonds.add(bond)
+            new._bonds.remove(bond)
+            new._AtomGraph.remove_edge(*bond)
+
+        for res in internal_residues:
+            res = new.get_residue(res.serial_number)
+            p = res.parent
+            p.detach_child(res.get_id())
+            res.set_parent(p)
+            new._internal_residues.add(res)
+            for atom in res.get_atoms():
+                new._AtomGraph.remove_node(atom)
+        return new
+
     def exclude_chain(self, chain: Union[str, base_classes.Chain]):
         """
         Exclude a chain from the scaffold from letting any
@@ -567,8 +592,8 @@ class Scaffold(entity.BaseEntity):
             residue.set_parent(chain)
 
             for atom in residue.get_atoms():
-                self._AtomGraph.remove_node(atom)
                 atom_bonds = self._get_bonds(atom, None)
+                self._AtomGraph.remove_node(atom)
                 self._internal_bonds.update(atom_bonds)
                 for b in atom_bonds:
                     self._bonds.remove(b)
@@ -849,7 +874,8 @@ if __name__ == "__main__":
     s = Scaffold.from_pdb(f1)
     s.reindex()
     s.infer_bonds(restrict_residues=True)
-
+    s.hollow_out()
+    s = s.copy()
     # sequon = "(N)(?=[A-OQ-Z][ST])"
     # residues = s.find(sequon)
 
@@ -861,7 +887,9 @@ if __name__ == "__main__":
     # _s.bonds = s.bonds
     # s = _s
 
-    mol = gl.glycan("/Users/noahhk/GIT/biobuild/__figure_makery/MAN8.json")
+    mol = gl.Glycan.from_json(
+        "/Users/noahhk/GIT/glycosylator/support/examples/man8.json"
+    )
     mol.root_atom = 1
 
     # link = gl.linkage("ND2", "C1", ["HD22"], ["O1", "HO1"])
