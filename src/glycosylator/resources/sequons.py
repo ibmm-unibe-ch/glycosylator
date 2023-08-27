@@ -172,8 +172,12 @@ def add_sequon(
     """
     if isinstance(sequon_or_pattern, str):
         sequon_or_pattern = Sequon(key, sequon_or_pattern)
+    elif key is None:
+        key = sequon_or_pattern.id
+
     if overwrite:
         save_sequons(GLYCOSYLATOR_SEQUONS_FILE + ".bak")
+
     SEQUONS[key] = sequon_or_pattern
     if overwrite:
         save_sequons(GLYCOSYLATOR_SEQUONS_FILE)
@@ -220,6 +224,18 @@ def get_default_sequons() -> dict:
     return SEQUONS
 
 
+def available_sequons() -> list:
+    """
+    Get the available sequons
+
+    Returns
+    -------
+    list
+        Sequons
+    """
+    return list(SEQUONS.keys())
+
+
 __all__ = [
     "SEQUONS",
     "get_sequon",
@@ -230,4 +246,5 @@ __all__ = [
     "Sequon",
     "set_default_sequons",
     "get_default_sequons",
+    "available_sequons",
 ]
