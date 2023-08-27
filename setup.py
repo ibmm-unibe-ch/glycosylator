@@ -5,7 +5,7 @@ with open("README.md", "r") as f:
 
 setuptools.setup(
     name="glycosylator",
-    version="4.3.22",
+    version="4.4.0",
     author="Noah H. Kleinschmidt",
     author_email="noah.kleinschmidt@students.unibe.ch",
     description="A python package for structural simulation of protein glycosylation",
@@ -38,19 +38,17 @@ setuptools.setup(
         "periodictable",
         "plotly",
         "alive_progress",
-        "pyswarms",
         "gym",
         "pubchempy",
         "tabulate",
-        # "openbabel",
-        # "mdtraj",
-        # "prody",
         "scikit-learn",
-        "nglview",
-        "ipywidgets<8.0",
+        "ipywidgets<8.0.1",
     ],
     optional_requires={
         "openbabel": ["openbabel"],
+        "rdkit": ["rdkit"],
+        "glycowork": ["glycowork"],
+        "full": ["openbabel", "rdkit", "glycowork"],
     },
     classifiers=[
         "Programming Language :: Python :: 3",

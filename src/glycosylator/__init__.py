@@ -16,5 +16,5 @@ import glycosylator.optimizers as optimizers
 # from the resources module
 load_glycosylator_compounds()
 
-__version__ = "4.3.64"
+__version__ = "4.4.0"
 __author__ = "Noah Kleinschmidt"
