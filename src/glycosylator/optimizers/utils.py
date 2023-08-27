@@ -1,5 +1,5 @@
 """
-This module contains utility functions for the optimizers.
+This module contains additional utility functions for the optimizers that are Glycosylator specific.
 """
 
 

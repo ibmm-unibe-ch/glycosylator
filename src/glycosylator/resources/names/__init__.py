@@ -1,5 +1,5 @@
 """
-Name mappings for glycan residues.
+These are name mappings for glycan residues between their PDB identifiers and IUPAC names.
 """
 __pdb_id_to_name_mapping__ = {
     "TNO": "TalN",
