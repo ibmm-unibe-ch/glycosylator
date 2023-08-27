@@ -1,323 +1,407 @@
 """
-Visualization auxiliary functions
+Visualizations for glycosylator
+"""
+import networkx as nx
+import matplotlib.pyplot as plt
+from matplotlib.offsetbox import OffsetImage, AnnotationBbox
+
+import numpy as np
+import glycosylator.utils.iupac as iupac
+import glycosylator.resources.icons as icons
+from biobuild.utils.visual import *
+
+import os
+
+try:
+    from glycowork.motif.draw import GlycoDraw
+except ImportError:
+    GlycoDraw = None
+
+
+use_glycowork = GlycoDraw is not None
+"""
+Whether to use GlycoWork from glycowork to draw glycan structures
 """
 
-import plotly.graph_objects as go
-import plotly.express as px
-import numpy as np
-from copy import deepcopy
-
-# import nglview
-
-
-# class NglViewer:
-#     """
-#     View a molecule or graph object in 3D using
-#     the NGLView library.
-
-#     Parameters
-#     ----------
-#     molecule
-#         The molecule to view. This may be any object that holds
-#         a biopython structure e.g. a Molecule, AtomGraph, or ResidueGraph.
-#     """
-
-#     def __init__(self, molecule):
-#         if molecule.__class__.__name__ in ("Molecule", "AtomGraph", "ResidueGraph"):
-#             self.mol = molecule.structure
-#         else:
-#             self.mol = molecule
-
-#     def show(self):
-#         """
-#         Show the molecule in a Jupyter notebook
-#         """
-#         return nglview.show_biopython(self.mol.structure)
+edge_label_defaults = {
+    "font_size": 7,
+    "font_color": "k",
+    "font_weight": "normal",
+    "alpha": 1.0,
+    "rotate": True,
+    "horizontalalignment": "center",
+    "clip_on": False,
+}
+"""
+Default edge label drawing parameters
+"""
 
 
-class MoleculeViewer3D:
+class GlycanViewer2D:
     """
-    View a molecule or graph object in 3D
-
-    Parameters
-    ----------
-    molecule
-        The molecule to view. This may be any object that holds
-        nodes to draw in an attribute such as "atoms" or "nodes",
-        e.g. a Molecule, AtomGraph, or ResidueGraph.
-    bonds
-        The bonds to draw. This may be a list of tuples or equivalent
-        iterable, or some other object that holds such data in an attribute
-        such as "bonds", or "edges".
+    A 2D scematic viewer for glycan structures
     """
 
-    __atom_colors__ = {
-        "C": "black",
-        "O": "red",
-        "H": "lightgray",
-        "N": "blue",
-        "S": "yellow",
-        "P": "purple",
-        "F": "green",
-        "Cl": "green",
-        "Br": "green",
-        "I": "green",
-    }
+    def __init__(self, glycan):
+        self.glycan = glycan
+        self.root = glycan.get_root() or glycan.get_atom(1)
+        self.root_residue = self.root.get_parent()
+        self.graph = self._make_graph(glycan)
 
-    def __init__(self, molecule, bonds=None):
-        self.mol = molecule
-        self.opacity = 0.3
-        self._bonds_obj = bonds if bonds else molecule
+        if use_glycowork:
+            self.draw = self._glycowork_draw
+            self.show = self._glycowork_show
+        else:
+            self.draw = self._native_draw
+            self.show = self._native_show
 
-        # preprocess to make sure a residue graph can
-        # be drawn without issue as residues by default
-        # do not have coordinates
-        if self.mol.__class__.__name__ == "ResidueGraph":
-            for residue in self.mol.residues:
-                if hasattr(residue, "coord"):
-                    continue
-                residue.coord = residue.center_of_mass()
-
-        self._fig = self.setup()
-        self._backup_fig = deepcopy(self._fig)
-
-    @property
-    def figure(self):
-        return self._fig
-
-    def get_color(self, atom):
+    def disable_glycowork(self):
         """
-        Get the color of an atom
+        Disable the use of GlycoWork for drawing (if available)
+        """
+        self.draw = self._native_draw
+        self.show = self._native_show
+
+    def enable_glycowork(self):
+        """
+        Enable the use of GlycoWork for drawing (if available)
+        """
+        if GlycoDraw is None:
+            raise ImportError("GlycoWork is not available")
+        self.draw = self._glycowork_draw
+        self.show = self._glycowork_show
+
+    def layout(self, graph) -> dict:
+        """
+        Make a vertical fork layout
 
         Parameters
         ----------
-        atom : Bio.PDB.Atom
-            The atom to get the color of
+        graph : nx.Graph
+            The graph to layout
 
         Returns
         -------
-        color : str
-            The color of the atom
+        dict
+            A dictionary of node positions
         """
-        return self.__atom_colors__.get(atom.element)
+        nodes = [self.root_residue]
+        levels = {self.root_residue: 0}
+        child_mapping = {self.root_residue: []}
+        idx = 0
+        graph = nx.dfs_tree(graph, self.root_residue)
+        while len(levels) < len(graph):
+            parent_node = nodes[idx]
+            for node in nx.descendants_at_distance(graph, parent_node, 1):
+                levels.setdefault(node, levels[parent_node] + 1)
+                nodes.append(node)
+                child_mapping.setdefault(parent_node, [])
+                child_mapping[parent_node].append(node)
+            idx += 1
+        parent_mapping = {i: k for k, v in child_mapping.items() for i in v}
 
-    def update_colors(self, color_dict):
-        """
-        Update the colors of the atoms
+        nodes_per_level = {}
+        for node, level in levels.items():
+            nodes_per_level.setdefault(level, []).append(node)
+        nodes_per_level.pop(0)
 
-        Parameters
-        ----------
-        color_dict : dict
-            A dictionary of the form {atom: color}
-        """
-        self.__atom_colors__.update(color_dict)
+        _all_nodes = list(graph.nodes)
+        n_levels = len(nodes_per_level)
+        self._max_nodes = max(map(len, nodes_per_level.values()))
+        node_grid = np.zeros((n_levels + 1, self._max_nodes * 2 + 1), dtype=int)
+        node_grid[0, self._max_nodes] = _all_nodes.index(self.root_residue) + 1
 
-    def highlight(self, ids):
-        """
-        Highlight a set of atoms or residues from their ids to draw them at full opacity.
-
-        Parameters
-        ----------
-        ids : list
-            The ids of the atoms to highlight
-        """
-        atoms = {i.id: i for i in self._get_atoms(self.mol)}
-        for i in ids:
-            atom = atoms.get(i)
-            if not atom:
-                continue
-            _ = self._fig.add_trace(
-                go.Scatter3d(
-                    x=[atom.coord[0]],
-                    y=[atom.coord[1]],
-                    z=[atom.coord[2]],
-                    mode="markers",
-                    marker=dict(color=self.__atom_colors__.get(i[0])),
-                    name=i,
-                    showlegend=False,
-                ),
+        for child, parent in parent_mapping.items():
+            parent_level = levels[parent]
+            parent_idx = _all_nodes.index(parent) + 1
+            parent_grid_idx = int(np.argwhere(node_grid[parent_level] == parent_idx)[0])
+            child_level = levels[child]
+            y = self._y_pos(
+                node_grid,
+                child_level,
+                parent_grid_idx,
             )
+            node_grid[child_level, y] = _all_nodes.index(child) + 1
 
-    def draw_point(self, id, coords, color="black", opacity=1.0, showlegend=True):
-        """
-        Draw a point on the figure
-
-        Parameters
-        ----------
-        id : str
-            The id of the point
-        coords : list
-            The coordinates of the point
-        color : str
-            The color of the point
-        opacity : float
-            The opacity of the point
-        showlegend : bool
-            Whether to show the legend or not
-        """
-        new = go.Scatter3d(
-            x=[coords[0]],
-            y=[coords[1]],
-            z=[coords[2]],
-            mode="markers",
-            marker=dict(opacity=opacity, color=color),
-            name=id,
-            hoverinfo="name",
-            showlegend=showlegend,
-        )
-        _ = self._fig.add_trace(new)
-
-    def draw_vector(self, id, point, vec, color="black", showlegend=True):
-        """
-        Draw a vector on the figure
-
-        Parameters
-        ----------
-        id : str
-            The id of the vector
-        point : list
-            The coordinates of the point from which to start the vector
-        vec : list
-            The vector to draw
-        color : str
-            The color of the vector
-        showlegend : bool
-            Whether to show the legend or not
-        """
-        new = go.Scatter3d(
-            x=[point[0], point[0] + vec[0]],
-            y=[point[1], point[1] + vec[1]],
-            z=[point[2], point[2] + vec[2]],
-            mode="lines",
-            line=dict(color=color, width=10),
-            name=id,
-            hoverinfo="skip",
-            showlegend=showlegend,
-        )
-        _ = self._fig.add_trace(new)
-
-    def save(self, filename=None):
-        """
-        Save the current state of the figure, to revert to this
-        when calling the `reset()` method. If also a filename is given,
-        the figure is saved to a file.
-        """
-        self._backup_fig = deepcopy(self._fig)
-        if filename:
-            self._fig.write_html(filename)
-
-    def reset(self):
-        """
-        Reset the figure to the last saved state
-        """
-        self._fig = deepcopy(self._backup_fig)
-
-    def show(self):
-        self._fig.show()
-
-    def draw_edges(self, edges=None, color="black", linewidth=1, opacity=1.0):
-        """
-        Draw edges on the figure
-
-        Parameters
-        ----------
-        edges : list
-            The edges to draw
-        color : str
-            The color of the edges
-        linewidth : int
-            The width of the edges
-        opacity : float
-            The opacity of the edges
-        """
-        if not edges:
-            edges = self._get_bonds(self._bonds_obj)
-        for edge in edges:
-            a1, a2 = edge
-            new = go.Scatter3d(
-                x=[a1.coord[0], a2.coord[0]],
-                y=[a1.coord[1], a2.coord[1]],
-                z=[a1.coord[2], a2.coord[2]],
-                mode="lines",
-                line=dict(color=color, width=linewidth),
-                name=f"{a1.id}-{a2.id}",
-                hoverinfo="skip",
-                showlegend=False,
-                opacity=opacity,
+        positions = {
+            node: (
+                level,
+                int(np.argwhere(node_grid[level] == _all_nodes.index(node) + 1)[0]),
             )
-            _ = self._fig.add_trace(new)
+            for node, level in levels.items()
+        }
 
-    def setup(self):
-        """
-        Draw the basic molecule setup with all atoms and bonds.
-        """
-        # draw all atoms
-        atoms = self._get_atoms(self.mol)
-        self._fig = px.scatter_3d(
-            x=[i.coord[0] for i in atoms],
-            y=[i.coord[1] for i in atoms],
-            z=[i.coord[2] for i in atoms],
-            color=[i.id[0] for i in atoms],
-            color_discrete_map=self.__atom_colors__,
-            opacity=self.opacity,
-            hover_name=[i.id for i in atoms],
-            template="none",
-        )
-
-        # draw all bonds
-        bonds = self._get_bonds(self._bonds_obj)
-        atoms = {i.id: i for i in atoms}
-        for bond in bonds:
-            a1 = atoms.get(bond[0], bond[0])
-            a2 = atoms.get(bond[1], bond[1])
-            if not a1 or not a2:
-                continue
-            new = go.Scatter3d(
-                x=[a1.coord[0], a2.coord[0]],
-                y=[a1.coord[1], a2.coord[1]],
-                z=[a1.coord[2], a2.coord[2]],
-                mode="lines",
-                line=dict(color="black", width=1),
-                hoverinfo="skip",
-                showlegend=False,
-            )
-            _ = self._fig.add_trace(new)
-
-        self._fig.update_scenes(
-            xaxis_showgrid=False,
-            xaxis_showline=False,
-            xaxis_showticklabels=False,
-            yaxis_showgrid=False,
-            yaxis_showline=False,
-            yaxis_showticklabels=False,
-            zaxis_showgrid=False,
-            zaxis_showline=False,
-            zaxis_showticklabels=False,
-        )
-        return self._fig
+        return positions
 
     @staticmethod
-    def _get_atoms(obj):
-        if hasattr(obj, "nodes"):
-            return obj.nodes
-        elif hasattr(obj, "atoms"):
-            return obj.atoms
-        elif hasattr(obj, "get_atoms"):
-            return obj.get_atoms()
-        elif isinstance(obj, (tuple, list, np.ndarray)):
-            return obj
-        else:
-            raise TypeError("Unknown object type")
+    def _y_pos(node_grid, level, parent_idx):
+        row = node_grid[level]
+        dist = 0
+        _evals = (
+            lambda parent_idx, dist: row[parent_idx - dist] == 0,
+            lambda parent_idx, dist: row[parent_idx + dist] == 0,
+        )
+        _new_dists = (
+            lambda parent_idx, dist: parent_idx - dist,
+            lambda parent_idx, dist: parent_idx + dist,
+        )
+        _dir = [0, 1]
+        while True:
+            if _evals[_dir[0]](parent_idx, dist):
+                return _new_dists[_dir[0]](parent_idx, dist)
+            elif _evals[_dir[1]](parent_idx, dist):
+                return _new_dists[_dir[1]](parent_idx, dist)
+            _dir = _dir[::-1]
+            dist += 1
+            if dist > 3:
+                np.roll(row, 1)
+                dist = 0
+                node_grid[level] = row
+
+    def _native_draw(
+        self,
+        ax=None,
+        axis="y",
+        node_size: int = 20,
+        draw_edge_labels: bool = False,
+        edge_label_kws: dict = None,
+        **kwargs
+    ) -> plt.Axes:
+        """
+        Draw the glycan structure
+
+        Parameters
+        ----------
+        ax : matplotlib.axes.Axes
+            The axes to draw on
+        axis : str
+            The axis to draw on, either "x" or "y".
+        node_size : int
+            The size of the nodes
+        draw_edge_labels : bool
+            Whether to draw the id labels of the connecting edges.
+        edge_label_kws : dict
+            Keyword arguments to pass to the edge label drawing function.
+            The defaults are defined in `edge_label_defaults`.
+        kwargs : dict
+            Keyword arguments to pass to `nx.draw_networkx_edges`
+
+        Returns
+        -------
+        matplotlib.axes.Axes
+        """
+        aspect = 0.8 if axis == "y" else 1  # 0.5 if axis == "x" else 1
+        if ax is None:
+            fig, ax = plt.subplots()
+            ax.set_aspect(aspect)
+        pos = self.layout(self.graph)
+        if axis == "y":
+            pos = {k: (v[1], self._max_nodes + v[0]) for k, v in pos.items()}
+
+        nx.draw_networkx_edges(self.graph, pos=pos, ax=ax, **kwargs)
+        ax.axis("off")
+
+        if draw_edge_labels:
+            if edge_label_kws:
+                _edge_kws = dict(edge_label_defaults).update(edge_label_kws)
+            else:
+                _edge_kws = edge_label_defaults
+            edge_labels = nx.get_edge_attributes(self.graph, "linkage")
+            edge_labels = {
+                k: iupac.reverse_format_link(getattr(v, "id", v), pretty=True)
+                for k, v in edge_labels.items()
+            }
+            nx.draw_networkx_edge_labels(
+                self.graph,
+                pos=pos,
+                edge_labels=edge_labels,
+                ax=ax,
+                **_edge_kws,
+            )
+
+        # Add the respective image to each node
+        for n in self.graph.nodes:
+            icon = icons.get_icon(n.resname)
+            icon = OffsetImage(icon, zoom=node_size / ax.figure.dpi)
+            icon.image.axes = ax
+            ab = AnnotationBbox(icon, pos[n], xycoords="data", frameon=False)
+            ax.add_artist(ab)
+        return ax
+
+    def _native_show(
+        self,
+        ax=None,
+        axis="y",
+        node_size: int = 20,
+        draw_edge_labels: bool = False,
+        edge_label_kws: dict = None,
+        **kwargs
+    ):
+        """
+        Draw and show the glycan structure
+
+        Parameters
+        ----------
+        ax : matplotlib.axes.Axes
+            The axes to draw on
+        axis : str
+            The axis to draw along, either "x" (horizontal) or "y" (vertical).
+        node_size : int
+            The size of the nodes
+        draw_edge_labels : bool
+            Whether to draw the id labels of the connecting edges.
+        edge_label_kws : dict
+            Keyword arguments to pass to the edge label drawing function.
+            The defaults are defined in `edge_label_defaults`.
+        kwargs : dict
+            Keyword arguments to pass to `nx.draw_networkx_edges`
+        """
+        self._native_draw(
+            ax=ax,
+            axis=axis,
+            node_size=node_size,
+            draw_edge_labels=draw_edge_labels,
+            edge_label_kws=edge_label_kws,
+            **kwargs,
+        )
+        plt.show()
+
+    def _glycowork_draw(
+        self,
+        ax=None,
+        axis="x",
+        compact: bool = False,
+        draw_edge_labels: bool = True,
+        svg: bool = False,
+    ):
+        """
+        Draw the glycan structure using GlycoWork
+
+        Parameters
+        ----------
+        ax : matplotlib.axes.Axes
+            The axes to draw on
+        axis : str
+            The axis to draw along, either "x" (horizontal) or "y" (vertical).
+        compact : bool
+            Whether to draw the glycan in a compact form.
+        draw_edge_labels : bool
+            Whether to draw the id labels of the connecting edges.
+        svg : bool
+            Whether to draw the structure as an SVG image. If True,
+            this method will return the SVG as created by GlycoDraw.
+            If False, it will return a matplotlib.Axes object.
+        """
+        vertical = axis == "y"
+        img = GlycoDraw(
+            iupac.make_iupac_string(self.glycan, add_terminal_conformation=False),
+            compact=compact,
+            vertical=vertical,
+            show_linkage=draw_edge_labels,
+        )
+        if not svg:
+            img = self._glycowork_to_plt(img)
+            if ax is None:
+                fig, ax = plt.subplots()
+            ax.imshow(img)
+            ax.axis("off")
+            return ax
+        return img
+
+    def _glycowork_show(
+        self,
+        ax=None,
+        axis="x",
+        compact: bool = False,
+        draw_edge_labels: bool = True,
+        svg: bool = False,
+    ):
+        """
+        Draw and show the glycan structure using GlycoWork
+
+        Parameters
+        ----------
+        ax : matplotlib.axes.Axes
+            The axes to draw on
+        axis : str
+            The axis to draw along, either "x" (horizontal) or "y" (vertical).
+        compact : bool
+            Whether to draw the glycan in a compact form.
+        draw_edge_labels : bool
+            Whether to draw the id labels of the connecting edges.
+        svg : bool
+            Whether to draw the structure as an SVG image. If True,
+            this method will return the SVG as created by GlycoDraw.
+            If False, it will show the matplotlib figure.
+
+        """
+        img = self._glycowork_draw(
+            ax=ax,
+            axis=axis,
+            compact=compact,
+            draw_edge_labels=draw_edge_labels,
+            svg=svg,
+        )
+        if svg:
+            return img
+        plt.show()
 
     @staticmethod
-    def _get_bonds(obj):
-        if hasattr(obj, "edges"):
-            return obj.edges
-        elif hasattr(obj, "bonds"):
-            return obj.bonds
-        elif hasattr(obj, "get_bonds"):
-            return obj.get_bonds()
-        elif isinstance(obj, (tuple, list, np.ndarray)):
-            return obj
-        else:
-            raise TypeError("Unknown object type")
+    def _glycowork_to_plt(img):
+        """Convert a drawing to a matplotlib image"""
+        img.save_png("tmp.glycan.png")
+        img = plt.imread("tmp.glycan.png")
+        os.remove("tmp.glycan.png")
+        return img
+
+    def _make_graph(self, glycan):
+        src = glycan._glycan_tree._segments
+        label_src = (i.id for i in glycan._glycan_tree._linkages)
+        if len(src) == 0:
+            if len(glycan.residues) == 1:
+                src = [(glycan.residues[0], glycan.residues[0])]
+                label_src = ["<NaN>"]
+            else:
+                src = glycan.make_residue_graph().edges
+                label_src = ("<NaN>" for _ in src)
+        graph = nx.Graph(src)
+
+        nx.set_edge_attributes(
+            graph,
+            {
+                i: j
+                for i, j in zip(
+                    src, [iupac.reverse_format_link(i, pretty=True) for i in label_src]
+                )
+            },
+            "linkage",
+        )
+        return graph
+
+
+if __name__ == "__main__":
+    import glycosylator as gl
+
+    # man = gl.glycan("MAN")
+    # glc = gl.glycan("GLC")
+    # gulnac = gl.glycan("GulNAc")
+
+    # glycan = man % "14bb" + glc + glc + man + glc + glc
+    # glycan @ -4
+    # glycan % "16ab"
+    # glycan += man + glc + gulnac
+    # glycan % "12bb"
+    # glycan += man + gulnac + glc + man
+    # glycan = glycan @ -6 + glycan
+
+    # viewer = GlycanViewer2D(glycan)
+    # viewer.show()
+    use_glycowork = False
+    mol = gl.glycan(
+        # "Gal(a1-2)Man(a1-3)[Gal(a1-2)Man(a1-3)]Glc(a1-4)[Gal(a1-2)Man(a1-3)][Gal(a1-2)Man(a1-3)]GlcNAc(b1-4)Man(b1-4)Glc(b1-",
+        "Neu5Gc(a2-3)Gal(b1-4)[Fuc(a1-3)]GlcNAc(b1-2)[Neu5Gc(a2-3)Gal(b1-4)[Fuc(a1-3)]GlcNAc(b1-4)]Man(a1-3)[Neu5Ac(a2-8)Neu5Gc(a2-3)Gal(b1-4)GlcNAc(b1-3)Gal(b1-4)[Fuc(a1-3)]GlcNAc(b1-2)[Neu5Ac(a2-3)Gal(b1-4)[Fuc(a1-3)]GlcNAc(b1-6)]Man(a1-6)]Man(b1-4)GlcNAc(b1-4)GlcNAc"
+    )
+    v = GlycanViewer2D(mol)
+    v.show()
+    plt.show()
+    pass
