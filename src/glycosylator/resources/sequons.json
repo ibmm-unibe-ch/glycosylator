@@ -1,0 +1,17 @@
+{
+    "N-linked": {
+        "id": "N-linked",
+        "pattern": "(N)(?=[A-OQ-Z][ST])",
+        "linkages": {
+            "ASN": "ASN-glyco"
+        }
+    },
+    "O-linked": {
+        "id": "O-linked",
+        "pattern": "(S|T)(?=[A-OQ-Z][ST])",
+        "linkages": {
+            "SER": "SER-glyco",
+            "THR": "THR-glyco"
+        }
+    }
+}
