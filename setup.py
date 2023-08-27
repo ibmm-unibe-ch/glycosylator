@@ -15,7 +15,7 @@ setuptools.setup(
         "glycosylator.resources": ["*.pkl", "*.json"],
         "glycosylator.resources.icons": ["*.png"],
     },
-    url="TBA",
+    url="https://github.com/ibmm-unibe-ch/glycosylator/",
     packages=[
         "glycosylator",
         "glycosylator.core",
