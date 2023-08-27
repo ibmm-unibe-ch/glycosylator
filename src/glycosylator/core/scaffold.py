@@ -144,7 +144,7 @@ def scaffold(scaf=None) -> "Scaffold":
     try:
         mol = molecule(scaf)
         scaf = Scaffold(mol.structure)
-        scaf._add_bonds(*mol.get_bonds())
+        scaf.add_bonds(*mol.get_bonds())
         return scaf
     except:
         raise ValueError("Could not make a Scaffold from the input.")
@@ -480,8 +480,8 @@ class Scaffold(entity.BaseEntity):
 
         Returns
         -------
-        list
-            A list of all residues that match the sequon
+        dict
+            A dictionary of lists of matching residues in each chain.
         """
 
         if sequon in resources.SEQUONS:
@@ -513,7 +513,7 @@ class Scaffold(entity.BaseEntity):
             if not chain.child_list:
                 continue
             cdx = chain.child_list[0].id[1]
-            _residues[id] = [
+            _residues[chain] = [
                 chain.child_list[idx - (cdx - 1)]
                 for idx in indices
                 if chain.child_list[idx - (cdx - 1)] not in self._excluded_residues
@@ -638,7 +638,7 @@ class Scaffold(entity.BaseEntity):
         remove_atoms: tuple = None,
         mol_remove_atoms: tuple = None,
         residues: list = None,
-        sequon: str = None,
+        sequon: Union[str, resources.Sequon] = None,
         at_atom: str = None,
         chain=None,
         _copy: bool = False,
@@ -661,7 +661,7 @@ class Scaffold(entity.BaseEntity):
             and they must be part of the Glycan's root residue. (This is used *instead* of specifying a recipe).
         residues : list
             A list of residues at which to attach copies of the Glycan. This is an alternative to using a sequon.
-        sequon : str
+        sequon : str or Sequon
             Instead of providing one or multiple residues at which to attach the Glycan, you can also provide a
             sequon, which will be used to find the residues at which to attach the Glycan.
         at_atom: str
@@ -736,16 +736,15 @@ class Scaffold(entity.BaseEntity):
                         f"When providing a list of residues without a sequon, you must also provide an 'at_atom' of type str (got {type(at_atom)})"
                     )
                 elif sequon is not None:
-                    if (
-                        not isinstance(sequon, resources.Sequon)
-                        and sequon in resources.SEQUONS
-                    ):
+                    if sequon in resources.SEQUONS:
                         sequon = resources.SEQUONS[sequon]
                         use_sequon = True
-                    else:
+                    elif not isinstance(sequon, resources.Sequon):
                         raise ValueError(
                             f"The provided sequon '{sequon}' is not registered so no refernce linkages can be found. Please, register the sequon or specify an 'at_atom'."
                         )
+                    else:
+                        use_sequon = True
                 else:
                     use_sequon = False
 
@@ -873,9 +872,13 @@ if __name__ == "__main__":
     f1 = "/Users/noahhk/GIT/glycosylator/support/examples/4tvp.prot.pdb"
     s = Scaffold.from_pdb(f1)
     s.reindex()
-    s.infer_bonds(restrict_residues=True)
-    s.hollow_out()
-    s = s.copy()
+    s.infer_bonds()
+    s1 = s.copy()
+    assert s1 is not s
+    assert s1.count_bonds() == s.count_bonds()
+
+    exit()
+    # s.hollow_out()
     # sequon = "(N)(?=[A-OQ-Z][ST])"
     # residues = s.find(sequon)
 
