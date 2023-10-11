@@ -90,13 +90,38 @@ This string has one placeholder for the GlyCosmos/GlyTouCan ID of the glycan.
 # }
 # ```
 
-QUERY_FOR_ID = "https://ts.glycosmos.org/sparql?default-graph-uri=&query=PREFIX+glycan%3A+%3Chttp%3A%2F%2Fpurl.jp%2Fbio%2F12%2Fglyco%2Fglycan%23%3E%0D%0APREFIX+dcterms%3A+%3Chttp%3A%2F%2Fpurl.org%2Fdc%2Fterms%2F%3E%0D%0A%0D%0ASELECT+%3FentryID%0D%0AWHERE+%7B%0D%0A%3Fentry+dcterms%3Aidentifier+%3FentryID.%0D%0A%3Fentry+glycan%3Ahas_glycosequence+%3Fseqval.%0D%0A%3Fseqval+glycan%3Ahas_sequence+%3Fseq.%0D%0AFILTER+%28CONTAINS%28STR%28%3Fseqval%29%2C+%22iupac_condensed%22%29+AND+STR%28%3Fseq%29+%3D+%22{}%22%29%0D%0A%7D+&format=application%2Fsparql-results%2Bjson&timeout=0"
+QUERY_FOR_FULL_MATCH_ID = "https://ts.glycosmos.org/sparql?default-graph-uri=&query=PREFIX+glycan%3A+%3Chttp%3A%2F%2Fpurl.jp%2Fbio%2F12%2Fglyco%2Fglycan%23%3E%0D%0APREFIX+dcterms%3A+%3Chttp%3A%2F%2Fpurl.org%2Fdc%2Fterms%2F%3E%0D%0A%0D%0ASELECT+%3FentryID%0D%0AWHERE+%7B%0D%0A%3Fentry+dcterms%3Aidentifier+%3FentryID.%0D%0A%3Fentry+glycan%3Ahas_glycosequence+%3Fseqval.%0D%0A%3Fseqval+glycan%3Ahas_sequence+%3Fseq.%0D%0AFILTER+%28CONTAINS%28STR%28%3Fseqval%29%2C+%22iupac_condensed%22%29+AND+STR%28%3Fseq%29+%3D+%22{}%22%29%0D%0A%7D+&format=application%2Fsparql-results%2Bjson&timeout=0"
 """
 The SPARQL query to retrieve the GlyCosmos/GlyTouCan ID of a glycan.
 This string has one placeholder for the IUPAC string of the glycan.
 """
 
-__all__ = ["get_iupac_from_glycosmos", "get_glytoucan_id_from_iupac"]
+# The original SPARQL query is as follows (for the same example):
+# ```sparql
+# PREFIX glycan: <http://purl.jp/bio/12/glyco/glycan#>
+# PREFIX dcterms: <http://purl.org/dc/terms/>
+
+# SELECT ?entryID
+# WHERE {
+# ?entry dcterms:identifier ?entryID.
+# ?entry glycan:has_glycosequence ?seqval.
+# ?seqval glycan:has_sequence ?seq.
+# FILTER (CONTAINS(STR(?seqval), "iupac_condensed") AND CONTAINS(STR(?seq), "Gal(a1-4)Gal(b1-"))
+# }
+# ```
+
+QUERY_FOR_PARTIAL_MATCH_ID = "SELECT+%3FentryID+%3Fseq%0D%0AWHERE+%7B%0D%0A%3Fentry+dcterms%3Aidentifier+%3FentryID.%0D%0A%3Fentry+glycan%3Ahas_glycosequence+%3Fseqval.%0D%0A%3Fseqval+glycan%3Ahas_sequence+%3Fseq.%0D%0AFILTER+%28CONTAINS%28STR%28%3Fseqval%29%2C+%22iupac_condensed%22%29+AND+CONTAINS%28STR%28%3Fseq%29%2C+%22{}%22%29%29%0D%0A%7D+&format=application%2Fsparql-results%2Bjson&timeout=0"
+"""
+The SPARQL query to retrieve GlyCosmos/GlyTouCan IDs of glycans that are partial matches of the query glycan.
+This string has one placeholder for the IUPAC string of the glycan. 
+"""
+
+
+__all__ = [
+    "get_iupac_from_glycosmos",
+    "get_glytoucan_id_from_iupac",
+    "find_glytoucan_ids_from_iupac",
+]
 
 
 def get_iupac_from_glycosmos(id: str) -> str:
@@ -135,12 +160,34 @@ def get_glytoucan_id_from_iupac(iupac: str) -> str:
     str
         The GlyTouCan ID.
     """
-    url = make_query_url(QUERY_FOR_ID, iupac)
+    url = make_query_url(QUERY_FOR_FULL_MATCH_ID, iupac)
     response = query_glycosmos(url)
     bindings = response["results"]["bindings"]
     if len(bindings) == 0:
         return None
     return bindings[0]["entryID"]["value"]
+
+
+def find_glytoucan_ids_from_iupac(iupac: str) -> list:
+    """
+    Find GlyTouCan IDs for glycans that are partial matches of the query glycan.
+
+    Parameters
+    ----------
+    iupac : str
+        The IUPAC condensed format.
+
+    Returns
+    -------
+    list
+        The GlyTouCan IDs and IUPAC strings of the glycans.
+    """
+    url = make_query_url(QUERY_FOR_PARTIAL_MATCH_ID, iupac)
+    response = query_glycosmos(url)
+    bindings = response["results"]["bindings"]
+    if len(bindings) == 0:
+        return None
+    return [(b["entryID"]["value"], b["seq"]["value"]) for b in bindings]
 
 
 def make_query_url(template: str, q: str) -> str:

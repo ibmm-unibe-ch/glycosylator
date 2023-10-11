@@ -321,6 +321,19 @@ class Glycan(core.Molecule):
 
     get_glycosmos_id = get_glytoucan_id
 
+    def find_glytoucan_ids(self) -> list:
+        """
+        Find GlyTouCan IDs for glycans that are partial matches of the glycan.
+
+        Returns
+        -------
+        list
+            A list of GlyTouCan IDs (if available)
+        """
+        return resources.find_glytoucan_ids_from_iupac(self.to_iupac())
+
+    find_glycosmos_ids = find_glytoucan_ids
+
     def to_iupac(self, add_terminal_conformation: bool = True) -> str:
         """
         Generate an IUPAC/SNFG string from the glycan molecule
