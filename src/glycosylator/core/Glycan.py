@@ -43,9 +43,13 @@ def glycan(g: Union[str, list], id: str = None, _topology=None):
                 mol = Glycan(mol)
                 return mol
             except:
-                raise ValueError(
-                    f"Failed to interpret input '{g}'. Could not parse as IUPAC/SNFG string and not get a molecule from it. If it is a IUPAC/SNFG string, perhaps one of the residues could not be found in the database or a linkage is not available in the used topology? Try building the glycan directly."
-                )
+                try:
+                    mol = Glycan.from_glycosmos(g, _topology)
+                    return mol
+                except:
+                    raise ValueError(
+                        f"Failed to interpret input '{g}'. Could not parse as IUPAC/SNFG string and not get a molecule from it. If it is a IUPAC/SNFG string, perhaps one of the residues could not be found in the database or a linkage is not available in the used topology? Try building the glycan directly."
+                    )
 
     elif isinstance(g, list):
         mol = read_graph(id, g)
@@ -293,7 +297,29 @@ class Glycan(core.Molecule):
         new = read_iupac(id, iupac, _topology)
         return new
 
+    @classmethod
+    def from_glycosmos(cls, id: str, _topology=None) -> "Glycan":
+        """
+        Generate a glycan molecule from a GlyCosmos/GlyTouCan ID
+        """
+        iupac = resources.get_iupac_from_glycosmos(id)
+        return cls.from_iupac(id, iupac, _topology)
+
+    from_glytoucan = from_glycosmos
     from_snfg = from_iupac
+
+    def get_glytoucan_id(self) -> str:
+        """
+        Get the GlyTouCan ID of the glycan molecule
+
+        Returns
+        -------
+        str
+            The GlyTouCan ID (if available)
+        """
+        return resources.get_glytoucan_id_from_iupac(self.to_iupac())
+
+    get_glycosmos_id = get_glytoucan_id
 
     def to_iupac(self, add_terminal_conformation: bool = True) -> str:
         """
@@ -591,6 +617,9 @@ __all__ = [
 
 if __name__ == "__main__":
     import glycosylator as gls
+
+    g = glycan("G78791QP")
+    g.show2d()
 
     s = "Gal(b1-3)GlcNAc(b1-3)[Gal(b1-3)GlcNAc(b1-3)[Gal(b1-4)GlcNAc(b1-6)]Gal(b1-4)GlcNAc(b1-6)][Gal(b1-4)GlcNAc(b1-2)]Gal(b1-4)Glc"
     glc = Glycan.from_iupac(None, s)
