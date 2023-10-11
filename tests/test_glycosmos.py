@@ -21,3 +21,10 @@ def test_make_glycan_from_id():
     assert g.get_glytoucan_id() == REF_ID
     g.show3d()
     g.show2d()
+
+
+def test_find_matching_glycans():
+    ids = gl.resources.find_glytoucan_ids_from_iupac(REF_IUPAC)
+    assert len(ids) > 0
+    for i, seq in ids:
+        assert REF_IUPAC in seq
