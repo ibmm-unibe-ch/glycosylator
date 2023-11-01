@@ -540,7 +540,7 @@ def test_find_glycans():
     import matplotlib.pyplot as plt
 
     fig, axs = plt.subplots(1, 3, figsize=(15, 5))
-    for i, glycan in enumerate(glycans):
+    for i, glycan in enumerate(glycans.values()):
         glycan.draw2d(ax=axs[i])
         axs[i].set_title(f"glycan {i+1}")
     plt.show()
