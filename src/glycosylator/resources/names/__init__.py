@@ -1,7 +1,8 @@
 """
 These are name mappings for glycan residues between their PDB identifiers and IUPAC names.
 """
-__pdb_id_to_name_mapping__ = {
+
+__pdb_id_to_iupac_name_mapping__ = {
     "TNO": "TalN",
     "KDO": "Kdo",
     "KDM": "Kdn",
@@ -152,6 +153,27 @@ __pdb_id_to_name_mapping__ = {
     "ATA": "AltA",
 }
 
+# just in case someone external has already incorporated this
+__pdb_id_to_name_mapping__ = __pdb_id_to_iupac_name_mapping__
+"""
+WARNING: This is deprecated, use `__pdb_id_to_iupac_name_mapping__` instead.
+"""
+
+__iupac_name_to_pdb_id_mapping__ = {
+    value: key for key, value in __pdb_id_to_iupac_name_mapping__.items()
+}
+
+__beta_compounds_pdb_ids__ = set(
+    [
+        key
+        for key, value in __pdb_id_to_iupac_name_mapping__.items()
+        if value.startswith("b-")
+    ]
+)
+"""
+A set of PDB ids for monosaccharides that are beta-configured.
+"""
+
 
 def id_to_name(id: str) -> str:
     """
@@ -168,4 +190,21 @@ def id_to_name(id: str) -> str:
         The name of the monosaccharide.
         If the id is not found, it is returned as is.
     """
-    return __pdb_id_to_name_mapping__.get(id, id)
+    return __pdb_id_to_iupac_name_mapping__.get(id, id)
+
+
+def is_beta(id: str) -> bool:
+    """
+    Check if a monosaccharide PDB id is beta-configured.
+
+    Parameters
+    ----------
+    id: str
+        The PDB id of the monosaccharide
+
+    Returns
+    -------
+    bool
+        True if the monosaccharide is beta-configured, False otherwise.
+    """
+    return id in __beta_compounds_pdb_ids__

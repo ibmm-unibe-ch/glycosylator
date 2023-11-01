@@ -7,6 +7,34 @@ import networkx as nx
 import glycosylator.resources.names as names
 
 
+def make_link_id(bond: "Bond") -> str:
+    """
+    Make a link id string in Glycosylator format
+    from a Bond object.
+
+    Parameters
+    ----------
+    bond : Bond
+        The bond from which to make an id string.
+
+    Returns
+    -------
+    str
+        The linkage id string in Glycosylator format.
+    """
+    atom1, atom2 = bond
+    if atom1.element != "O" or atom2.element != "C":
+        raise ValueError(
+            f"This linkage does not seem to be a glycosidic bond and cannot be converted to a linkage id string.\nExpected a bond between an oxygen atom and a carbon atom, but got a bond between a {atom1.element} atom and a {atom2.element} atom."
+        )
+    numeral_atom1 = atom1.id[1:]
+    numeral_atom2 = atom2.id[1:]
+    conf_res1 = "b" if names.is_beta(atom1.parent.resname) else "a"
+    conf_res2 = "b" if names.is_beta(atom2.parent.resname) else "a"
+
+    return numeral_atom2 + numeral_atom1 + conf_res2 + conf_res1
+
+
 def reformat_link(string):
     """
     Reformat a linkage string from the IUPAC format to the Glycosylator (CHARMM force field) format.
@@ -482,52 +510,21 @@ def make_iupac_string(glycan, add_terminal_conformation: bool = True):
     str
         The IUPAC string for the glycan molecule.
     """
-    if len(glycan._glycan_tree._segments) == 0:
+    if len(glycan._glycan_tree._segments) == 0 and len(glycan.residues) > 1:
         raise ValueError(
             "This glycan does not have any entries in its glycan tree. Make sure it was generated using glycosylator! Currently, only glycans generated using glycosylator are supported."
         )
+    elif len(glycan.residues) == 1:
+        _id = glycan.residues[0].resname
+        string = names.id_to_name(_id)
+        if add_terminal_conformation:
+            prefix = "b" if names.is_beta(_id) else "a"
+            string += f"({prefix}1-"
+        return string
     return __default_IUPACStringMaker__.write_string(glycan, add_terminal_conformation)
 
 
-# def _write_string_backup(self, parent, residue=None):
-#     """Write the IUPAC string for a residue."""
-#     # start of the string at the root residue
-#     if parent and not residue:
-#         string = self._get_name(parent)
-#         children = self._child_mapping[parent]
-#         for child in children:
-#             if self._should_open_branch(parent, child):
-#                 string += f"<{self.idx}>"
-#                 self._sub_branch_mapping[f"<{self.idx}>"] = self._make_one_string(
-#                     parent, child
-#                 )
-#                 self.idx += 1
-#             else:
-#                 string += self._make_one_string(parent, child)
-#         return string
-
-#     # recursive part for residues that are children of other residues
-#     name_residue = self._get_name(residue)
-#     linkage = self._get_linkage(self.graph[parent][residue]["linkage"])
-#     string = linkage + name_residue
-
-#     children = self._child_mapping[residue]
-#     if len(children) != 0:
-#         for child in children:
-#             # if we have a branch, we just set a placeholder and later fill them all in at once...
-#             if self._should_open_branch(residue, child):
-#                 string += f"<{self.idx}>"
-#                 self._sub_branch_mapping[f"<{self.idx}>"] = self._make_one_string(
-#                     residue, child
-#                 )
-#                 self.idx += 1
-#             else:
-#                 string += self._make_one_string(residue, child)
-#     return string
-
-
-make_iupac_string = make_iupac_string
-
+make_snfg_string = make_iupac_string
 
 __all__ = [
     "IUPACParser",
@@ -535,7 +532,8 @@ __all__ = [
     "parse_snfg",
     "parse_iupac",
     "make_iupac_string",
-    "make_iupac_string",
+    "make_snfg_string",
+    "make_link_id",
     "__default_IUPACParser__",
     "__default_IUPACStringMaker__",
 ]
