@@ -9,12 +9,12 @@ import subprocess
 BASE_DIR = os.path.abspath(__file__)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(BASE_DIR)))
 CODE_DIR = BASE_DIR + "/glycosylator"
-DOCS_DIR = BASE_DIR + "/docs"
+DOCS_DIR = BASE_DIR + "/docs/source"
 
 FILES_TO_UPDATE = {
     CODE_DIR + "/__init__.py": "inpackage",
     BASE_DIR + "/setup.py": "setup",
-    # DOCS_DIR + "/conf.py": "docs",
+    DOCS_DIR + "/conf.py": "docs",
 }
 
 
@@ -25,6 +25,8 @@ REPLACEMENT_PATTERNS = {
     "setup": "version ?= ?{},",
     "docs": "release ?= ?{}",
 }
+
+DEFAULT_COMMIT_MESSAGE = "[automatic] Version update to {}"
 
 
 def version_to_tuple(version: str):
@@ -180,9 +182,30 @@ def setup():
     parser.add_argument(
         "-i", "--install", action="store_true", help="pip-install the new version"
     )
+    parser.add_argument(
+        "-g", "--git", action="store_true", help="commit the updated files"
+    )
+
+    parser.add_argument(
+        "-c",
+        "--commit-message",
+        default=None,
+        help="the commit message to use when committing the updated files. A default message will be used if this is not provided.",
+    )
 
     args = parser.parse_args()
     return args
+
+
+def commit(args, new_version):
+    """
+    Commit the changes
+    """
+    for filename in FILES_TO_UPDATE:
+        subprocess.run("git add " + filename, shell=True)
+    if args.commit_message is None:
+        args.commit_message = DEFAULT_COMMIT_MESSAGE.format(new_version)
+    subprocess.run(f"git commit -m '{args.commit_message}'", shell=True)
 
 
 def parse_increment(args):
@@ -223,6 +246,8 @@ def main(args):
         install()
     if args.build_docs:
         build_docs()
+    if args.git:
+        commit(args, new_version)
     print("Update to {} complete".format(new_version))
 
 
