@@ -321,7 +321,7 @@ class Glycan(core.Molecule):
 
     get_glycosmos_id = get_glytoucan_id
 
-    def find_glytoucan_ids(self) -> list:
+    def search_glytoucan_ids(self) -> list:
         """
         Find GlyTouCan IDs for glycans that are partial matches of the glycan.
 
@@ -331,6 +331,15 @@ class Glycan(core.Molecule):
             A list of GlyTouCan IDs (if available)
         """
         return resources.find_glytoucan_ids_from_iupac(self.to_iupac())
+
+    search_glycosmos_ids = search_glytoucan_ids
+
+    def find_glytoucan_ids(self) -> list:
+        warnings.warn(
+            "This method is deprecated. Use `search_glytoucan_ids` instead.",
+            DeprecationWarning,
+        )
+        return self.search_glytoucan_ids()
 
     find_glycosmos_ids = find_glytoucan_ids
 
@@ -629,10 +638,8 @@ __all__ = [
 ]
 
 if __name__ == "__main__":
-    import glycosylator as gls
-
-    g = glycan("G78791QP")
-    g.show2d()
+    # g = glycan("G78791QP")
+    # g.show2d()
 
     s = "Gal(b1-3)GlcNAc(b1-3)[Gal(b1-3)GlcNAc(b1-3)[Gal(b1-4)GlcNAc(b1-6)]Gal(b1-4)GlcNAc(b1-6)][Gal(b1-4)GlcNAc(b1-2)]Gal(b1-4)Glc"
     glc = Glycan.from_iupac(None, s)
