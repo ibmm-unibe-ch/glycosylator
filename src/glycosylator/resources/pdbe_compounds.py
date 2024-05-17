@@ -3,8 +3,8 @@ The glycosylator PDBE compounds library with additional curated sugars
 """
 
 import os
-from biobuild.resources.pdbe_compounds import *
-import biobuild.resources.pdbe_compounds as core
+from buildamol.resources.pdbe_compounds import *
+import buildamol.resources.pdbe_compounds as core
 
 _DIR = os.path.dirname(__file__)
 
@@ -30,7 +30,7 @@ def set_default_compounds(compounds: PDBECompounds, overwrite: bool = False):
 
     Parameters
     ----------
-    compounds : biobuild.PDBECompounds
+    compounds : buildamol.PDBECompounds
         The compounds library
     overwrite : bool
         Whether to overwrite the existing default library

@@ -1,3 +1,3 @@
 from glycosylator.utils.iupac import *
-from biobuild.utils import *
+from buildamol.utils import *
 import glycosylator.utils.visual as visual

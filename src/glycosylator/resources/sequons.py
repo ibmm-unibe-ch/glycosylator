@@ -3,7 +3,7 @@ Pre-defined sequons for protein glycosylation sites
 """
 
 from typing import Union
-from biobuild.core import Linkage
+from buildamol.core import Linkage
 import glycosylator.resources as resources
 
 import os

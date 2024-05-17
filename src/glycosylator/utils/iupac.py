@@ -1,6 +1,7 @@
 """
 Functions to work with the IUPAC glycan nomenclature.
 """
+
 import re
 from typing import Any
 import networkx as nx
@@ -54,7 +55,7 @@ def reformat_link(string):
     return a + b + type * 2
 
 
-def reverse_format_link(string, pretty: bool = False):
+def reverse_format_link(string, pretty: bool = False, small: bool = False):
     """
     Reverse format a linkage string from the glycosylator (CHARMM force field) format to IUPAC format.
     If the string cannot be formatted, it is returned as is.
@@ -65,6 +66,8 @@ def reverse_format_link(string, pretty: bool = False):
         The linkage string in Glycosylator format.
     pretty : bool
         If True, returns a prettier formatted version with `α` and `β` instead of `a` and `b`, and an actual arrow instead of a dash.
+    small : bool
+        If True, returns a smaller version of the string with only the a/b and the number of the second atom.
 
     Returns
     -------
@@ -77,8 +80,13 @@ def reverse_format_link(string, pretty: bool = False):
     a, b, type = match.groups()
     if pretty:
         pre = "α" if type[1] == "a" else "β"
+    else:
+        pre = type[1]
+    if small:
+        return pre + b
+    if pretty:
         return pre + "(" + a + "→" + b + ")"
-    return type[1] + a + "-" + b
+    return pre + a + "-" + b
 
 
 class IUPACParser:

@@ -1,9 +1,9 @@
 {
-    "biobuild_version": "3.9.68",
+    "version": "3.9.68",
     "id": "topology.pkl",
     "patches": [
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "SCK0",
             "description": "patch to link lysine with retinal to form a",
             "bond": {
@@ -22,7 +22,7 @@
             },
             "ics": [
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1CD",
                         "1CE",
@@ -38,7 +38,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1CE",
                         "1NZ",
@@ -54,7 +54,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1NZ",
                         "2C15",
@@ -70,7 +70,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "2C14",
                         "1NZ",
@@ -86,7 +86,7 @@
                     "bond_length_13": 0.0
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "2C5",
                         "2C6",
@@ -104,7 +104,7 @@
             ]
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "SCK1",
             "description": "patch to link lysine with retinal to form a",
             "bond": {
@@ -122,7 +122,7 @@
             },
             "ics": [
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1CD",
                         "1CE",
@@ -138,7 +138,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1CE",
                         "1NZ",
@@ -154,7 +154,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1NZ",
                         "2C15",
@@ -170,7 +170,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "2C15",
                         "1CE",
@@ -186,7 +186,7 @@
                     "bond_length_13": 0.0
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "2C14",
                         "1NZ",
@@ -202,7 +202,7 @@
                     "bond_length_13": 0.0
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "2C5",
                         "2C6",
@@ -220,7 +220,7 @@
             ]
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "LLLO",
             "description": "linkage for dol-P-P and sugar",
             "bond": {
@@ -238,7 +238,7 @@
             },
             "ics": [
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1C3",
                         "1C2",
@@ -254,7 +254,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1C2",
                         "1H1",
@@ -270,7 +270,7 @@
                     "bond_length_13": 1.5323
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1C2",
                         "1C1",
@@ -286,7 +286,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1C1",
                         "2O22",
@@ -302,7 +302,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "2O22",
                         "2O12",
@@ -318,7 +318,7 @@
                     "bond_length_13": 1.5968
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "2O22",
                         "2O12",
@@ -336,7 +336,7 @@
             ]
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "CERA",
             "description": "og axial patch of ceramide to C1 [based on patch OCTA]",
             "bond": {
@@ -354,7 +354,7 @@
             },
             "ics": [
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1O5",
                         "1C1",
@@ -370,7 +370,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1C1",
                         "1O1",
@@ -386,7 +386,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1O1",
                         "2C1S",
@@ -402,7 +402,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "2C2S",
                         "1O1",
@@ -418,7 +418,7 @@
                     "bond_length_13": 1.5661
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "2C2S",
                         "1O1",
@@ -436,7 +436,7 @@
             ]
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "CERB",
             "description": "og equatorial patch of ceramide to C1 [based on patch OCTB]",
             "bond": {
@@ -454,7 +454,7 @@
             },
             "ics": [
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1O5",
                         "1C1",
@@ -470,7 +470,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1C1",
                         "1O1",
@@ -486,7 +486,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1O1",
                         "2C1S",
@@ -502,7 +502,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "2C2S",
                         "1O1",
@@ -518,7 +518,7 @@
                     "bond_length_13": 1.5661
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "2C2S",
                         "1O1",
@@ -536,7 +536,7 @@
             ]
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "DAGA",
             "description": "diacylglycerol at axial C1",
             "bond": {
@@ -558,7 +558,7 @@
             },
             "ics": [
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1O5",
                         "1C1",
@@ -574,7 +574,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1C1",
                         "1O1",
@@ -590,7 +590,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "2C2",
                         "1O1",
@@ -606,7 +606,7 @@
                     "bond_length_13": 1.5515
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "2HA",
                         "1O1",
@@ -622,7 +622,7 @@
                     "bond_length_13": 1.1162
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1O1",
                         "2C1",
@@ -640,7 +640,7 @@
             ]
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "DAGB",
             "description": "diacylglycerol at equatorial C1",
             "bond": {
@@ -662,7 +662,7 @@
             },
             "ics": [
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1O5",
                         "1C1",
@@ -678,7 +678,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1C1",
                         "1O1",
@@ -694,7 +694,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "2C2",
                         "1O1",
@@ -710,7 +710,7 @@
                     "bond_length_13": 1.5515
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "2HA",
                         "1O1",
@@ -726,7 +726,7 @@
                     "bond_length_13": 1.1162
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1O1",
                         "2C1",
@@ -744,7 +744,7 @@
             ]
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "INS2A",
             "description": "link alpha-sugar (axial) to phosphorylated inositol 2nd position (axial) [based on 14aa]",
             "bond": {
@@ -762,7 +762,7 @@
             },
             "ics": [
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1C2",
                         "1O5",
@@ -778,7 +778,7 @@
                     "bond_length_13": 1.48
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1O5",
                         "2O2",
@@ -794,7 +794,7 @@
                     "bond_length_13": 1.449
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1O5",
                         "2O2",
@@ -810,7 +810,7 @@
                     "bond_length_13": 1.449
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1O5",
                         "1C1",
@@ -826,7 +826,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1C1",
                         "2O2",
@@ -842,7 +842,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1C1",
                         "2O2",
@@ -860,7 +860,7 @@
             ]
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "INS2B",
             "description": "link alpha-sugar (equatorial) to phosphorylated inositol 2nd position (axial) [based on 14ba]",
             "bond": {
@@ -878,7 +878,7 @@
             },
             "ics": [
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1C2",
                         "1O5",
@@ -894,7 +894,7 @@
                     "bond_length_13": 1.48
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1O5",
                         "2O2",
@@ -910,7 +910,7 @@
                     "bond_length_13": 1.447
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1O5",
                         "2O2",
@@ -926,7 +926,7 @@
                     "bond_length_13": 1.447
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1O5",
                         "1C1",
@@ -942,7 +942,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1C1",
                         "2O2",
@@ -958,7 +958,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1C1",
                         "2O2",
@@ -976,7 +976,7 @@
             ]
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "INS6A",
             "description": "link alpha-sugar (axial) to phosphorylated inositol 6th position (equatorial) [based on 14ab]",
             "bond": {
@@ -994,7 +994,7 @@
             },
             "ics": [
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1C2",
                         "1O5",
@@ -1010,7 +1010,7 @@
                     "bond_length_13": 1.48
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1O5",
                         "2O6",
@@ -1026,7 +1026,7 @@
                     "bond_length_13": 1.457
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1O5",
                         "2O6",
@@ -1042,7 +1042,7 @@
                     "bond_length_13": 1.457
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1O5",
                         "1C1",
@@ -1058,7 +1058,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1C1",
                         "2O6",
@@ -1074,7 +1074,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1C1",
                         "2O6",
@@ -1092,7 +1092,7 @@
             ]
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "INS6B",
             "description": "link beta-sugar (equatorial) to phosphorylated inositol 6th position (equatorial) [based on 14bb]",
             "bond": {
@@ -1110,7 +1110,7 @@
             },
             "ics": [
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1C2",
                         "1O5",
@@ -1126,7 +1126,7 @@
                     "bond_length_13": 1.48
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1O5",
                         "2O6",
@@ -1142,7 +1142,7 @@
                     "bond_length_13": 1.447
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1O5",
                         "2O6",
@@ -1158,7 +1158,7 @@
                     "bond_length_13": 1.447
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1O5",
                         "1C1",
@@ -1174,7 +1174,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1C1",
                         "2O6",
@@ -1190,7 +1190,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1C1",
                         "2O6",
@@ -1208,7 +1208,7 @@
             ]
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "SGPA",
             "description": "for connecting SER at the alpha position",
             "bond": {
@@ -1226,7 +1226,7 @@
             },
             "ics": [
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1CA",
                         "1CB",
@@ -1242,7 +1242,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1CB",
                         "1OG",
@@ -1258,7 +1258,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1CB",
                         "1OG",
@@ -1274,7 +1274,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1OG",
                         "2C1",
@@ -1292,7 +1292,7 @@
             ]
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "TGPA",
             "description": "for connecting THR at the alpha position",
             "bond": {
@@ -1310,7 +1310,7 @@
             },
             "ics": [
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1CA",
                         "1CB",
@@ -1326,7 +1326,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1CB",
                         "1OG1",
@@ -1342,7 +1342,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1CB",
                         "1OG1",
@@ -1358,7 +1358,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1OG1",
                         "2C1",
@@ -1376,7 +1376,7 @@
             ]
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "SGPB",
             "description": "for connecting SER at the beta position",
             "bond": {
@@ -1394,7 +1394,7 @@
             },
             "ics": [
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1CA",
                         "1CB",
@@ -1410,7 +1410,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1CB",
                         "1OG",
@@ -1426,7 +1426,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1CB",
                         "1OG",
@@ -1442,7 +1442,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1OG",
                         "2C1",
@@ -1460,7 +1460,7 @@
             ]
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "TGPB",
             "description": "for connecting THR at the beta position",
             "bond": {
@@ -1478,7 +1478,7 @@
             },
             "ics": [
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1CA",
                         "1CB",
@@ -1494,7 +1494,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1CB",
                         "1OG1",
@@ -1510,7 +1510,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1CB",
                         "1OG1",
@@ -1526,7 +1526,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1OG1",
                         "2C1",
@@ -1544,7 +1544,7 @@
             ]
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "NGLA",
             "description": "og make model compound 3 by adding equat",
             "bond": {
@@ -1562,7 +1562,7 @@
             },
             "ics": [
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1CB",
                         "1CG",
@@ -1578,7 +1578,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1CG",
                         "1ND2",
@@ -1594,7 +1594,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1HD22",
                         "1ND2",
@@ -1610,7 +1610,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "2C5",
                         "2O5",
@@ -1626,7 +1626,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1ND2",
                         "2C1",
@@ -1644,7 +1644,7 @@
             ]
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "11aa",
             "description": "axial to C1 and axial to C1' 1<->1",
             "bond": {
@@ -1662,7 +1662,7 @@
             },
             "ics": [
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1O5",
                         "1C1",
@@ -1678,7 +1678,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1C1",
                         "1O1",
@@ -1694,7 +1694,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1O1",
                         "2C1",
@@ -1710,7 +1710,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "2O5",
                         "1O1",
@@ -1728,7 +1728,7 @@
             ]
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "11ab",
             "description": "axial to C1 and equat to C1' 1<->1",
             "bond": {
@@ -1746,7 +1746,7 @@
             },
             "ics": [
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1O5",
                         "1C1",
@@ -1762,7 +1762,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1C1",
                         "1O1",
@@ -1778,7 +1778,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1O1",
                         "2C1",
@@ -1794,7 +1794,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "2O5",
                         "1O1",
@@ -1812,7 +1812,7 @@
             ]
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "11bb",
             "description": "equat to C1 and equat to C1' 1<->1",
             "bond": {
@@ -1830,7 +1830,7 @@
             },
             "ics": [
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1O5",
                         "1C1",
@@ -1846,7 +1846,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1C1",
                         "1O1",
@@ -1862,7 +1862,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1O1",
                         "2C1",
@@ -1878,7 +1878,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "2O5",
                         "1O1",
@@ -1896,7 +1896,7 @@
             ]
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "12aa",
             "description": "(i)1->2(i-1) axial at C1 and axial at C2",
             "bond": {
@@ -1914,7 +1914,7 @@
             },
             "ics": [
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1C1",
                         "1C2",
@@ -1930,7 +1930,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1C2",
                         "1O2",
@@ -1946,7 +1946,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1O2",
                         "2O5",
@@ -1962,7 +1962,7 @@
                     "bond_length_13": 1.404
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "2O5",
                         "1O2",
@@ -1980,7 +1980,7 @@
             ]
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "12ab",
             "description": "(i)1->2(i-1) axial at C1 and equatorial at C2",
             "bond": {
@@ -1998,7 +1998,7 @@
             },
             "ics": [
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1C1",
                         "1C2",
@@ -2014,7 +2014,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1C2",
                         "1O2",
@@ -2030,7 +2030,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1O2",
                         "2O5",
@@ -2046,7 +2046,7 @@
                     "bond_length_13": 1.4042
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "2O5",
                         "1O2",
@@ -2064,7 +2064,7 @@
             ]
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "12ba",
             "description": "(i)1->2(i-1) equatorial at C1 and axial at C2",
             "bond": {
@@ -2082,7 +2082,7 @@
             },
             "ics": [
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1C1",
                         "1C2",
@@ -2098,7 +2098,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1C2",
                         "1O2",
@@ -2114,7 +2114,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1O2",
                         "2O5",
@@ -2130,7 +2130,7 @@
                     "bond_length_13": 1.3903
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "2O5",
                         "1O2",
@@ -2148,7 +2148,7 @@
             ]
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "12bb",
             "description": "(i)1->2(i-1) equatorial at C1 and equatorial at C2",
             "bond": {
@@ -2166,7 +2166,7 @@
             },
             "ics": [
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1C1",
                         "1C2",
@@ -2182,7 +2182,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1C2",
                         "1O2",
@@ -2198,7 +2198,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1O2",
                         "2O5",
@@ -2214,7 +2214,7 @@
                     "bond_length_13": 1.3904
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "2O5",
                         "1O2",
@@ -2232,7 +2232,7 @@
             ]
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "13aa",
             "description": "(i)1->3(i-1) axial at C1 and axial at C3",
             "bond": {
@@ -2250,7 +2250,7 @@
             },
             "ics": [
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1C2",
                         "1C3",
@@ -2266,7 +2266,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1C3",
                         "1O3",
@@ -2282,7 +2282,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1O3",
                         "2O5",
@@ -2298,7 +2298,7 @@
                     "bond_length_13": 1.404
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "2O5",
                         "1O3",
@@ -2316,7 +2316,7 @@
             ]
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "13ab",
             "description": "(i)1->3(i-1) axial at C1 and equatorial at C3",
             "bond": {
@@ -2334,7 +2334,7 @@
             },
             "ics": [
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1C2",
                         "1C3",
@@ -2350,7 +2350,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1C3",
                         "1O3",
@@ -2366,7 +2366,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1O3",
                         "2O5",
@@ -2382,7 +2382,7 @@
                     "bond_length_13": 1.4039
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "2O5",
                         "1O3",
@@ -2400,7 +2400,7 @@
             ]
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "13ba",
             "description": "(i)1->3(i-1) equatorial at C1 and axial at C3",
             "bond": {
@@ -2418,7 +2418,7 @@
             },
             "ics": [
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1C2",
                         "1C3",
@@ -2434,7 +2434,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1C3",
                         "1O3",
@@ -2450,7 +2450,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1O3",
                         "2O5",
@@ -2466,7 +2466,7 @@
                     "bond_length_13": 1.3908
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "2O5",
                         "1O3",
@@ -2484,7 +2484,7 @@
             ]
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "13bb",
             "description": "(i)1->3(i-1) equatorial at C1 and equatorial at C3",
             "bond": {
@@ -2502,7 +2502,7 @@
             },
             "ics": [
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1C2",
                         "1C3",
@@ -2518,7 +2518,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1C3",
                         "1O3",
@@ -2534,7 +2534,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1O3",
                         "2O5",
@@ -2550,7 +2550,7 @@
                     "bond_length_13": 1.39
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "2O5",
                         "1O3",
@@ -2568,7 +2568,7 @@
             ]
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "14aa",
             "description": "(i)1->4(i-1) axial at C1 and axial at C4",
             "bond": {
@@ -2586,7 +2586,7 @@
             },
             "ics": [
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1C3",
                         "1C4",
@@ -2602,7 +2602,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1C4",
                         "1O4",
@@ -2618,7 +2618,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1O4",
                         "2O5",
@@ -2634,7 +2634,7 @@
                     "bond_length_13": 1.4043
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "2O5",
                         "1O4",
@@ -2652,7 +2652,7 @@
             ]
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "14ab",
             "description": "(i)1->4(i-1) axial at C1 and equatorial at C4",
             "bond": {
@@ -2670,7 +2670,7 @@
             },
             "ics": [
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1C3",
                         "1C4",
@@ -2686,7 +2686,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1C4",
                         "1O4",
@@ -2702,7 +2702,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1O4",
                         "2O5",
@@ -2718,7 +2718,7 @@
                     "bond_length_13": 1.4035
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "2O5",
                         "1O4",
@@ -2736,7 +2736,7 @@
             ]
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "14ba",
             "description": "(i)1->4(i-1) equatorial at C1 and axial at C4",
             "bond": {
@@ -2754,7 +2754,7 @@
             },
             "ics": [
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1C3",
                         "1C4",
@@ -2770,7 +2770,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1C4",
                         "1O4",
@@ -2786,7 +2786,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1O4",
                         "2O5",
@@ -2802,7 +2802,7 @@
                     "bond_length_13": 1.3906
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "2O5",
                         "1O4",
@@ -2820,7 +2820,7 @@
             ]
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "14bb",
             "description": "(i)1->4(i-1) equatorial at C1 and equatorial at C4",
             "bond": {
@@ -2838,7 +2838,7 @@
             },
             "ics": [
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1C3",
                         "1C4",
@@ -2854,7 +2854,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1C4",
                         "1O4",
@@ -2870,7 +2870,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1O4",
                         "2O5",
@@ -2886,7 +2886,7 @@
                     "bond_length_13": 1.3896
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "2O5",
                         "1O4",
@@ -2904,7 +2904,7 @@
             ]
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "16aa",
             "description": "(i)1->6(i-1) axial at C1 and equatorial at C6",
             "bond": {
@@ -2922,7 +2922,7 @@
             },
             "ics": [
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1C5",
                         "1C6",
@@ -2938,7 +2938,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1C6",
                         "1O6",
@@ -2954,7 +2954,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1O6",
                         "2O5",
@@ -2970,7 +2970,7 @@
                     "bond_length_13": 1.4036
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "2O5",
                         "1O6",
@@ -2988,7 +2988,7 @@
             ]
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "16ab",
             "description": "(i)1->6(i-1) equatorial at C1 and equatorial at C6",
             "bond": {
@@ -3006,7 +3006,7 @@
             },
             "ics": [
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1C5",
                         "1C6",
@@ -3022,7 +3022,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1C6",
                         "1O6",
@@ -3038,7 +3038,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1O6",
                         "2O5",
@@ -3054,7 +3054,7 @@
                     "bond_length_13": 1.3896
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "2O5",
                         "1O6",
@@ -3072,7 +3072,7 @@
             ]
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "16bb",
             "description": "(i)1->6(i-1) equatorial at C1 and equatorial at C6",
             "bond": {
@@ -3091,7 +3091,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "16ba",
             "description": "(i)1->6(i-1) equatorial at C1 and equatorial at C6",
             "bond": {
@@ -3109,7 +3109,7 @@
             },
             "ics": [
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1C5",
                         "1C6",
@@ -3125,7 +3125,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1C6",
                         "1O6",
@@ -3141,7 +3141,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1O6",
                         "2O5",
@@ -3157,7 +3157,7 @@
                     "bond_length_13": 1.3896
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "2O5",
                         "1O6",
@@ -3175,7 +3175,7 @@
             ]
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "SUCR",
             "description": "pram; make sucrose, apply to AGLC,BFRU",
             "bond": {
@@ -3193,7 +3193,7 @@
             },
             "ics": [
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1O5",
                         "1C1",
@@ -3209,7 +3209,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1C1",
                         "1O1",
@@ -3225,7 +3225,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1O1",
                         "2C2",
@@ -3241,7 +3241,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "2O5",
                         "1O1",
@@ -3259,7 +3259,7 @@
             ]
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "LCTL",
             "description": "pram; make lactulose, apply to BGAL,BFRU",
             "bond": {
@@ -3277,7 +3277,7 @@
             },
             "ics": [
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1O5",
                         "1C1",
@@ -3293,7 +3293,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1C1",
                         "1O1",
@@ -3309,7 +3309,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1O1",
                         "2C4",
@@ -3325,7 +3325,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "2C5",
                         "1O1",
@@ -3343,7 +3343,7 @@
             ]
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "AB15",
             "description": "pram; make 1->5 arabinose disac without methylation, apply to AARB,AARB",
             "bond": {
@@ -3361,7 +3361,7 @@
             },
             "ics": [
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1O4",
                         "1C1",
@@ -3377,7 +3377,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1C1",
                         "1O1",
@@ -3393,7 +3393,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1O1",
                         "2C5",
@@ -3409,7 +3409,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1O1",
                         "2C4",
@@ -3425,7 +3425,7 @@
                     "bond_length_13": 1.4384
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1O1",
                         "2C4",
@@ -3443,7 +3443,7 @@
             ]
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "SA23AB",
             "description": "og sialic acid alpha 2->3 equatorial",
             "bond": {
@@ -3461,7 +3461,7 @@
             },
             "ics": [
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1C2",
                         "1C3",
@@ -3477,7 +3477,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1C3",
                         "1O3",
@@ -3493,7 +3493,7 @@
                     "bond_length_13": null
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1O3",
                         "2O6",
@@ -3511,7 +3511,7 @@
             ]
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "LINK",
             "description": "Peptide linkage N- to C-terminal",
             "bond": {
@@ -3529,7 +3529,7 @@
             },
             "ics": [
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1O",
                         "1CA",
@@ -3545,7 +3545,7 @@
                     "bond_length_13": 1.2289422499667666
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1N",
                         "1CA",
@@ -3561,7 +3561,7 @@
                     "bond_length_13": 2.435915451051025
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "2H",
                         "2CA",
@@ -3577,7 +3577,7 @@
                     "bond_length_13": 1.0102475072850738
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "2H",
                         "1C",
@@ -3593,7 +3593,7 @@
                     "bond_length_13": 1.0102475072850738
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1O",
                         "2N",
@@ -3609,7 +3609,7 @@
                     "bond_length_13": 1.2289422499667666
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1O",
                         "1C",
@@ -3625,7 +3625,7 @@
                     "bond_length_13": 2.25393964628731
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1HA",
                         "1CA",
@@ -3641,7 +3641,7 @@
                     "bond_length_13": 2.1438371366301534
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1CA",
                         "1O",
@@ -3657,7 +3657,7 @@
                     "bond_length_13": 1.5226388911756754
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1CA",
                         "1C",
@@ -3673,7 +3673,7 @@
                     "bond_length_13": 2.433283064602094
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1C",
                         "2H",
@@ -3689,7 +3689,7 @@
                     "bond_length_13": 1.3348749102082436
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1C",
                         "2N",
@@ -3705,7 +3705,7 @@
                     "bond_length_13": 2.43404414566433
                 },
                 {
-                    "biobuild_version": "3.9.68",
+                    "version": "3.9.68",
                     "atoms": [
                         "1C",
                         "2N",
@@ -3723,7 +3723,7 @@
             ]
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "ASN-glyco",
             "description": null,
             "bond": {
@@ -3742,7 +3742,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "SER-glyco",
             "description": null,
             "bond": {
@@ -3761,7 +3761,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "THR-glyco",
             "description": null,
             "bond": {
@@ -3780,7 +3780,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "23ab",
             "description": null,
             "bond": {
@@ -3799,7 +3799,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "23ba",
             "description": null,
             "bond": {
@@ -3818,7 +3818,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "11ba",
             "description": "[automatically generated] b 1 -> 1 glycosidic linkage",
             "bond": {
@@ -3837,7 +3837,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "21aa",
             "description": "[automatically generated] a 1 -> 2 glycosidic linkage",
             "bond": {
@@ -3856,7 +3856,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "21ab",
             "description": "[automatically generated] a 1 -> 2 glycosidic linkage",
             "bond": {
@@ -3875,7 +3875,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "21ba",
             "description": "[automatically generated] b 1 -> 2 glycosidic linkage",
             "bond": {
@@ -3894,7 +3894,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "21bb",
             "description": "[automatically generated] b 1 -> 2 glycosidic linkage",
             "bond": {
@@ -3913,7 +3913,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "31aa",
             "description": "[automatically generated] a 1 -> 3 glycosidic linkage",
             "bond": {
@@ -3932,7 +3932,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "31ab",
             "description": "[automatically generated] a 1 -> 3 glycosidic linkage",
             "bond": {
@@ -3951,7 +3951,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "31ba",
             "description": "[automatically generated] b 1 -> 3 glycosidic linkage",
             "bond": {
@@ -3970,7 +3970,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "31bb",
             "description": "[automatically generated] b 1 -> 3 glycosidic linkage",
             "bond": {
@@ -3989,7 +3989,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "41aa",
             "description": "[automatically generated] a 1 -> 4 glycosidic linkage",
             "bond": {
@@ -4008,7 +4008,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "41ab",
             "description": "[automatically generated] a 1 -> 4 glycosidic linkage",
             "bond": {
@@ -4027,7 +4027,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "41ba",
             "description": "[automatically generated] b 1 -> 4 glycosidic linkage",
             "bond": {
@@ -4046,7 +4046,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "41bb",
             "description": "[automatically generated] b 1 -> 4 glycosidic linkage",
             "bond": {
@@ -4065,7 +4065,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "51aa",
             "description": "[automatically generated] a 1 -> 5 glycosidic linkage",
             "bond": {
@@ -4084,7 +4084,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "51ab",
             "description": "[automatically generated] a 1 -> 5 glycosidic linkage",
             "bond": {
@@ -4103,7 +4103,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "51ba",
             "description": "[automatically generated] b 1 -> 5 glycosidic linkage",
             "bond": {
@@ -4122,7 +4122,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "51bb",
             "description": "[automatically generated] b 1 -> 5 glycosidic linkage",
             "bond": {
@@ -4141,7 +4141,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "61aa",
             "description": "[automatically generated] a 1 -> 6 glycosidic linkage",
             "bond": {
@@ -4160,7 +4160,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "61ab",
             "description": "[automatically generated] a 1 -> 6 glycosidic linkage",
             "bond": {
@@ -4179,7 +4179,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "61ba",
             "description": "[automatically generated] b 1 -> 6 glycosidic linkage",
             "bond": {
@@ -4198,7 +4198,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "61bb",
             "description": "[automatically generated] b 1 -> 6 glycosidic linkage",
             "bond": {
@@ -4217,7 +4217,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "71aa",
             "description": "[automatically generated] a 1 -> 7 glycosidic linkage",
             "bond": {
@@ -4236,7 +4236,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "71ab",
             "description": "[automatically generated] a 1 -> 7 glycosidic linkage",
             "bond": {
@@ -4255,7 +4255,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "71ba",
             "description": "[automatically generated] b 1 -> 7 glycosidic linkage",
             "bond": {
@@ -4274,7 +4274,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "71bb",
             "description": "[automatically generated] b 1 -> 7 glycosidic linkage",
             "bond": {
@@ -4293,7 +4293,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "81aa",
             "description": "[automatically generated] a 1 -> 8 glycosidic linkage",
             "bond": {
@@ -4312,7 +4312,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "81ab",
             "description": "[automatically generated] a 1 -> 8 glycosidic linkage",
             "bond": {
@@ -4331,7 +4331,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "81ba",
             "description": "[automatically generated] b 1 -> 8 glycosidic linkage",
             "bond": {
@@ -4350,7 +4350,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "81bb",
             "description": "[automatically generated] b 1 -> 8 glycosidic linkage",
             "bond": {
@@ -4369,7 +4369,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "22aa",
             "description": "[automatically generated] a 2 -> 2 glycosidic linkage",
             "bond": {
@@ -4388,7 +4388,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "22ab",
             "description": "[automatically generated] a 2 -> 2 glycosidic linkage",
             "bond": {
@@ -4407,7 +4407,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "22ba",
             "description": "[automatically generated] b 2 -> 2 glycosidic linkage",
             "bond": {
@@ -4426,7 +4426,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "22bb",
             "description": "[automatically generated] b 2 -> 2 glycosidic linkage",
             "bond": {
@@ -4445,7 +4445,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "32aa",
             "description": "[automatically generated] a 2 -> 3 glycosidic linkage",
             "bond": {
@@ -4464,7 +4464,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "32ab",
             "description": "[automatically generated] a 2 -> 3 glycosidic linkage",
             "bond": {
@@ -4483,7 +4483,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "32ba",
             "description": "[automatically generated] b 2 -> 3 glycosidic linkage",
             "bond": {
@@ -4502,7 +4502,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "32bb",
             "description": "[automatically generated] b 2 -> 3 glycosidic linkage",
             "bond": {
@@ -4521,7 +4521,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "42aa",
             "description": "[automatically generated] a 2 -> 4 glycosidic linkage",
             "bond": {
@@ -4540,7 +4540,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "42ab",
             "description": "[automatically generated] a 2 -> 4 glycosidic linkage",
             "bond": {
@@ -4559,7 +4559,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "42ba",
             "description": "[automatically generated] b 2 -> 4 glycosidic linkage",
             "bond": {
@@ -4578,7 +4578,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "42bb",
             "description": "[automatically generated] b 2 -> 4 glycosidic linkage",
             "bond": {
@@ -4597,7 +4597,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "52aa",
             "description": "[automatically generated] a 2 -> 5 glycosidic linkage",
             "bond": {
@@ -4616,7 +4616,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "52ab",
             "description": "[automatically generated] a 2 -> 5 glycosidic linkage",
             "bond": {
@@ -4635,7 +4635,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "52ba",
             "description": "[automatically generated] b 2 -> 5 glycosidic linkage",
             "bond": {
@@ -4654,7 +4654,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "52bb",
             "description": "[automatically generated] b 2 -> 5 glycosidic linkage",
             "bond": {
@@ -4673,7 +4673,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "62aa",
             "description": "[automatically generated] a 2 -> 6 glycosidic linkage",
             "bond": {
@@ -4692,7 +4692,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "62ab",
             "description": "[automatically generated] a 2 -> 6 glycosidic linkage",
             "bond": {
@@ -4711,7 +4711,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "62ba",
             "description": "[automatically generated] b 2 -> 6 glycosidic linkage",
             "bond": {
@@ -4730,7 +4730,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "62bb",
             "description": "[automatically generated] b 2 -> 6 glycosidic linkage",
             "bond": {
@@ -4749,7 +4749,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "72aa",
             "description": "[automatically generated] a 2 -> 7 glycosidic linkage",
             "bond": {
@@ -4768,7 +4768,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "72ab",
             "description": "[automatically generated] a 2 -> 7 glycosidic linkage",
             "bond": {
@@ -4787,7 +4787,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "72ba",
             "description": "[automatically generated] b 2 -> 7 glycosidic linkage",
             "bond": {
@@ -4806,7 +4806,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "72bb",
             "description": "[automatically generated] b 2 -> 7 glycosidic linkage",
             "bond": {
@@ -4825,7 +4825,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "82aa",
             "description": "[automatically generated] a 2 -> 8 glycosidic linkage",
             "bond": {
@@ -4844,7 +4844,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "82ab",
             "description": "[automatically generated] a 2 -> 8 glycosidic linkage",
             "bond": {
@@ -4863,7 +4863,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "82ba",
             "description": "[automatically generated] b 2 -> 8 glycosidic linkage",
             "bond": {
@@ -4882,7 +4882,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "82bb",
             "description": "[automatically generated] b 2 -> 8 glycosidic linkage",
             "bond": {
@@ -4901,7 +4901,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "23aa",
             "description": "[automatically generated] a 3 -> 2 glycosidic linkage",
             "bond": {
@@ -4920,7 +4920,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "23bb",
             "description": "[automatically generated] b 3 -> 2 glycosidic linkage",
             "bond": {
@@ -4939,7 +4939,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "33aa",
             "description": "[automatically generated] a 3 -> 3 glycosidic linkage",
             "bond": {
@@ -4958,7 +4958,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "33ab",
             "description": "[automatically generated] a 3 -> 3 glycosidic linkage",
             "bond": {
@@ -4977,7 +4977,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "33ba",
             "description": "[automatically generated] b 3 -> 3 glycosidic linkage",
             "bond": {
@@ -4996,7 +4996,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "33bb",
             "description": "[automatically generated] b 3 -> 3 glycosidic linkage",
             "bond": {
@@ -5015,7 +5015,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "43aa",
             "description": "[automatically generated] a 3 -> 4 glycosidic linkage",
             "bond": {
@@ -5034,7 +5034,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "43ab",
             "description": "[automatically generated] a 3 -> 4 glycosidic linkage",
             "bond": {
@@ -5053,7 +5053,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "43ba",
             "description": "[automatically generated] b 3 -> 4 glycosidic linkage",
             "bond": {
@@ -5072,7 +5072,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "43bb",
             "description": "[automatically generated] b 3 -> 4 glycosidic linkage",
             "bond": {
@@ -5091,7 +5091,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "53aa",
             "description": "[automatically generated] a 3 -> 5 glycosidic linkage",
             "bond": {
@@ -5110,7 +5110,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "53ab",
             "description": "[automatically generated] a 3 -> 5 glycosidic linkage",
             "bond": {
@@ -5129,7 +5129,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "53ba",
             "description": "[automatically generated] b 3 -> 5 glycosidic linkage",
             "bond": {
@@ -5148,7 +5148,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "53bb",
             "description": "[automatically generated] b 3 -> 5 glycosidic linkage",
             "bond": {
@@ -5167,7 +5167,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "63aa",
             "description": "[automatically generated] a 3 -> 6 glycosidic linkage",
             "bond": {
@@ -5186,7 +5186,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "63ab",
             "description": "[automatically generated] a 3 -> 6 glycosidic linkage",
             "bond": {
@@ -5205,7 +5205,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "63ba",
             "description": "[automatically generated] b 3 -> 6 glycosidic linkage",
             "bond": {
@@ -5224,7 +5224,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "63bb",
             "description": "[automatically generated] b 3 -> 6 glycosidic linkage",
             "bond": {
@@ -5243,7 +5243,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "73aa",
             "description": "[automatically generated] a 3 -> 7 glycosidic linkage",
             "bond": {
@@ -5262,7 +5262,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "73ab",
             "description": "[automatically generated] a 3 -> 7 glycosidic linkage",
             "bond": {
@@ -5281,7 +5281,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "73ba",
             "description": "[automatically generated] b 3 -> 7 glycosidic linkage",
             "bond": {
@@ -5300,7 +5300,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "73bb",
             "description": "[automatically generated] b 3 -> 7 glycosidic linkage",
             "bond": {
@@ -5319,7 +5319,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "83aa",
             "description": "[automatically generated] a 3 -> 8 glycosidic linkage",
             "bond": {
@@ -5338,7 +5338,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "83ab",
             "description": "[automatically generated] a 3 -> 8 glycosidic linkage",
             "bond": {
@@ -5357,7 +5357,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "83ba",
             "description": "[automatically generated] b 3 -> 8 glycosidic linkage",
             "bond": {
@@ -5376,7 +5376,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "83bb",
             "description": "[automatically generated] b 3 -> 8 glycosidic linkage",
             "bond": {
@@ -5395,7 +5395,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "24aa",
             "description": "[automatically generated] a 4 -> 2 glycosidic linkage",
             "bond": {
@@ -5414,7 +5414,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "24ab",
             "description": "[automatically generated] a 4 -> 2 glycosidic linkage",
             "bond": {
@@ -5433,7 +5433,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "24ba",
             "description": "[automatically generated] b 4 -> 2 glycosidic linkage",
             "bond": {
@@ -5452,7 +5452,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "24bb",
             "description": "[automatically generated] b 4 -> 2 glycosidic linkage",
             "bond": {
@@ -5471,7 +5471,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "34aa",
             "description": "[automatically generated] a 4 -> 3 glycosidic linkage",
             "bond": {
@@ -5490,7 +5490,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "34ab",
             "description": "[automatically generated] a 4 -> 3 glycosidic linkage",
             "bond": {
@@ -5509,7 +5509,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "34ba",
             "description": "[automatically generated] b 4 -> 3 glycosidic linkage",
             "bond": {
@@ -5528,7 +5528,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "34bb",
             "description": "[automatically generated] b 4 -> 3 glycosidic linkage",
             "bond": {
@@ -5547,7 +5547,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "44aa",
             "description": "[automatically generated] a 4 -> 4 glycosidic linkage",
             "bond": {
@@ -5566,7 +5566,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "44ab",
             "description": "[automatically generated] a 4 -> 4 glycosidic linkage",
             "bond": {
@@ -5585,7 +5585,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "44ba",
             "description": "[automatically generated] b 4 -> 4 glycosidic linkage",
             "bond": {
@@ -5604,7 +5604,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "44bb",
             "description": "[automatically generated] b 4 -> 4 glycosidic linkage",
             "bond": {
@@ -5623,7 +5623,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "54aa",
             "description": "[automatically generated] a 4 -> 5 glycosidic linkage",
             "bond": {
@@ -5642,7 +5642,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "54ab",
             "description": "[automatically generated] a 4 -> 5 glycosidic linkage",
             "bond": {
@@ -5661,7 +5661,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "54ba",
             "description": "[automatically generated] b 4 -> 5 glycosidic linkage",
             "bond": {
@@ -5680,7 +5680,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "54bb",
             "description": "[automatically generated] b 4 -> 5 glycosidic linkage",
             "bond": {
@@ -5699,7 +5699,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "64aa",
             "description": "[automatically generated] a 4 -> 6 glycosidic linkage",
             "bond": {
@@ -5718,7 +5718,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "64ab",
             "description": "[automatically generated] a 4 -> 6 glycosidic linkage",
             "bond": {
@@ -5737,7 +5737,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "64ba",
             "description": "[automatically generated] b 4 -> 6 glycosidic linkage",
             "bond": {
@@ -5756,7 +5756,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "64bb",
             "description": "[automatically generated] b 4 -> 6 glycosidic linkage",
             "bond": {
@@ -5775,7 +5775,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "74aa",
             "description": "[automatically generated] a 4 -> 7 glycosidic linkage",
             "bond": {
@@ -5794,7 +5794,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "74ab",
             "description": "[automatically generated] a 4 -> 7 glycosidic linkage",
             "bond": {
@@ -5813,7 +5813,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "74ba",
             "description": "[automatically generated] b 4 -> 7 glycosidic linkage",
             "bond": {
@@ -5832,7 +5832,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "74bb",
             "description": "[automatically generated] b 4 -> 7 glycosidic linkage",
             "bond": {
@@ -5851,7 +5851,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "84aa",
             "description": "[automatically generated] a 4 -> 8 glycosidic linkage",
             "bond": {
@@ -5870,7 +5870,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "84ab",
             "description": "[automatically generated] a 4 -> 8 glycosidic linkage",
             "bond": {
@@ -5889,7 +5889,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "84ba",
             "description": "[automatically generated] b 4 -> 8 glycosidic linkage",
             "bond": {
@@ -5908,7 +5908,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "84bb",
             "description": "[automatically generated] b 4 -> 8 glycosidic linkage",
             "bond": {
@@ -5927,7 +5927,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "15aa",
             "description": "[automatically generated] a 5 -> 1 glycosidic linkage",
             "bond": {
@@ -5946,7 +5946,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "15ab",
             "description": "[automatically generated] a 5 -> 1 glycosidic linkage",
             "bond": {
@@ -5965,7 +5965,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "15ba",
             "description": "[automatically generated] b 5 -> 1 glycosidic linkage",
             "bond": {
@@ -5984,7 +5984,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "15bb",
             "description": "[automatically generated] b 5 -> 1 glycosidic linkage",
             "bond": {
@@ -6003,7 +6003,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "25aa",
             "description": "[automatically generated] a 5 -> 2 glycosidic linkage",
             "bond": {
@@ -6022,7 +6022,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "25ab",
             "description": "[automatically generated] a 5 -> 2 glycosidic linkage",
             "bond": {
@@ -6041,7 +6041,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "25ba",
             "description": "[automatically generated] b 5 -> 2 glycosidic linkage",
             "bond": {
@@ -6060,7 +6060,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "25bb",
             "description": "[automatically generated] b 5 -> 2 glycosidic linkage",
             "bond": {
@@ -6079,7 +6079,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "35aa",
             "description": "[automatically generated] a 5 -> 3 glycosidic linkage",
             "bond": {
@@ -6098,7 +6098,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "35ab",
             "description": "[automatically generated] a 5 -> 3 glycosidic linkage",
             "bond": {
@@ -6117,7 +6117,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "35ba",
             "description": "[automatically generated] b 5 -> 3 glycosidic linkage",
             "bond": {
@@ -6136,7 +6136,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "35bb",
             "description": "[automatically generated] b 5 -> 3 glycosidic linkage",
             "bond": {
@@ -6155,7 +6155,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "45aa",
             "description": "[automatically generated] a 5 -> 4 glycosidic linkage",
             "bond": {
@@ -6174,7 +6174,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "45ab",
             "description": "[automatically generated] a 5 -> 4 glycosidic linkage",
             "bond": {
@@ -6193,7 +6193,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "45ba",
             "description": "[automatically generated] b 5 -> 4 glycosidic linkage",
             "bond": {
@@ -6212,7 +6212,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "45bb",
             "description": "[automatically generated] b 5 -> 4 glycosidic linkage",
             "bond": {
@@ -6231,7 +6231,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "55aa",
             "description": "[automatically generated] a 5 -> 5 glycosidic linkage",
             "bond": {
@@ -6250,7 +6250,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "55ab",
             "description": "[automatically generated] a 5 -> 5 glycosidic linkage",
             "bond": {
@@ -6269,7 +6269,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "55ba",
             "description": "[automatically generated] b 5 -> 5 glycosidic linkage",
             "bond": {
@@ -6288,7 +6288,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "55bb",
             "description": "[automatically generated] b 5 -> 5 glycosidic linkage",
             "bond": {
@@ -6307,7 +6307,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "65aa",
             "description": "[automatically generated] a 5 -> 6 glycosidic linkage",
             "bond": {
@@ -6326,7 +6326,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "65ab",
             "description": "[automatically generated] a 5 -> 6 glycosidic linkage",
             "bond": {
@@ -6345,7 +6345,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "65ba",
             "description": "[automatically generated] b 5 -> 6 glycosidic linkage",
             "bond": {
@@ -6364,7 +6364,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "65bb",
             "description": "[automatically generated] b 5 -> 6 glycosidic linkage",
             "bond": {
@@ -6383,7 +6383,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "75aa",
             "description": "[automatically generated] a 5 -> 7 glycosidic linkage",
             "bond": {
@@ -6402,7 +6402,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "75ab",
             "description": "[automatically generated] a 5 -> 7 glycosidic linkage",
             "bond": {
@@ -6421,7 +6421,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "75ba",
             "description": "[automatically generated] b 5 -> 7 glycosidic linkage",
             "bond": {
@@ -6440,7 +6440,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "75bb",
             "description": "[automatically generated] b 5 -> 7 glycosidic linkage",
             "bond": {
@@ -6459,7 +6459,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "85aa",
             "description": "[automatically generated] a 5 -> 8 glycosidic linkage",
             "bond": {
@@ -6478,7 +6478,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "85ab",
             "description": "[automatically generated] a 5 -> 8 glycosidic linkage",
             "bond": {
@@ -6497,7 +6497,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "85ba",
             "description": "[automatically generated] b 5 -> 8 glycosidic linkage",
             "bond": {
@@ -6516,7 +6516,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "85bb",
             "description": "[automatically generated] b 5 -> 8 glycosidic linkage",
             "bond": {
@@ -6535,7 +6535,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "26aa",
             "description": "[automatically generated] a 6 -> 2 glycosidic linkage",
             "bond": {
@@ -6554,7 +6554,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "26ab",
             "description": "[automatically generated] a 6 -> 2 glycosidic linkage",
             "bond": {
@@ -6573,7 +6573,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "26ba",
             "description": "[automatically generated] b 6 -> 2 glycosidic linkage",
             "bond": {
@@ -6592,7 +6592,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "26bb",
             "description": "[automatically generated] b 6 -> 2 glycosidic linkage",
             "bond": {
@@ -6611,7 +6611,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "36aa",
             "description": "[automatically generated] a 6 -> 3 glycosidic linkage",
             "bond": {
@@ -6630,7 +6630,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "36ab",
             "description": "[automatically generated] a 6 -> 3 glycosidic linkage",
             "bond": {
@@ -6649,7 +6649,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "36ba",
             "description": "[automatically generated] b 6 -> 3 glycosidic linkage",
             "bond": {
@@ -6668,7 +6668,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "36bb",
             "description": "[automatically generated] b 6 -> 3 glycosidic linkage",
             "bond": {
@@ -6687,7 +6687,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "46aa",
             "description": "[automatically generated] a 6 -> 4 glycosidic linkage",
             "bond": {
@@ -6706,7 +6706,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "46ab",
             "description": "[automatically generated] a 6 -> 4 glycosidic linkage",
             "bond": {
@@ -6725,7 +6725,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "46ba",
             "description": "[automatically generated] b 6 -> 4 glycosidic linkage",
             "bond": {
@@ -6744,7 +6744,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "46bb",
             "description": "[automatically generated] b 6 -> 4 glycosidic linkage",
             "bond": {
@@ -6763,7 +6763,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "56aa",
             "description": "[automatically generated] a 6 -> 5 glycosidic linkage",
             "bond": {
@@ -6782,7 +6782,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "56ab",
             "description": "[automatically generated] a 6 -> 5 glycosidic linkage",
             "bond": {
@@ -6801,7 +6801,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "56ba",
             "description": "[automatically generated] b 6 -> 5 glycosidic linkage",
             "bond": {
@@ -6820,7 +6820,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "56bb",
             "description": "[automatically generated] b 6 -> 5 glycosidic linkage",
             "bond": {
@@ -6839,7 +6839,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "66aa",
             "description": "[automatically generated] a 6 -> 6 glycosidic linkage",
             "bond": {
@@ -6858,7 +6858,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "66ab",
             "description": "[automatically generated] a 6 -> 6 glycosidic linkage",
             "bond": {
@@ -6877,7 +6877,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "66ba",
             "description": "[automatically generated] b 6 -> 6 glycosidic linkage",
             "bond": {
@@ -6896,7 +6896,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "66bb",
             "description": "[automatically generated] b 6 -> 6 glycosidic linkage",
             "bond": {
@@ -6915,7 +6915,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "76aa",
             "description": "[automatically generated] a 6 -> 7 glycosidic linkage",
             "bond": {
@@ -6934,7 +6934,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "76ab",
             "description": "[automatically generated] a 6 -> 7 glycosidic linkage",
             "bond": {
@@ -6953,7 +6953,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "76ba",
             "description": "[automatically generated] b 6 -> 7 glycosidic linkage",
             "bond": {
@@ -6972,7 +6972,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "76bb",
             "description": "[automatically generated] b 6 -> 7 glycosidic linkage",
             "bond": {
@@ -6991,7 +6991,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "86aa",
             "description": "[automatically generated] a 6 -> 8 glycosidic linkage",
             "bond": {
@@ -7010,7 +7010,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "86ab",
             "description": "[automatically generated] a 6 -> 8 glycosidic linkage",
             "bond": {
@@ -7029,7 +7029,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "86ba",
             "description": "[automatically generated] b 6 -> 8 glycosidic linkage",
             "bond": {
@@ -7048,7 +7048,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "86bb",
             "description": "[automatically generated] b 6 -> 8 glycosidic linkage",
             "bond": {
@@ -7067,7 +7067,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "17aa",
             "description": "[automatically generated] a 7 -> 1 glycosidic linkage",
             "bond": {
@@ -7086,7 +7086,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "17ab",
             "description": "[automatically generated] a 7 -> 1 glycosidic linkage",
             "bond": {
@@ -7105,7 +7105,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "17ba",
             "description": "[automatically generated] b 7 -> 1 glycosidic linkage",
             "bond": {
@@ -7124,7 +7124,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "17bb",
             "description": "[automatically generated] b 7 -> 1 glycosidic linkage",
             "bond": {
@@ -7143,7 +7143,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "27aa",
             "description": "[automatically generated] a 7 -> 2 glycosidic linkage",
             "bond": {
@@ -7162,7 +7162,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "27ab",
             "description": "[automatically generated] a 7 -> 2 glycosidic linkage",
             "bond": {
@@ -7181,7 +7181,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "27ba",
             "description": "[automatically generated] b 7 -> 2 glycosidic linkage",
             "bond": {
@@ -7200,7 +7200,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "27bb",
             "description": "[automatically generated] b 7 -> 2 glycosidic linkage",
             "bond": {
@@ -7219,7 +7219,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "37aa",
             "description": "[automatically generated] a 7 -> 3 glycosidic linkage",
             "bond": {
@@ -7238,7 +7238,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "37ab",
             "description": "[automatically generated] a 7 -> 3 glycosidic linkage",
             "bond": {
@@ -7257,7 +7257,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "37ba",
             "description": "[automatically generated] b 7 -> 3 glycosidic linkage",
             "bond": {
@@ -7276,7 +7276,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "37bb",
             "description": "[automatically generated] b 7 -> 3 glycosidic linkage",
             "bond": {
@@ -7295,7 +7295,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "47aa",
             "description": "[automatically generated] a 7 -> 4 glycosidic linkage",
             "bond": {
@@ -7314,7 +7314,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "47ab",
             "description": "[automatically generated] a 7 -> 4 glycosidic linkage",
             "bond": {
@@ -7333,7 +7333,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "47ba",
             "description": "[automatically generated] b 7 -> 4 glycosidic linkage",
             "bond": {
@@ -7352,7 +7352,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "47bb",
             "description": "[automatically generated] b 7 -> 4 glycosidic linkage",
             "bond": {
@@ -7371,7 +7371,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "57aa",
             "description": "[automatically generated] a 7 -> 5 glycosidic linkage",
             "bond": {
@@ -7390,7 +7390,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "57ab",
             "description": "[automatically generated] a 7 -> 5 glycosidic linkage",
             "bond": {
@@ -7409,7 +7409,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "57ba",
             "description": "[automatically generated] b 7 -> 5 glycosidic linkage",
             "bond": {
@@ -7428,7 +7428,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "57bb",
             "description": "[automatically generated] b 7 -> 5 glycosidic linkage",
             "bond": {
@@ -7447,7 +7447,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "67aa",
             "description": "[automatically generated] a 7 -> 6 glycosidic linkage",
             "bond": {
@@ -7466,7 +7466,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "67ab",
             "description": "[automatically generated] a 7 -> 6 glycosidic linkage",
             "bond": {
@@ -7485,7 +7485,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "67ba",
             "description": "[automatically generated] b 7 -> 6 glycosidic linkage",
             "bond": {
@@ -7504,7 +7504,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "67bb",
             "description": "[automatically generated] b 7 -> 6 glycosidic linkage",
             "bond": {
@@ -7523,7 +7523,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "77aa",
             "description": "[automatically generated] a 7 -> 7 glycosidic linkage",
             "bond": {
@@ -7542,7 +7542,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "77ab",
             "description": "[automatically generated] a 7 -> 7 glycosidic linkage",
             "bond": {
@@ -7561,7 +7561,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "77ba",
             "description": "[automatically generated] b 7 -> 7 glycosidic linkage",
             "bond": {
@@ -7580,7 +7580,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "77bb",
             "description": "[automatically generated] b 7 -> 7 glycosidic linkage",
             "bond": {
@@ -7599,7 +7599,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "87aa",
             "description": "[automatically generated] a 7 -> 8 glycosidic linkage",
             "bond": {
@@ -7618,7 +7618,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "87ab",
             "description": "[automatically generated] a 7 -> 8 glycosidic linkage",
             "bond": {
@@ -7637,7 +7637,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "87ba",
             "description": "[automatically generated] b 7 -> 8 glycosidic linkage",
             "bond": {
@@ -7656,7 +7656,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "87bb",
             "description": "[automatically generated] b 7 -> 8 glycosidic linkage",
             "bond": {
@@ -7675,7 +7675,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "18aa",
             "description": "[automatically generated] a 8 -> 1 glycosidic linkage",
             "bond": {
@@ -7694,7 +7694,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "18ab",
             "description": "[automatically generated] a 8 -> 1 glycosidic linkage",
             "bond": {
@@ -7713,7 +7713,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "18ba",
             "description": "[automatically generated] b 8 -> 1 glycosidic linkage",
             "bond": {
@@ -7732,7 +7732,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "18bb",
             "description": "[automatically generated] b 8 -> 1 glycosidic linkage",
             "bond": {
@@ -7751,7 +7751,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "28aa",
             "description": "[automatically generated] a 8 -> 2 glycosidic linkage",
             "bond": {
@@ -7770,7 +7770,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "28ab",
             "description": "[automatically generated] a 8 -> 2 glycosidic linkage",
             "bond": {
@@ -7789,7 +7789,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "28ba",
             "description": "[automatically generated] b 8 -> 2 glycosidic linkage",
             "bond": {
@@ -7808,7 +7808,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "28bb",
             "description": "[automatically generated] b 8 -> 2 glycosidic linkage",
             "bond": {
@@ -7827,7 +7827,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "38aa",
             "description": "[automatically generated] a 8 -> 3 glycosidic linkage",
             "bond": {
@@ -7846,7 +7846,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "38ab",
             "description": "[automatically generated] a 8 -> 3 glycosidic linkage",
             "bond": {
@@ -7865,7 +7865,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "38ba",
             "description": "[automatically generated] b 8 -> 3 glycosidic linkage",
             "bond": {
@@ -7884,7 +7884,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "38bb",
             "description": "[automatically generated] b 8 -> 3 glycosidic linkage",
             "bond": {
@@ -7903,7 +7903,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "48aa",
             "description": "[automatically generated] a 8 -> 4 glycosidic linkage",
             "bond": {
@@ -7922,7 +7922,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "48ab",
             "description": "[automatically generated] a 8 -> 4 glycosidic linkage",
             "bond": {
@@ -7941,7 +7941,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "48ba",
             "description": "[automatically generated] b 8 -> 4 glycosidic linkage",
             "bond": {
@@ -7960,7 +7960,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "48bb",
             "description": "[automatically generated] b 8 -> 4 glycosidic linkage",
             "bond": {
@@ -7979,7 +7979,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "58aa",
             "description": "[automatically generated] a 8 -> 5 glycosidic linkage",
             "bond": {
@@ -7998,7 +7998,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "58ab",
             "description": "[automatically generated] a 8 -> 5 glycosidic linkage",
             "bond": {
@@ -8017,7 +8017,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "58ba",
             "description": "[automatically generated] b 8 -> 5 glycosidic linkage",
             "bond": {
@@ -8036,7 +8036,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "58bb",
             "description": "[automatically generated] b 8 -> 5 glycosidic linkage",
             "bond": {
@@ -8055,7 +8055,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "68aa",
             "description": "[automatically generated] a 8 -> 6 glycosidic linkage",
             "bond": {
@@ -8074,7 +8074,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "68ab",
             "description": "[automatically generated] a 8 -> 6 glycosidic linkage",
             "bond": {
@@ -8093,7 +8093,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "68ba",
             "description": "[automatically generated] b 8 -> 6 glycosidic linkage",
             "bond": {
@@ -8112,7 +8112,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "68bb",
             "description": "[automatically generated] b 8 -> 6 glycosidic linkage",
             "bond": {
@@ -8131,7 +8131,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "78aa",
             "description": "[automatically generated] a 8 -> 7 glycosidic linkage",
             "bond": {
@@ -8150,7 +8150,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "78ab",
             "description": "[automatically generated] a 8 -> 7 glycosidic linkage",
             "bond": {
@@ -8169,7 +8169,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "78ba",
             "description": "[automatically generated] b 8 -> 7 glycosidic linkage",
             "bond": {
@@ -8188,7 +8188,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "78bb",
             "description": "[automatically generated] b 8 -> 7 glycosidic linkage",
             "bond": {
@@ -8207,7 +8207,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "88aa",
             "description": "[automatically generated] a 8 -> 8 glycosidic linkage",
             "bond": {
@@ -8226,7 +8226,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "88ab",
             "description": "[automatically generated] a 8 -> 8 glycosidic linkage",
             "bond": {
@@ -8245,7 +8245,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "88ba",
             "description": "[automatically generated] b 8 -> 8 glycosidic linkage",
             "bond": {
@@ -8264,7 +8264,7 @@
             "ics": []
         },
         {
-            "biobuild_version": "3.9.68",
+            "version": "3.9.68",
             "id": "88bb",
             "description": "[automatically generated] b 8 -> 8 glycosidic linkage",
             "bond": {

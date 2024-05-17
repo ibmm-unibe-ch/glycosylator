@@ -4,12 +4,13 @@ Icons for drawing glycan structures in 2D
 
 import os
 import matplotlib.pyplot as plt
+import matplotlib.patches as patches
 
 _DIR = os.path.dirname(__file__)
 
 __loaded_icons__ = {}
 
-__translation_table__ = {
+__shape_table__ = {
     "TNO": "TalN",
     "KDO": "Kdo",
     "KDM": "Kdn",
@@ -385,8 +386,8 @@ def get_icon(name: str) -> "ndarray":
     """
     if name.startswith("b-"):
         name = name[2:]
-    if not name in __translation_table__.values():
-        name = __translation_table__.get(name, "unknown")
+    if not name in __shape_table__.values():
+        name = __shape_table__.get(name, "unknown")
     if name not in __loaded_icons__:
         __loaded_icons__[name] = plt.imread(get_icon_path(name))
     return __loaded_icons__[name]
@@ -408,6 +409,6 @@ def get_base_color(name: str) -> str:
     """
     if name.startswith("b-"):
         name = name[2:]
-    if not name in __translation_table__.values():
-        name = __translation_table__.get(name, "unknown")
+    if not name in __shape_table__.values():
+        name = __shape_table__.get(name, "unknown")
     return __base_color_mapping__.get(name, "gray")

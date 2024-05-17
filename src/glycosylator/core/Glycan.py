@@ -10,6 +10,8 @@ import buildamol.structural as structural
 import glycosylator.resources as resources
 import buildamol.core as core
 
+import pandas as pd
+
 
 def glycan(g: Union[str, list], id: str = None, _topology=None):
     """
@@ -218,6 +220,7 @@ class GlycanTree:
         # the problem, so we stick with it even though it is not particularly elegant.
         self._segments = []
         self._linkages = []
+        self._connectivity = {}
 
     @property
     def segments(self):
@@ -230,6 +233,9 @@ class GlycanTree:
     def add(self, residue1, residue2, linkage):
         self._segments.append((residue1, residue2))
         self._linkages.append(linkage)
+        if residue1 not in self._connectivity:
+            self._connectivity[residue1] = []
+        self._connectivity[residue1].append(residue2)
 
     def remove(self, residue1, residue2):
         idx = self._segments.index((residue1, residue2))
@@ -239,6 +245,17 @@ class GlycanTree:
     def get_linkage(self, residue1, residue2):
         idx = self._segments.index((residue1, residue2))
         return self._linkages[idx]
+
+    def has_matching_segment(self, residue1, residue2):
+        return (residue1, residue2) in self._segments or any(
+            residue1.matches(j) and residue2.matches(l) for j, l in self._segments
+        )
+
+    def get_linkage_with_matching(self, residue1, residue2):
+        for i, (j, l) in enumerate(self._segments):
+            if residue1.matches(j) and residue2.matches(l):
+                return self._linkages[i]
+        return None
 
     def update(self, other):
         self._segments.extend(other._segments)
@@ -292,8 +309,8 @@ class Glycan(core.Molecule):
         return new
 
     @classmethod
-    def from_compound(cls, compound: str):
-        new = core.Molecule.from_compound(compound)
+    def from_compound(cls, compound: str, by: str = None, root_atom=None):
+        new = core.Molecule.from_compound(compound, by, root_atom)
         # this is the only method that does not use cls() to create a new instance in the buildamol implementation...
         return cls(new)
 
@@ -379,6 +396,26 @@ class Glycan(core.Molecule):
             _link.atom2 = b
             self._glycan_tree.add(res_a, res_b, _link)
 
+    def hist(self) -> pd.DataFrame:
+        """
+        Get a histogram of the glycan residues
+
+        Returns
+        -------
+        pd.DataFrame
+            The histogram
+        """
+        hist = {}
+        for res in self.get_residues():
+            name = resources.id_to_name(res.resname)
+            if name is None:
+                name = res.resname
+            hist[name] = hist.get(name, 0) + 1
+
+        return pd.DataFrame(
+            {"residue": [i for i in hist.keys()], "count": [i for i in hist.values()]}
+        )
+
     def attach(
         self,
         other: "core.Molecule",
@@ -426,6 +463,96 @@ class Glycan(core.Molecule):
 
         return out
 
+    def extend_to(self, full_iupac: str, inplace: bool = True, _topology=None):
+        """
+        Extend a partial glycan to a glycan matching the provided IUPAC/SNFG string.
+        Note that this can only extend the glycan from the root-onward. It cannot retro-fit
+        a root given some leaf glycans.
+
+        Parameters
+        ----------
+        full_iupac : str
+            The full IUPAC/SNFG string which the glycan should be extended to.
+        inplace : bool
+            Whether to extend the glycan in place or return a new glycan.
+        _topology
+            A particular topology to use. If None, the default topology is used.
+        """
+        full = Glycan.from_iupac(None, full_iupac, _topology)
+
+        obj = self if inplace else self.copy()
+
+        present_segments = [
+            (i.resname, j.resname) for i, j in obj._glycan_tree.segments
+        ]
+        for segment in full._glycan_tree:
+
+            # if the segment is already present in the current glycan, skip it
+            _s = (segment[0].resname, segment[1].resname)
+            if _s in present_segments:
+                present_segments.remove(_s)
+                continue
+
+            # if obj._glycan_tree.has_matching_segment(*segment):
+            #     continue
+
+            # get the linkage to attach with
+            link = full._glycan_tree.get_linkage(*segment)
+
+            # get the residue in the current glycan to attach to
+            attach_residue = next(
+                (i for i in obj.get_residues() if i.matches(segment[0])), None
+            )
+            if attach_residue is None:
+                raise ValueError(
+                    f"Could not find a residue matching {segment[0]} to attach to in the current glycan"
+                )
+
+            # get the residue to attach to from the loaded compounds
+            # they should be available since all standard IUPAC-represented glycans should be there
+            incoming = Glycan.from_compound(segment[1].resname, by="id")
+
+            # attach the residue
+            obj.attach(
+                incoming,
+                link,
+                at_residue=attach_residue,
+                other_inplace=True,
+                _topology=_topology,
+            )
+
+        return obj
+
+    def crop_to(self, full_iupac: str, inplace: bool = True, _topology=None):
+        """
+        Crop a glycan to a glycan matching the provided IUPAC/SNFG string.
+        Note that this can only crop the glycan from the leaves-onward. It cannot retro-fit
+        a root given some leaf glycans.
+
+        Parameters
+        ----------
+        full_iupac : str
+            The full IUPAC/SNFG string which the glycan should be cropped to.
+        inplace : bool
+            Whether to crop the glycan in place or return a new glycan.
+        _topology
+            A particular topology to use. If None, the default topology is used.
+        """
+        full = Glycan.from_iupac(None, full_iupac, _topology)
+
+        obj = self if inplace else self.copy()
+
+        present_segments = [
+            (i.resname, j.resname) for i, j in obj._glycan_tree.segments
+        ]
+        for segment in present_segments:
+            if not full._glycan_tree.has_matching_segment(*segment):
+                obj.remove_residues(
+                    *[i for i in obj.get_residues() if i.matches(segment[0])]
+                )
+
+        return obj
+
     def remove_residues(
         self, *residues: Union[int, "core.base_classes.Residue"]
     ) -> list:
@@ -442,7 +569,7 @@ class Glycan(core.Molecule):
     def draw2d(
         self,
         ax=None,
-        axis="x",
+        axis="y",
         **kwargs,
     ) -> "utils.visual.plt.Axes":
         """
@@ -467,9 +594,11 @@ class Glycan(core.Molecule):
             **kwargs,
         )
 
+    draw_snfg = draw2d
+
     def show2d(
         self,
-        axis="x",
+        axis="y",
         **kwargs,
     ):
         """
@@ -490,7 +619,11 @@ class Glycan(core.Molecule):
             return ax
         utils.visual.plt.show()
 
-    def draw3d(self, residue_graph: bool = False) -> "plotly.graphs_objs.Figure":
+    show_snfg = show2d
+
+    def draw3d(
+        self, residue_graph: bool = False, atoms: bool = True, line_color: str = "black"
+    ) -> "plotly.graphs_objs.Figure":
         """
         Draw the 3D structure of the molecule
 
@@ -498,15 +631,21 @@ class Glycan(core.Molecule):
         ----------
         residue_graph : bool
             Whether to show the residue graph only
+        atoms : bool
+            Whether to show the atoms
+        line_color : str
+            The line color to use for bonds
 
         Returns
         -------
         plotly.Figure
             The figure
         """
-        return super().draw(residue_graph=residue_graph)
+        return super().draw(
+            residue_graph=residue_graph, atoms=atoms, line_color=line_color
+        )
 
-    def show3d(self, residue_graph: bool = False):
+    def show3d(self, residue_graph: bool = False, atoms: bool = True):
         """
         Draw and show the 3D structure of the molecule
 
@@ -514,10 +653,18 @@ class Glycan(core.Molecule):
         ----------
         residue_graph : bool
             Whether to show the residue graph only
+        atoms : bool
+            Whether to show the atoms
         """
-        super().show(residue_graph=residue_graph)
+        super().show(residue_graph=residue_graph, atoms=atoms)
 
-    def draw(self, representation: str = "2d", residue_graph: bool = False):
+    def draw(
+        self,
+        representation: str = "3d",
+        residue_graph: bool = False,
+        atoms: bool = True,
+        line_color: str = "black",
+    ):
         """
         Draw the molecule
 
@@ -527,6 +674,10 @@ class Glycan(core.Molecule):
             The representation to draw
         residue_graph : bool
             Whether to show the residue graph only (3D only)
+        atoms : bool
+            Whether to show the atoms (3D only)
+        line_color : str
+            The line color to use for drawing bonds (3D only)
 
         Returns
         -------
@@ -536,13 +687,19 @@ class Glycan(core.Molecule):
         if representation == "2d":
             return self.draw2d()
         elif representation == "3d":
-            return self.draw3d(residue_graph=residue_graph)
+            return self.draw3d(residue_graph=residue_graph, atoms=atoms, line_color=line_color)
         elif isinstance(representation, bool):
-            return self.draw3d(residue_graph=representation)
+            return self.draw3d(residue_graph=representation, line_color=line_color)
         else:
             raise ValueError(f"Representation {representation} not supported")
 
-    def show(self, representation: str = "2d", residue_graph: bool = False):
+    def show(
+        self,
+        representation: str = "3d",
+        residue_graph: bool = False,
+        atoms: bool = True,
+        line_color: str = "black"
+    ):
         """
         Draw and show the molecule
 
@@ -552,11 +709,17 @@ class Glycan(core.Molecule):
             The representation to draw
         residue_graph : bool
             Whether to show the residue graph only (3D only)
+        atoms : bool
+            Whether to show the atoms (3D only)
+        line_color : str 
+            The line color to use when drawing bonds (3d only)
         """
         if representation == "2d":
             self.show2d()
         elif representation == "3d":
-            self.show3d(residue_graph=residue_graph)
+            self.show3d(residue_graph=residue_graph, atoms=atoms, line_color=line_color)
+        elif isinstance(representation, bool):
+            self.show3d(residue_graph=representation, atoms=atoms, line_color=line_color)
         else:
             raise ValueError(f"Representation {representation} not supported")
 
@@ -664,21 +827,38 @@ if __name__ == "__main__":
     # g = glycan("G78791QP")
     # g.show2d()
 
-    # s = "Gal(b1-3)GlcNAc(b1-3)[Gal(b1-3)GlcNAc(b1-3)[Gal(b1-4)GlcNAc(b1-6)]Gal(b1-4)GlcNAc(b1-6)][Gal(b1-4)GlcNAc(b1-2)]Gal(b1-4)Glc"
-    # glc = Glycan.from_iupac(None, s)
-    # glc2 = glc % "14bb" + glc
+    #     # s = "Gal(b1-3)GlcNAc(b1-3)[Gal(b1-3)GlcNAc(b1-3)[Gal(b1-4)GlcNAc(b1-6)]Gal(b1-4)GlcNAc(b1-6)][Gal(b1-4)GlcNAc(b1-2)]Gal(b1-4)Glc"
+    #     # glc = Glycan.from_iupac(None, s)
+    #     # glc2 = glc % "14bb" + glc
 
-    f = "/Users/noahhk/GIT/glycosylator/examples/my_first_glycan.pdb"
-    g = Glycan.from_pdb(f)
-    g.infer_glycan_tree()
-    g.show2d()
+    import glycosylator as gl
 
-    # _read_snfg = gl.connect(glc, glc, "14bb")
-    # _read_snfg = gl.connect(_read_snfg, glc, "16ab")
-    # _read_snfg = gl.connect(_read_snfg, glc, "12ab", at_residue_a=-2)
-    # out = gl.connect(_read_snfg, _read_snfg, "13ab")
-    # out.show()
-    # _removed = out.remove_residues(4)
-    # print(out._glycan_tree)
-    # out.show2d()
-    pass
+    g = Glycan.from_iupac(None, "Gal(b1-4)GlcNAc")
+    g.extend_to("Gal(b1-4)[Gal(b1-4)Glc(b1-6)]GlcNAc")
+
+    g.root = g.get_atom(1)
+    graph = g.make_atom_graph()
+    edges = g.get_residue_connections(triplet=False, direct_by="root")
+    env = gl.optimizers.DistanceRotatron(graph, edges)
+    out = gl.optimizers.optimize(g, env)
+
+    g.show()
+    # g.show_snfg()
+
+#     print(g.hist())
+#     print(g)
+
+# f = "/Users/noahhk/GIT/glycosylator/examples/my_first_glycan.pdb"
+# g = Glycan.from_pdb(f)
+# g.infer_glycan_tree()
+# g.show2d()
+
+# _read_snfg = gl.connect(glc, glc, "14bb")
+# _read_snfg = gl.connect(_read_snfg, glc, "16ab")
+# _read_snfg = gl.connect(_read_snfg, glc, "12ab", at_residue_a=-2)
+# out = gl.connect(_read_snfg, _read_snfg, "13ab")
+# out.show()
+# _removed = out.remove_residues(4)
+# print(out._glycan_tree)
+# out.show2d()
+# pass
