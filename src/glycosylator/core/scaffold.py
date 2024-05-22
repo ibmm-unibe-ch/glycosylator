@@ -319,7 +319,7 @@ class Scaffold(entity.BaseEntity):
         internal_bonds = set(self._internal_bonds)
 
         self.fill()
-        new = super().copy()
+        new = entity.BaseEntity.copy(self)
         for bond in internal_bonds:
             bond = new.get_atom(bond[0].serial_number), new.get_atom(
                 bond[1].serial_number
@@ -337,6 +337,25 @@ class Scaffold(entity.BaseEntity):
             new._internal_residues.add(res)
             for atom in res.get_atoms():
                 new._AtomGraph.remove_node(atom)
+
+        new._attached_glycans = defaultdict(dict)
+        for root, glycan in self._attached_glycans.items():
+            new_glycan = Glycan.empty(glycan.id)
+            for res in glycan.get_residues():
+                _res = new.get_residue(res.serial_number)
+                new_glycan._chain.add(_res)
+                new_glycan._AtomGraph.add_nodes_from(_res.get_atoms())
+                _res.set_parent(new.get_chain(res.parent.id))
+
+            new_glycan.set_root(new.get_atom(glycan.root_atom.serial_number))
+
+            new_glycan._add_bonds(
+                *(
+                    (new.get_atom(b[0].serial_number), new.get_atom(b[1].serial_number))
+                    for b in glycan.bonds
+                )
+            )
+            new._attached_glycans[new.get_atom(root.serial_number)] = new_glycan
         return new
 
     def exclude_chain(self, chain: Union[str, base_classes.Chain]):
@@ -491,6 +510,7 @@ class Scaffold(entity.BaseEntity):
             if res_a not in glycan_residues and res_b in glycan_residues:
                 glycan = Glycan.empty("glycan" + str(gdx))
                 glycan.add_residues(res_b, adjust_seqid=False)
+
                 glycan._add_bonds(*self.get_bonds(res_b))
                 glycan.set_root(b)
                 glycans[a] = glycan
@@ -541,7 +561,7 @@ class Scaffold(entity.BaseEntity):
 
         glycans.update(self._attached_glycans)
 
-        for glycan in glycans.values():
+        for root, glycan in glycans.items():
             if infer_bonds:
                 glycan.infer_bonds(restrict_residues=True)
             if autolabel:
@@ -563,6 +583,10 @@ class Scaffold(entity.BaseEntity):
                 _link.atom1 = a
                 _link.atom2 = b
                 glycan._glycan_tree.add(res_a, res_b, _link)
+
+            # make sure that all glycan residues still officially belong to the scaffold
+            for res in glycan.get_residues():
+                res.set_parent(root.parent.parent)
 
         self._attached_glycans = glycans
         return glycans
@@ -929,141 +953,6 @@ class Scaffold(entity.BaseEntity):
                 )
             return scaffold
 
-        # if sequon is not None or residues is not None:
-        #     _root = scaffold.root_atom
-        #     _attach_residue = scaffold.attach_residue
-
-        #     _chain = chain
-        #     if chain == "new":
-        #         _chain = base_classes.Chain(chr(65 + len(scaffold.chains)))
-        #         scaffold._model.add(_chain)
-        #     if chain == "each":
-        #         _chain = "new"
-
-        #     # ----------------------------------------------------------
-        #     #           attach Glycan using a list of residues
-        #     # ----------------------------------------------------------
-        #     if residues is not None:
-        #         if not isinstance(at_atom, str) and sequon is None:
-        #             raise ValueError(
-        #                 f"When providing a list of residues without a sequon, you must also provide an 'at_atom' of type str (got {type(at_atom)})"
-        #             )
-        #         elif sequon is not None:
-        #             if sequon in resources.SEQUONS:
-        #                 sequon = resources.SEQUONS[sequon]
-        #                 use_sequon = True
-        #             elif not isinstance(sequon, resources.Sequon):
-        #                 raise ValueError(
-        #                     f"The provided sequon '{sequon}' is not registered so no refernce linkages can be found. Please, register the sequon or specify an 'at_atom'."
-        #                 )
-        #             else:
-        #                 use_sequon = True
-        #         else:
-        #             use_sequon = False
-
-        #         for res in residues:
-        #             if res not in scaffold.get_residues():
-        #                 res = scaffold.get_residue(res)
-        #             if any(i is res.parent for i in scaffold._excluded_chains) or any(
-        #                 i is res for i in scaffold._excluded_residues
-        #             ):
-        #                 continue
-
-        #             if use_sequon:
-        #                 link = sequon.get_linkage(res.resname, _topology)
-        #                 at_atom = link.bond[0]
-        #                 remove_atoms = link.deletes[0]
-        #                 mol_remove_atoms = link.deletes[1]
-
-        #             root = scaffold.get_atom(at_atom, residue=res)
-        #             if root is None:
-        #                 raise ValueError(
-        #                     f"No atom with id '{at_atom}' found in residue {res}"
-        #                 )
-
-        #             scaffold.root_atom = root
-        #             scaffold.attach_residue = scaffold.root_residue
-        #             scaffold = scaffold.attach(
-        #                 mol,
-        #                 remove_atoms=remove_atoms,
-        #                 mol_remove_atoms=mol_remove_atoms,
-        #                 chain=_chain,
-        #                 _copy=False,
-        #             )
-
-        #     # ----------------------------------------------------------
-        #     #                attach Glycan using a sequon
-        #     # ----------------------------------------------------------
-        #     elif sequon is not None:
-        #         res_dict = scaffold.find_glycosylation_sites(sequon)
-
-        #         for chain_id in res_dict:
-        #             residues = res_dict[chain_id]
-
-        #             scaffold = scaffold.attach(
-        #                 mol,
-        #                 remove_atoms=remove_atoms,
-        #                 mol_remove_atoms=mol_remove_atoms,
-        #                 residues=residues,
-        #                 at_atom=at_atom,
-        #                 chain=_chain,
-        #                 sequon=sequon,
-        #                 _copy=False,
-        #             )
-        #         scaffold.root_atom = _root
-        #         scaffold.attach_residue = _attach_residue
-        #         return scaffold
-
-        #     scaffold.root_atom = _root
-        #     scaffold.attach_residue = _attach_residue
-        #     return scaffold
-
-        # # ==========================================================
-        # #          attach Glycan to a single residue
-        # # ==========================================================
-
-        # if scaffold.root_atom is None:
-        #     raise ValueError("No root atom defined on the scaffold")
-        # if mol.root_atom is None:
-        #     raise ValueError("No root atom defined on the Glycan")
-
-        # if not isinstance(remove_atoms, (list, tuple)):
-        #     raise ValueError(
-        #         f"'remove_atoms' must be a list or tuple (got {type(remove_atoms)})"
-        #     )
-        # if not isinstance(mol_remove_atoms, (list, tuple)):
-        #     raise ValueError(
-        #         f"'mol_remove_atoms' must be a list or tuple (got {type(mol_remove_atoms)})"
-        #     )
-
-        # s = structural.__default_keep_keep_stitcher__
-
-        # # copy the Glycan to avoid changing the original
-        # _mol = mol.copy()
-
-        # if chain is None:
-        #     chain = scaffold.root_residue.parent
-        # if chain == "new":
-        #     chain = base_classes.Chain(chr(65 + len(scaffold.chains)))
-        #     scaffold._model.add(chain)
-
-        # scaffold, _mol = s.apply(
-        #     scaffold,
-        #     _mol,
-        #     remove_atoms,
-        #     mol_remove_atoms,
-        #     scaffold.root_atom,
-        #     _mol.root_atom,
-        # )
-
-        # scaffold.add_residues(*_mol.get_residues(), chain=chain)
-        # scaffold._bonds.extend(_mol.get_bonds())
-        # scaffold._AtomGraph.migrate_bonds(_mol._AtomGraph)
-        # scaffold._add_bond(s._anchors[0], s._anchors[1])
-
-        # scaffold._attached_glycans[scaffold.root_atom] = _mol
-        # return scaffold
-
     # alias
     glycosylate = attach
 
@@ -1152,12 +1041,14 @@ if __name__ == "__main__":
     s = Scaffold.from_pdb(
         "/Users/noahhk/GIT/glycosylator/support/examples/4tvp.prot.pdb"
     )
+    s.reindex()
     s.infer_bonds()
     g = gl.glycan(
         "GalNAc(b1-4)[Fuc(a1-3)]GlcNAc(b1-2)Man(a1-6)[GalNAc(b1-2)Man(a1-3)]Man(b1-4)GlcNAc(b1-4)[Fuc(a1-6)]GlcNAc"
     )
 
     s.attach(g, sequon="N-linked")
+    out = s.copy()
     s.show_snfg()
 
     # original_glycosylated = "/Users/noahhk/GIT/glycosylator/support/examples/4tvp.pdb"
