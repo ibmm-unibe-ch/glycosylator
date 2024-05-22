@@ -645,7 +645,9 @@ class Glycan(core.Molecule):
             residue_graph=residue_graph, atoms=atoms, line_color=line_color
         )
 
-    def show3d(self, residue_graph: bool = False, atoms: bool = True):
+    def show3d(
+        self, residue_graph: bool = False, atoms: bool = True, line_color: str = "black"
+    ):
         """
         Draw and show the 3D structure of the molecule
 
@@ -655,8 +657,10 @@ class Glycan(core.Molecule):
             Whether to show the residue graph only
         atoms : bool
             Whether to show the atoms
+        line_color : str
+            The line color to use for bonds
         """
-        super().show(residue_graph=residue_graph, atoms=atoms)
+        super().show(residue_graph=residue_graph, atoms=atoms, line_color=line_color)
 
     def draw(
         self,
@@ -687,7 +691,9 @@ class Glycan(core.Molecule):
         if representation == "2d":
             return self.draw2d()
         elif representation == "3d":
-            return self.draw3d(residue_graph=residue_graph, atoms=atoms, line_color=line_color)
+            return self.draw3d(
+                residue_graph=residue_graph, atoms=atoms, line_color=line_color
+            )
         elif isinstance(representation, bool):
             return self.draw3d(residue_graph=representation, line_color=line_color)
         else:
@@ -698,7 +704,7 @@ class Glycan(core.Molecule):
         representation: str = "3d",
         residue_graph: bool = False,
         atoms: bool = True,
-        line_color: str = "black"
+        line_color: str = "black",
     ):
         """
         Draw and show the molecule
@@ -711,7 +717,7 @@ class Glycan(core.Molecule):
             Whether to show the residue graph only (3D only)
         atoms : bool
             Whether to show the atoms (3D only)
-        line_color : str 
+        line_color : str
             The line color to use when drawing bonds (3d only)
         """
         if representation == "2d":
@@ -719,7 +725,9 @@ class Glycan(core.Molecule):
         elif representation == "3d":
             self.show3d(residue_graph=residue_graph, atoms=atoms, line_color=line_color)
         elif isinstance(representation, bool):
-            self.show3d(residue_graph=representation, atoms=atoms, line_color=line_color)
+            self.show3d(
+                residue_graph=representation, atoms=atoms, line_color=line_color
+            )
         else:
             raise ValueError(f"Representation {representation} not supported")
 
