@@ -907,7 +907,7 @@ class Scaffold(entity.BaseEntity):
                 if each_new_chain:
                     _chain = base_classes.Chain(chr(65 + len(scaffold.chains)))
                     scaffold._model.add(_chain)
-                elif not chain:
+                elif chain is None:
                     _chain = residue.parent
 
                 # copy the Glycan to avoid changing the original
@@ -925,7 +925,7 @@ class Scaffold(entity.BaseEntity):
                     _mol.attach_residue,
                 )
 
-                scaffold.add_residues(*_mol.get_residues(), chain=chain)
+                scaffold.add_residues(*_mol.get_residues(), chain=_chain)
                 scaffold._bonds.extend(_mol.get_bonds())
                 scaffold._AtomGraph.migrate_bonds(_mol._AtomGraph)
                 scaffold._add_bond(s._anchors[0], s._anchors[1])

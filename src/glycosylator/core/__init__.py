@@ -3,4 +3,4 @@ The core classes and functions of Glycosylator
 """
 
 from glycosylator.core.Glycan import *
-from glycosylator.core.Scaffold import *
+from glycosylator.core.scaffold import *
