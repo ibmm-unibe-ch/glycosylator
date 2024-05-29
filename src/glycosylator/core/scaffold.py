@@ -1,6 +1,6 @@
 """
 The `Scaffold` class is used to represent a scaffold structure such as a protein or membrane on to which a modification in form of one or more `Glycan`s can be added.
-The Scaffold also inherets from Biobuild and can be used in many ways similar to Molecules and Glycans. 
+The Scaffold also inherets from BuildAMol and can be used in many ways similar to Molecules and Glycans. 
 However, it lacks some features such as `repeat` method.
 
 
@@ -10,18 +10,10 @@ Attaching Glycans
 The primary purpose of the `Scaffold` is to have `Glycan`s attached to it.
 This is done by using the `attach` method, which offers a versatile interface to attach one or more `Glycan`s to the `Scaffold` structure.
 
-.. note:: 
-
-    Connecting a `Glycan` and `Scaffold` is based on `Recipe`s (not on `Patch`es!).
-    Furthermore, "attaching" a `Glycan` to a `Scaffold` is defined as "connecting the Glycan's and Scaffold's root atoms".
-    In practice, (re-)setting the objects' root atoms is handled behind the scenes, but is is important to keep this in
-    mind when using the `attach` method and when writing `Recipe`s because they need to create bonds between the root atoms
-    and cannot specify bonds between other atoms!
-
 
 We can attach Glycans to scaffolds via the `attach` method to:
-- one specific residue
-- a list of residues
+- one residue (the attach_residue)
+- a list of specified residues
 - all residues that match a specific sequence pattern (sequon, only for protein scaffolds)
 
 
@@ -39,39 +31,31 @@ In the first we use default "pythonistic" methods to properly attach the glycan 
     my_prot = gl.Scaffold.load("my_protein.pkl")
     my_glycan = gl.Glycan.load("my_glycan.pkl")
 
-    # set the root atom of the glycan (this is required for attaching to a scaffold)
-    my_glycan.root_atom = my_glycan.get_atom("C1", residue=1) # get the C1 of the first atom
-
-    # find some ASN residue the protein 
+    # find some ASN residue the protein to set
+    # as the attach-residue where the glycan should be attached
     # (just the first ASN we can find)
-    asn = my_prot.get_residue("ASN")
-
-    # and set the root atom to be the ASN's ND2 atom
-    my_prot.root_atom = my_prot.get_atom("ND2", residue=asn)
+    asn.attach_residue = my_prot.get_residue("ASN")
 
     # get a linkage
-    # (glycosylator already has a linkage for N-glycosylation)
+    # (glycosylator already has a linkage for default N-glycosylation,
+    # but we could define our own linkage if we have some special case)
     link = gl.get_linkage("ASN-glyco")
 
-    # now attach the glycan to the protein
+    # now attach the glycan to the protein at the ASN residue
     my_prot.attach(my_glycan, link)
 
 In this second version we change we achieve the same but with an operator "short-hand" syntax because we feel "extra cocky":
 
 .. code-block:: python
 
-    # set the root atom on the glycan
-    my_glycan ^ my_glycan.get_atom("C1", residue=1)
-    
-    # find an ASN residue in the protein and set its ND2 atom as root
-    asn = my_prot.get_residue("ASN")
-    my_prot ^ my_prot.get_atom("ND2", residue=asn)
-
-    # set the linkage as default modifier
-    my_prot % link
+    # set the linkage as default modifier and specify the ASN as attach-residue
+    my_prot % link @ my_prot.get_residue("ASN")
 
     # now attach the glycan to the ASN residue
     my_prot += my_glycan
+
+    # or in one line (which is NOT inplace, however but makes a copy)
+    glycosylated = my_prot % link @ my_prot.get_residue("ASN") + my_glycan
 
 
 Attaching to a list of residues
@@ -89,8 +73,7 @@ a list of `residues` to the `attach` method.
     # now attach the glycan to all ASN residues
     my_prot.attach(my_glycan, link, residues=residues_to_modify)
   
-This code will automatically add the glycan to all ASN residues in the list `residues_to_modify` and will use the `at_atom` argument to
-connect the glycan's root atom to the ND2 atom of each ASN residue.
+This code will automatically add the glycan to all ASN residues in the list `residues_to_modify`.
 
 
 Attaching to residues matching a sequence pattern
@@ -98,13 +81,15 @@ Attaching to residues matching a sequence pattern
 
 The `Scaffold` class offers the `find` method which accepts a `regex` pattern to search 
 the protein sequence for matching residues. This is useful for attaching to all residues that match a specific sequence pattern,
-such as all N-glycosylation sequons. The `find` method returns a dictionary keyed by chain-id containing lists of matching residues.
-For convenience, the `attach` method accepts a `sequon` argument where a regex pattern can directly be provided to do the searching automatically:
+such as all N-glycosylation sequons. The `find_glycosylation_sites` method returns a dictionary keyed by chain-id containing lists of matching residues.
+For convenience, the `attach` method accepts a `sequon` argument where a regex pattern can directly be provided to do the searching automatically.
+For this to work, the sequon must contain a single capturing group that specifies the amino acid to glycosylate (in the example below the `(N)`) and a `link` must be provided
+if not a corresponding `{}-glyco` linkage is defined in the default linkages (e.g. here an `ASN-glyco` since `N` is one letter code for Asparagine, which is available by default).
 
 .. code-block:: python
 
-    # attach to all N-glycosylation sequons           * sequon pattern *
-    my_prot.attach(my_glycan, recipe=my_recipe, sequon="(N)(?=[^P][ST])", at_atom="ND2")
+    # attach to all N-glycosylation sequons
+    my_prot.attach(my_glycan, sequon="(N)(?=[^P][ST])")
 
 """
 
@@ -148,8 +133,8 @@ def scaffold(scaf=None) -> "Scaffold":
         scaf = Scaffold(mol.structure)
         scaf.add_bonds(*mol.get_bonds())
         return scaf
-    except:
-        raise ValueError("Could not make a Scaffold from the input.")
+    except Exception as e:
+        raise ValueError("Could not make a Scaffold from the input.") from e
 
 
 def glycosylate(
@@ -946,6 +931,7 @@ class Scaffold(entity.BaseEntity):
 
                 scaffold = scaffold.attach(
                     mol,
+                    link=link,
                     residues=residues,
                     chain=chain,
                     sequon=sequon,

@@ -13,7 +13,7 @@ def test_from_iupac():
     assert len(res_graph.get_neighbors(r)) == 3
     r = glycan.get_residue("FCA")
     assert len(res_graph.get_neighbors(r)) == 1
-    assert res_graph.get_neighbors(r).pop().id == "NAG"
+    assert res_graph.get_neighbors(r).pop().resname == "NAG"
 
 
 def test_from_iupac2():
@@ -32,6 +32,19 @@ def test_from_iupac2():
     assert len(r) == 1
     r = glycan.get_residues("MAN")
     assert len(r) == 4
+
+
+def test_from_iupac3():
+    s = "Glc(b1-4)Glc(b1-3)[Gal(b1-4)]GlcNAc"
+    glycan = gl.Glycan.from_iupac(None, s)
+
+    res_graph = glycan.make_residue_graph()
+
+    assert len(res_graph.nodes) == 4
+    r = glycan.get_residue(2)
+    assert len(res_graph.get_neighbors(r)) == 1
+    r = glycan.get_residue(3)
+    assert len(res_graph.get_neighbors(r)) == 2
 
 
 def test_to_iupac():

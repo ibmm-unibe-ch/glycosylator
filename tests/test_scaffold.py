@@ -75,7 +75,7 @@ def test_exclude_include_chain():
     scaffold.exclude_chain("B")
 
     sequon = "(N)(?=[A-OQ-Z][ST])"
-    residues = scaffold.find(sequon)
+    residues = scaffold.find_glycosylation_sites(sequon)
 
     assert "A" in residues.keys()
     assert "B" not in residues.keys()
@@ -84,7 +84,7 @@ def test_exclude_include_chain():
     assert len(residues[0]) == 20
 
     scaffold.include_chain("B")
-    residues = scaffold.find(sequon)
+    residues = scaffold.find_glycosylation_sites(sequon)
 
     assert "A" in residues.keys()
     assert "B" in residues.keys()
@@ -98,13 +98,13 @@ def test_exclude_include_residue():
     scaffold = gl.Scaffold.from_pdb(base.PROTEIN)
     scaffold.reindex()
 
-    asns = scaffold.find()
+    asns = scaffold.find_glycosylation_sites()
     asns = asns["A"][:10]
 
     for a in asns:
         scaffold.exclude_residue(a)
 
-    residues = scaffold.find()
+    residues = scaffold.find_glycosylation_sites()
     residues = list(residues.values())
 
     assert len(residues[0]) == 20 - 10  # we excluded 10 of the 20 ASNs
@@ -113,7 +113,7 @@ def test_exclude_include_residue():
     for a in asns:
         scaffold.include_residue(a)
 
-    residues = scaffold.find()
+    residues = scaffold.find_glycosylation_sites()
     residues = list(residues.values())
 
     assert len(residues[0]) == 20
@@ -125,15 +125,15 @@ def test_find_sequon():
     scaffold.reindex()
 
     sequon = "(N)(?=[A-OQ-Z][ST])"
-    residues = scaffold.find(sequon)
+    residues = scaffold.find_glycosylation_sites(sequon)
     residues = list(residues.values())
 
     assert len(residues[0]) == 20
     assert len(residues[1]) == 4
 
 
-def test_attach_glycan_to_one_residue():
-    glycan = gl.Molecule.from_pdb(base.MANNOSE9)
+def test_attach_glycan_to_one_residue_simple():
+    glycan = gl.Glycan.from_pdb(base.MANNOSE9)
     scaffold = gl.Scaffold.from_pdb(base.PROTEIN)
 
     scaffold.reindex()
@@ -142,91 +142,38 @@ def test_attach_glycan_to_one_residue():
     scaffold.infer_bonds()
 
     assert len(glycan.residues) == 11
+    assert len(scaffold.glycans) == 0
 
-    # make a recipe for attaching to ASN
-    recipe = gl.Recipe()
-    recipe.add_bond(("ND2", "C1"))
-    recipe.add_delete("O1", "source")
-    recipe.add_delete("HO1", "source")
-    recipe.add_delete("HD22", "target")
+    scaffold.attach(
+        glycan, residues=scaffold.get_residues("ASN", by="name", chain="A")[0]
+    )
 
-    # set recipe as default modifier
-    scaffold % recipe
-
-    # find some ASNs
-    asns = scaffold.get_residues("ASN", by="name", chain="A")
-    assert len(asns) > 0
-
-    # get the ND2 of the ASN and set as root atom for attaching
-    scaffold.root_atom = scaffold.get_atom("ND2", residue=asns[0])
-    glycan.root_atom = 1
-
-    # attach to the first ASN
-    current_residues = len(scaffold.residues)
-    old_connections = len(scaffold._molecule_connections)
-    scaffold.attach(glycan)
-
-    assert len(scaffold.residues) == current_residues + 11
-    assert len(scaffold._molecule_connections) > old_connections
-
-    scaffold.to_pdb("test_attach_glycan_to_one_residue.pdb")
-    old, new = 0, 0
-    with open(base.PROTEIN) as f:
-        for line in f:
-            old += 1
-    with open("test_attach_glycan_to_one_residue.pdb") as f:
-        for line in f:
-            new += 1
-    assert new > old
-    os.remove("test_attach_glycan_to_one_residue.pdb")
+    assert len(scaffold.glycans) == 1
 
 
 def test_attach_glycan_to_residue_list():
-    glycan = gl.Molecule.from_pdb(base.MANNOSE9)
+    glycan = gl.Glycan.from_pdb(base.MANNOSE9)
     scaffold = gl.Scaffold.from_pdb(base.PROTEIN)
 
     scaffold.reindex()
     glycan.reindex()
     glycan.infer_bonds(restrict_residues=False)
     scaffold.infer_bonds()
+    glycan.infer_glycan_tree()
 
     assert len(glycan.residues) == 11
+    assert len(scaffold.glycans) == 0
 
-    # make a recipe for attaching to ASN
-    recipe = gl.Recipe()
-    recipe.add_bond(("ND2", "C1"))
-    recipe.add_delete("O1", "source")
-    recipe.add_delete("HO1", "source")
-    recipe.add_delete("HD22", "target")
+    scaffold.attach(
+        glycan, residues=scaffold.get_residues("ASN", by="name", chain="A")[:5]
+    )
+    assert len(scaffold.glycans) == 5
 
-    # set recipe as default modifier
-    scaffold % recipe
-
-    # find some ASNs
-    asns = scaffold.get_residues("ASN", by="name", chain="A")
-    assert len(asns) > 5
-
-    asns = asns[:5]
-
-    glycan.root_atom = 1
-
-    current_residues = len(scaffold.residues)
-    old_connections = len(scaffold._molecule_connections)
-    scaffold.attach(glycan, residues=asns, at_atom="ND2")
-
-    assert len(scaffold.residues) > current_residues
-    assert len(scaffold._molecule_connections) > old_connections
-
-    scaffold.to_pdb("test_attach_glycan_to_residue_list.pdb")
-
-    with open("test_attach_glycan_to_residue_list.pdb") as f:
-        lines = f.readlines()
-    assert len(lines) > 10000
-    os.remove("test_attach_glycan_to_residue_list.pdb")
+    scaffold.show_snfg()
 
 
 def test_attach_glycan_with_sequon():
-    glycan = gl.Molecule.from_pdb(base.MANNOSE9)
+    glycan = gl.Glycan.from_pdb(base.MANNOSE9)
     scaffold = gl.Scaffold.from_pdb(base.PROTEIN)
 
     scaffold.reindex()
@@ -236,91 +183,13 @@ def test_attach_glycan_with_sequon():
 
     assert len(glycan.residues) == 11
 
-    recipe = gl.Recipe()
-    recipe.add_bond(("ND2", "C1"))
-    recipe.add_delete("O1", "source")
-    recipe.add_delete("HO1", "source")
-    recipe.add_delete("HD22", "target")
+    scaffold.attach(glycan, sequon="O-linked")
 
-    scaffold % recipe
-
-    # use the N-linked sequon for ASNs
-    sequon = "(N)(?=[A-OQ-Z][ST])"
-
-    residues = scaffold.find(sequon)
-    assert len(residues) > 0
-
-    glycan.root_atom = 1
-
-    old_residues = len(scaffold.residues)
-    scaffold.attach(glycan, sequon=sequon, at_atom="ND2")
-
-    new_residues = len(scaffold.residues)
-    assert new_residues > old_residues
-
-    scaffold.to_pdb("test_attach_glycan_with_sequon.pdb")
-
-    lines = 0
-    with open("test_attach_glycan_with_sequon.pdb") as f:
-        for line in f:
-            lines += 1
-    assert lines > 14000
-    os.remove("test_attach_glycan_with_sequon.pdb")
-
-
-def test_attach_via_roots():
-    glycan = gl.Molecule.from_pdb(base.MANNOSE9)
-    scaffold = gl.Scaffold.from_pdb(base.PROTEIN)
-
-    scaffold.reindex()
-    glycan.reindex()
-    glycan.infer_bonds(restrict_residues=False)
-    scaffold.infer_bonds()
-
-    assert len(glycan.residues) == 11
-
-    recipe = gl.Recipe()
-    recipe.add_bond(("ND2", "C1"))
-    recipe.add_delete("O1", "source")
-    recipe.add_delete("HO1", "source")
-    recipe.add_delete("HD22", "target")
-
-    scaffold % recipe
-
-    # set root atoms
-
-    glycan ^ 1
-
-    asn = scaffold.get_residues("ASN", by="name", chain="A")[0]
-    scaffold.root_atom = asn.child_dict["ND2"]
-
-    # now attach
-
-    old_residues = len(scaffold.residues)
-    scaffold.to_pdb("test_attach_via_roots.pdb")
-
-    old_lines = 0
-    with open("test_attach_via_roots.pdb") as f:
-        for line in f:
-            old_lines += 1
-    scaffold.attach(glycan)
-
-    new_residues = len(scaffold.residues)
-    assert new_residues > old_residues
-
-    scaffold.to_pdb("test_attach_via_roots.pdb")
-
-    lines = 0
-    with open("test_attach_via_roots.pdb") as f:
-        for line in f:
-            lines += 1
-
-    assert lines > old_lines
-    os.remove("test_attach_via_roots.pdb")
+    assert len(scaffold.glycans) > 1
 
 
 def test_attach_with_operator_inplace():
-    glycan = gl.Molecule.from_pdb(base.MANNOSE9)
+    glycan = gl.Glycan.from_pdb(base.MANNOSE9)
     scaffold = gl.Scaffold.from_pdb(base.PROTEIN)
 
     scaffold.reindex()
@@ -330,49 +199,15 @@ def test_attach_with_operator_inplace():
 
     assert len(glycan.residues) == 11
 
-    recipe = gl.Recipe()
-    recipe.add_bond(("ND2", "C1"))
-    recipe.add_delete("O1", "source")
-    recipe.add_delete("HO1", "source")
-    recipe.add_delete("HD22", "target")
-
-    scaffold % recipe
-
-    # set root atoms
-
-    glycan ^ 1
-
-    asn = scaffold.get_residues("ASN", by="name", chain="A")[0]
-    scaffold.root_atom = scaffold.get_atom("ND2", residue=asn)
-
-    # now attach
-
-    old_residues = len(scaffold.residues)
-    scaffold.to_pdb("test_attach_via_roots.pdb")
-
-    old_lines = 0
-    with open("test_attach_via_roots.pdb") as f:
-        for line in f:
-            old_lines += 1
-
+    link = gl.linkage("ND2", "C1", None, ["O1", "HO1"])
+    scaffold % link @ scaffold.get_residues("ASN", by="name", chain="A")[0]
     scaffold += glycan
 
-    new_residues = len(scaffold.residues)
-    assert new_residues > old_residues
-
-    scaffold.to_pdb("test_attach_via_roots.pdb")
-
-    lines = 0
-    with open("test_attach_via_roots.pdb") as f:
-        for line in f:
-            lines += 1
-
-    assert lines > old_lines
-    os.remove("test_attach_via_roots.pdb")
+    assert len(scaffold.glycans) == 1
 
 
 def test_attach_with_operator_inplace_twice():
-    glycan = gl.Molecule.from_pdb(base.MANNOSE9)
+    glycan = gl.Glycan.from_pdb(base.MANNOSE9)
     scaffold = gl.Scaffold.from_pdb(base.PROTEIN)
 
     scaffold.reindex()
@@ -382,55 +217,18 @@ def test_attach_with_operator_inplace_twice():
 
     assert len(glycan.residues) == 11
 
-    recipe = gl.Recipe()
-    recipe.add_bond(("ND2", "C1"))
-    recipe.add_delete("O1", "source")
-    recipe.add_delete("HO1", "source")
-    recipe.add_delete("HD22", "target")
-
-    scaffold % recipe
-
-    # set root atoms
-
-    glycan ^ 1
-
-    asns = scaffold.get_residues("ASN", by="name", chain="A")
-    scaffold.root_atom = asns[0].child_dict["ND2"]
-
-    # now attach
-
-    old_residues = len(scaffold.residues)
-    scaffold.to_pdb("test_attach_via_roots.pdb")
-
-    old_lines = 0
-    with open("test_attach_via_roots.pdb") as f:
-        for line in f:
-            old_lines += 1
-
+    link = gl.linkage("ND2", "C1", None, ["O1", "HO1"])
+    scaffold % link @ scaffold.get_residues("ASN", by="name", chain="A")[0]
     scaffold += glycan
 
-    # set another root atom
-    scaffold.root_atom = asns[1].child_dict["ND2"]
-
-    # and attach again
+    scaffold @ scaffold.get_residues("ASN", by="name", chain="A")[1]
     scaffold += glycan
 
-    new_residues = len(scaffold.residues)
-    assert new_residues > old_residues
-
-    scaffold.to_pdb("test_attach_via_roots.pdb")
-
-    lines = 0
-    with open("test_attach_via_roots.pdb") as f:
-        for line in f:
-            lines += 1
-
-    assert lines > old_lines
-    os.remove("test_attach_via_roots.pdb")
+    assert len(scaffold.glycans) == 2
 
 
 def test_attach_with_operator_copy():
-    glycan = gl.Molecule.from_pdb(base.MANNOSE9)
+    glycan = gl.Glycan.from_pdb(base.MANNOSE9)
     scaffold = gl.Scaffold.from_pdb(base.PROTEIN)
 
     scaffold.reindex()
@@ -440,47 +238,12 @@ def test_attach_with_operator_copy():
 
     assert len(glycan.residues) == 11
 
-    recipe = gl.Recipe()
-    recipe.add_bond(("ND2", "C1"))
-    recipe.add_delete("O1", "source")
-    recipe.add_delete("HO1", "source")
-    recipe.add_delete("HD22", "target")
+    scaffold @ scaffold.get_residues("ASN", by="name", chain="A")[0]
+    out = scaffold + glycan
 
-    scaffold % recipe
-
-    # set root atoms
-
-    glycan ^ 1
-
-    asn = scaffold.get_residues("ASN", by="name", chain="A")[0]
-    scaffold.root_atom = asn.child_dict["ND2"]
-
-    # now attach
-
-    old_residues = len(scaffold.residues)
-    scaffold.to_pdb("test_attach_via_roots.pdb")
-
-    old_lines = 0
-    with open("test_attach_via_roots.pdb") as f:
-        for line in f:
-            old_lines += 1
-
-    new = scaffold + glycan
-
-    assert new is not scaffold
-    assert new is not glycan
-    assert len(new.residues) > old_residues
-    assert len(scaffold.residues) == old_residues
-
-    new.to_pdb("test_attach_via_roots.pdb")
-
-    lines = 0
-    with open("test_attach_via_roots.pdb") as f:
-        for line in f:
-            lines += 1
-
-    assert lines > old_lines
-    os.remove("test_attach_via_roots.pdb")
+    assert out is not scaffold
+    assert len(out.glycans) == 1
+    assert len(scaffold.glycans) == 0
 
 
 def test_hollow_out():
