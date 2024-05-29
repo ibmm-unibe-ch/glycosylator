@@ -54,7 +54,7 @@ In this second version we change we achieve the same but with an operator "short
     # now attach the glycan to the ASN residue
     my_prot += my_glycan
 
-    # or in one line (which is NOT inplace, however but makes a copy)
+    # or in one line (which is NOT inplace, however, but makes a copy)
     glycosylated = my_prot % link @ my_prot.get_residue("ASN") + my_glycan
 
 
@@ -993,17 +993,6 @@ class Scaffold(entity.BaseEntity):
 
     draw3d = Molecule.draw
     show3d = Molecule.show
-
-    # def py3dmol(self):
-    #     import py3Dmol
-    #     import os
-
-    #     self.to_pdb(".tmp.pdb")
-    #     view = py3Dmol.view(width=800, height=600)
-    #     view.addModel(open(".tmp.pdb").read(), "pdb")
-    #     view.setStyle({"cartoon": {"color": "spectrum"}})
-    #     os.remove(".tmp.pdb")
-    #     return view
 
     def __add__(self, mol):
         """
