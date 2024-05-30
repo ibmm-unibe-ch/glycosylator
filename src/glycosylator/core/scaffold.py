@@ -9,7 +9,8 @@ Attaching Glycans
 
 The primary purpose of the `Scaffold` is to have `Glycan`s attached to it.
 This is done by using the `attach` method, which offers a versatile interface to attach one or more `Glycan`s to the `Scaffold` structure.
-
+Alternatively, one may use the `glycosylate` method (which is just an alias for `attach`) or the stand-alone `glycosylate` function (the difference is
+that the function by default makes a copy of the scaffold rather than working inplace).
 
 We can attach Glycans to scaffolds via the `attach` method to:
 - one residue (the attach_residue)
@@ -20,7 +21,7 @@ We can attach Glycans to scaffolds via the `attach` method to:
 Attaching to a specific residue
 -------------------------------
 Below are two examples of attaching a glycan to a protein scaffold at a specific residue.
-In the first we use default "pythonistic" methods to properly attach the glycan to the protein:
+In the first we use default "pythonic" methods to properly attach the glycan to the protein:
 
 .. code-block:: python
 
@@ -74,23 +75,6 @@ a list of `residues` to the `attach` method.
     my_prot.attach(my_glycan, link, residues=residues_to_modify)
   
 This code will automatically add the glycan to all ASN residues in the list `residues_to_modify`.
-
-
-Attaching to residues matching a sequence pattern
--------------------------------------------------
-
-The `Scaffold` class offers the `find` method which accepts a `regex` pattern to search 
-the protein sequence for matching residues. This is useful for attaching to all residues that match a specific sequence pattern,
-such as all N-glycosylation sequons. The `find_glycosylation_sites` method returns a dictionary keyed by chain-id containing lists of matching residues.
-For convenience, the `attach` method accepts a `sequon` argument where a regex pattern can directly be provided to do the searching automatically.
-For this to work, the sequon must contain a single capturing group that specifies the amino acid to glycosylate (in the example below the `(N)`) and a `link` must be provided
-if not a corresponding `{}-glyco` linkage is defined in the default linkages (e.g. here an `ASN-glyco` since `N` is one letter code for Asparagine, which is available by default).
-
-.. code-block:: python
-
-    # attach to all N-glycosylation sequons
-    my_prot.attach(my_glycan, sequon="(N)(?=[^P][ST])")
-
 """
 
 from collections import defaultdict
@@ -100,7 +84,6 @@ from typing import Union
 from glycosylator.core.Glycan import Glycan
 import glycosylator.resources as resources
 import glycosylator.utils.iupac as iupac
-import glycosylator.utils.visual as visual
 
 from buildamol.core import Molecule, Linkage, molecule
 import buildamol.core.entity as entity
@@ -108,8 +91,6 @@ import buildamol.core.base_classes as base_classes
 import buildamol.utils.auxiliary as aux
 import buildamol.structural as structural
 
-
-import re
 
 __all__ = ["Scaffold", "scaffold", "glycosylate"]
 
@@ -146,7 +127,7 @@ def glycosylate(
     inplace: bool = False,
 ) -> "Scaffold":
     """
-    Glycosylate a Scaffold with a Glycan.
+    Glycosylate a scaffold with a glycan.
 
     Parameters
     ----------
@@ -198,26 +179,6 @@ class Scaffold(entity.BaseEntity):
         self._attached_glycans = defaultdict(dict)
         self._internal_residues = set()
         self._internal_bonds = set()
-
-    @property
-    def seq(self) -> str:
-        """
-        Returns the sequences of the scaffold (if it is a protein)
-        for each chain in the structure
-
-        Returns
-        -------
-        dict
-            A dictionary of the sequences of the scaffold for each chain in the structure
-        """
-        compounds = resources.get_default_compounds()
-        seqs = {}
-        for chain in self._base_struct.get_chains():
-            ids = [residue.resname for residue in chain.get_residues()]
-            ids = compounds.translate_ids_3_to_1(ids)
-            seqs[chain] = "".join(ids)
-
-        return seqs
 
     def index(self, residue: Union[int, base_classes.Residue]) -> int:
         """
@@ -294,9 +255,8 @@ class Scaffold(entity.BaseEntity):
         Scaffold
             A scaffold created from the molecule
         """
-        new = cls(mol._base_struct, model=mol._model)
-        for bond in mol.bonds:
-            new.add_bond(*bond)
+        new = cls(mol._base_struct, model=mol._model.id)
+        new._add_bonds(*mol.bonds)
         return new
 
     def copy(self):
@@ -587,82 +547,6 @@ class Scaffold(entity.BaseEntity):
         """
         return len(self.glycans)
 
-    def find_glycosylation_sites(self, sequon: str = "N-linked") -> list:
-        """
-        Find the residues at which Glycans can be attached to the scaffold
-
-        Parameters
-        ----------
-        sequon : str
-            A regex pattern sequon to search for, which must contain a single capturing group
-            specifying the residue at which the Glycan should be attached. Defaults to the "N-linked"
-            sequon which matches Asn-X-Ser/Thr sites. Alternatively, "O-linked" can be used, which matches
-            Ser/Thr-X-Ser/Thr sites.
-
-        Returns
-        -------
-        dict
-            A dictionary of lists of matching residues in each chain.
-        """
-
-        if sequon in resources.SEQUONS:
-            sequon = resources.SEQUONS[sequon]
-        elif isinstance(sequon, str):
-            sequon = resources.Sequon("new", sequon)
-
-        seqs = self.seq
-        sequons = {
-            chain: re.finditer(sequon.pattern, seqs[chain], re.IGNORECASE)
-            for chain in self.chains
-            if chain not in self._excluded_chains
-        }
-        sequons = {
-            key: [
-                # adjust indexing
-                self._model.child_dict[key.get_id()].child_list[0].id[1]
-                + m.start(0)
-                - 1
-                for m in value
-            ]
-            for key, value in sequons.items()
-            if value is not None
-        }
-
-        _residues = {}
-        for chain, indices in sequons.items():
-            chain = self._model.child_dict[chain.get_id()]
-            if not chain.child_list:
-                continue
-            cdx = chain.child_list[0].id[1]
-            _residues[chain] = [
-                chain.child_list[idx - (cdx - 1)]
-                for idx in indices
-                if chain.child_list[idx - (cdx - 1)] not in self._excluded_residues
-            ]
-        return _residues
-
-    def find_n_linked_sites(self) -> dict:
-        """
-        Find all N-linked glycosylation sites in the protein scaffold.
-
-        Returns
-        -------
-        dict
-            A dictionary of lists of matching residues in each chain.
-        """
-        return self.find_glycosylation_sites(sequon="N-linked")
-
-    def find_o_linked_sites(self) -> dict:
-        """
-        Find all O-linked glycosylation sites in the protein scaffold.
-
-        Returns
-        -------
-        dict
-            A dictionary of lists of matching residues in each chain.
-        """
-        return self.find_glycosylation_sites(sequon="O-linked")
-
     def add_residues(
         self,
         *residues: base_classes.Residue,
@@ -779,7 +663,6 @@ class Scaffold(entity.BaseEntity):
         mol: "Glycan",
         link: "Linkage" = None,
         residues: list = None,
-        sequon: Union[str, resources.Sequon] = None,
         chain=None,
         inplace: bool = True,
         _topology=None,
@@ -795,9 +678,6 @@ class Scaffold(entity.BaseEntity):
             The linkage to use when attaching the glycan. If None, the default linkage that was set earlier on the scaffold is used (if defined) or a linkage is identified based on the residue names to which the glycan should be attached.
         residues : list
             A list of residues at which to attach copies of the glycan. This is an alternative to using a sequon.
-        sequon : str or Sequon
-            Instead of providing one or multiple residues at which to attach the glycan, you can also provide a
-            sequon which will be used to find the residues at which to attach the glycan.
         chain : str
             The chain to which the glycan should be attached. If None, the glycan is attached to the same chain as the respective scaffold residue.
             This can be set to "new" to create a new chain for all incoming glycans, or "each" to create a new chain for each glycan that is attached.
@@ -820,9 +700,6 @@ class Scaffold(entity.BaseEntity):
         if mol.attach_residue is None:
             mol.attach_residue = 1
 
-        if isinstance(sequon, str):
-            sequon = resources.get_sequon(sequon)
-
         # first check if all residues are present in the scaffold and all have a linkage defined to attach the glycans
         # either from provided input or default linkages
         if residues is not None:
@@ -837,19 +714,17 @@ class Scaffold(entity.BaseEntity):
                 _residues.append(res)
                 if must_have_glyco_linkage:
                     _link1 = resources.get_linkage(res.resname + "-glyco")
-                    _link2 = None
-                    if sequon is not None:
-                        _link2 = sequon.get_linkage(res.resname, _topology)
-                    if _link1 is None and _link2 is None:
+                    if _link1 is None:
                         raise ValueError(
-                            f"No glycosylation linkage found for residue '{res.resname}'. Either provide a linkage, provide a sequon with defined linkages, or specify a default using 'add_linkage('{res.resname}-glyco')'."
+                            f"No glycosylation linkage found for residue '{res.resname}'. Either provide a linkage or specify a default using 'add_linkage(linkage(..., id='{res.resname}-glyco'))'."
                         )
             residues = _residues
 
-        elif not sequon and self.attach_residue is None:
+        elif self.attach_residue is None:
             raise ValueError(
-                "Either a list of residues or a sequon pattern must be provided if no attach_residue is defined."
+                "Either a list of residues or an attach_residue must be available to glycosylate anything."
             )
+
         elif self.attach_residue is not None:
             residues = [self.attach_residue]
 
@@ -881,11 +756,7 @@ class Scaffold(entity.BaseEntity):
 
                 # get the linkage (this should work since we already checked for linkages above)
                 if link is None:
-                    _link = None
-                    if sequon is not None:
-                        _link = sequon.get_linkage(residue.resname, _topology)
-                    if not _link:
-                        _link = resources.get_linkage(residue.resname + "-glyco")
+                    _link = resources.get_linkage(residue.resname + "-glyco")
                 else:
                     _link = link
 
@@ -920,76 +791,8 @@ class Scaffold(entity.BaseEntity):
 
             return scaffold
 
-        # ==========================================================
-        #          attach Glycan using a sequon
-        # ==========================================================
-        elif sequon is not None:
-            res_dict = scaffold.find_glycosylation_sites(sequon)
-
-            for chain_id in res_dict:
-                residues = res_dict[chain_id]
-
-                scaffold = scaffold.attach(
-                    mol,
-                    link=link,
-                    residues=residues,
-                    chain=chain,
-                    sequon=sequon,
-                    inplace=True,
-                )
-            return scaffold
-
     # alias
     glycosylate = attach
-
-    def draw_snfg(
-        self, glycans: bool = True, glyco_sites: bool = True, legend: bool = True
-    ) -> visual.ScaffoldViewer2D:
-        """
-        Draw the scaffold with attached glycans and glycosylation sites in a 2D representation.
-
-        Parameters
-        ----------
-        glycans : bool
-            If True, the glycans are drawn
-        glyco_sites : bool
-            If True, the glycosylation sites are drawn
-        legend : bool
-            If True, a legend is drawn
-
-        Returns
-        -------
-        visual.ScaffoldViewer2D
-            A 2D viewer of the scaffold
-        """
-        viewer = visual.ScaffoldViewer2D(self)
-        if glycans:
-            viewer.draw_glycans()
-        if glyco_sites:
-            viewer.draw_glycosylation_sites(draw_legend=legend)
-        return viewer
-
-    draw2d = draw_snfg
-
-    def show_snfg(
-        self, glycans: bool = True, glyco_sites: bool = True, legend: bool = True
-    ):
-        """
-        Show the scaffold with attached glycans and glycosylation sites in a 2D representation.
-
-        Parameters
-        ----------
-        glycans : bool
-            If True, the glycans are drawn
-        glyco_sites : bool
-            If True, the glycosylation sites are drawn
-        legend : bool
-            If True, a legend is drawn
-        """
-        viewer = self.draw_snfg(glycans, glyco_sites, legend)
-        viewer.show()
-
-    show2d = show_snfg
 
     draw3d = Molecule.draw
     show3d = Molecule.show
@@ -1007,7 +810,7 @@ class Scaffold(entity.BaseEntity):
         return self.attach(mol, inplace=True)
 
     def __repr__(self) -> str:
-        return f"Scaffold({self.id})"
+        return f"{self.__class__.__name__}({self.id})"
 
 
 if __name__ == "__main__":
@@ -1022,9 +825,9 @@ if __name__ == "__main__":
         "GalNAc(b1-4)[Fuc(a1-3)]GlcNAc(b1-2)Man(a1-6)[GalNAc(b1-2)Man(a1-3)]Man(b1-4)GlcNAc(b1-4)[Fuc(a1-6)]GlcNAc"
     )
 
-    s.attach(g, sequon="N-linked")
+    s.attach(g, residues=[*s.get_residues("ASN", by="name")[:3]])
     out = s.copy()
-    s.show_snfg()
+    s.show3d(residue_graph=True)
 
     # original_glycosylated = "/Users/noahhk/GIT/glycosylator/support/examples/4tvp.pdb"
     # s = Scaffold.from_pdb(original_glycosylated)

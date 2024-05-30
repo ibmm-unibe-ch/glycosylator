@@ -1,5 +1,58 @@
 """
-The Glycan is the main class of Glycosylator, representing a glycan molecule. It inherits from Biobuild's Molecule and can be used in the same way
+Glycans are represented by the `Glycan` class. The `Glycan` is actually just a derivative of a `buildamol.Molecule` with some additional methods and attributes to handle glycan-specific operations. 
+The `Glycan` class is used to represent glycan molecules and is used to generate glycan molecules from IUPAC strings, graph structures, or to extend/crop glycan molecules to match a given IUPAC string. 
+The `Glycan` class also has methods to draw 2D (SNFG) and 3D representations of the glycan molecule.
+
+Making Glycans from IUPAC strings
+---------------------------------
+The IUPAC nomenclature has been widely established to describe glycans in textual form because their SMILES tend to be very long and cumbersome to work with.
+`Glycans` have a `from_iupac` method that can read an IUPAC string and produce a 3D model for the glycan. Alternatively one may use the top-level `read_iupac` function
+to the same effect, or pass an IUPAC string to the `glycan` function. 
+
+.. code-block:: python
+
+    import glycosylator as gl 
+
+    my_glycan = gl.read_iupac("my new glycan", "Man(b1-4)Glc")
+
+The `Glycan` class also has a `to_iupac` method that can convert a glycan molecule to an IUPAC string.
+
+.. code-block:: python
+
+    iupac_string = my_glycan.to_iupac()
+
+Making Glycans from other inputs
+--------------------------------
+Since the `Glycan` class inherits from the `buildamol.Molecule` it supports many more inputs such as RDKit molecules, SMILES, or PDB files.
+You can either use a dedicated classmethod such as `from_pdb` to get a desired glycan molecule, or trust that the top-level `glycan` function
+can automatically figure out what kind of input you are providing. This function is very versatile and can be provided with a variety of inputs
+which are automatically processed behind the scenes. It is the most convenient way for users to obtain a glycan structure.
+
+.. code-block:: python
+
+    # make a non-standard glucose from SMILES
+    smiles = "NCC1OC(O)C(O)C(O)C1O"
+    nitrogen_glucose = gl.glycan(smiles)
+
+Modifying individual sugars
+---------------------------
+If you do not feel like working with SMILES in order to make small chemical changes on individual sugars or even whole glycans,
+you can use the flexibility of `BuildAMol`, which Glycosylator is built upon, to help you out. Let's say we we want to make a phospho-glucose
+we can do something like this:
+
+.. code-block:: python
+
+    import glycosylator as gl
+    import buildamol as bam
+
+    # get a glucose 
+    glc = gl.glycan("GLC")
+
+    # now use buildamol directly to modify
+    # the molecule
+    bam.phosphorylate(glc, at_atom="C6")
+    glc.remove_atoms("O6", "HO6")
+
 """
 
 from typing import Union
@@ -31,7 +84,7 @@ def glycan(g: Union[str, list], id: str = None, _topology=None):
 
     Returns
     -------
-    molecule : Glycan
+    Glycan
         The created Glycan molecule.
     """
     if isinstance(g, str):
@@ -824,7 +877,7 @@ def _parse_iupac_graph(id, glycan_segments, _topology=None):
 __all__ = [
     "Glycan",
     "read_iupac",
-    "read_iupac",
+    "read_snfg",
     "write_snfg",
     "write_iupac",
     "read_graph",
