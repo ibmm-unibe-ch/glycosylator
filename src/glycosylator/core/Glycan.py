@@ -647,7 +647,7 @@ class Glycan(core.Molecule):
             **kwargs,
         )
 
-    draw_snfg = draw2d
+    snfg = draw2d
 
     def show2d(
         self,
@@ -671,8 +671,6 @@ class Glycan(core.Molecule):
         if kwargs.get("svg", False):
             return ax
         utils.visual.plt.show()
-
-    show_snfg = show2d
 
     def draw3d(
         self, residue_graph: bool = False, atoms: bool = True, line_color: str = "black"

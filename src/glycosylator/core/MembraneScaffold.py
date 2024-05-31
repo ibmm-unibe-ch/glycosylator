@@ -79,6 +79,41 @@ class Membrane(Scaffold):
             _topology=_topology,
         )
 
+    glycosylate = attach
+
+    def py3dmol(
+        self,
+        style: str = "sphere",
+        color: str = "beige",
+        glycan_style: str = "stick",
+        glycan_color: str = None,
+    ):
+        """
+        Visualize the scaffold in a 3D viewer using py3Dmol.
+
+        Parameters
+        ----------
+        style : str
+            The style of the membrane representation. Defaults to "sphere".
+        color : str
+            The color of the membrane representation. Defaults to "beige".
+        glycan_style : str
+            The style of the glycan representation. Defaults to "stick".
+        glycan_color : str
+            The color of the glycan representation. Defaults to None.
+        """
+        tmp = Molecule.empty()
+        tmp.add_residues(
+            *(i for i in self.get_residues() if i not in self.glycan_residues),
+            adjust_seqid=False,
+            _copy=True,
+        )
+        viewer = Scaffold.py3dmol(tmp, style, color)
+        for glycan in self.glycans.values():
+            v = glycan.py3dmol(style=glycan_style, color=glycan_color)
+            viewer.add(v)
+        return viewer
+
 
 _lipid_to_glycan_hydroxyl_link_constraints = [
     constraints.has_neighbor_hist({"C": 1, "O": 1, "H": 2}),

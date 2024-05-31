@@ -794,8 +794,8 @@ class Scaffold(entity.BaseEntity):
     # alias
     glycosylate = attach
 
-    draw3d = Molecule.draw
-    show3d = Molecule.show
+    draw3d = entity.BaseEntity.draw
+    show3d = entity.BaseEntity.show
 
     def __add__(self, mol):
         """

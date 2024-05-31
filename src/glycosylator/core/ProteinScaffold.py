@@ -246,7 +246,9 @@ class Protein(Scaffold):
             )
         return scaffold
 
-    def draw_snfg(
+    glycosylate = attach
+
+    def snfg(
         self, glycans: bool = True, glyco_sites: bool = True, legend: bool = True
     ) -> visual.ScaffoldViewer2D:
         """
@@ -273,27 +275,34 @@ class Protein(Scaffold):
             viewer.draw_glycosylation_sites(draw_legend=legend)
         return viewer
 
-    draw2d = draw_snfg
+    draw2d = snfg
 
-    def show_snfg(
-        self, glycans: bool = True, glyco_sites: bool = True, legend: bool = True
+    def py3dmol(
+        self,
+        style: str = "cartoon",
+        color: str = "spectrum",
+        glycan_style: str = "stick",
+        glycan_color: str = None,
     ):
         """
-        Show the scaffold with attached glycans and glycosylation sites in a 2D representation.
+        Visualize the scaffold in a 3D viewer using py3Dmol.
 
         Parameters
         ----------
-        glycans : bool
-            If True, the glycans are drawn
-        glyco_sites : bool
-            If True, the glycosylation sites are drawn
-        legend : bool
-            If True, a legend is drawn
+        style : str
+            The style of the protein representation. Defaults to "cartoon".
+        color : str
+            The color of the protein representation. Defaults to "spectrum".
+        glycan_style : str
+            The style of the glycan representation. Defaults to "stick".
+        glycan_color : str
+            The color of the glycan representation. Defaults to None.
         """
-        viewer = self.draw_snfg(glycans, glyco_sites, legend)
-        viewer.show()
-
-    show2d = show_snfg
+        viewer = super().py3dmol(style, color)
+        for glycan in self.glycans.values():
+            v = glycan.py3dmol(style=glycan_style, color=glycan_color)
+            viewer.add(v)
+        return viewer
 
 
 if __name__ == "__main__":
