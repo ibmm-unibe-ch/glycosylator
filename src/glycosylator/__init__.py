@@ -11,10 +11,11 @@ import buildamol.structural as structural
 from glycosylator.resources import *
 
 import glycosylator.resources as resources
+from glycosylator.optimizers import *
 import glycosylator.optimizers as optimizers
 
 # from the resources module
 load_glycosylator_compounds()
 
-__version__ = "4.5.6"
+__version__ = "4.5.7"
 __author__ = "Noah Kleinschmidt"

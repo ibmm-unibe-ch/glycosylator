@@ -8281,6 +8281,44 @@
                 ]
             },
             "ics": []
+        },
+        {
+            "version": "4.5.6",
+            "id": "CER-glyco",
+            "description": "[automatically generated] CER glycosidic linkage",
+            "bond": {
+                "target": "O1",
+                "source": "C1"
+            },
+            "to_delete": {
+                "target": [
+                    "HO1"
+                ],
+                "source": [
+                    "O1",
+                    "HO1"
+                ]
+            },
+            "ics": []
+        },
+        {
+            "version": "4.5.6",
+            "id": "SPL-glyco",
+            "description": "[automatically generated] SPL glycosidic linkage",
+            "bond": {
+                "target": "O1",
+                "source": "C1"
+            },
+            "to_delete": {
+                "target": [
+                    "HO1"
+                ],
+                "source": [
+                    "O1",
+                    "HO1"
+                ]
+            },
+            "ics": []
         }
     ]
 }

@@ -9,7 +9,7 @@
 project = "glycosylator"
 copyright = "2023, Noah Kleinschmidt"
 author = "Noah Kleinschmidt, Boris Gusev, and Thomas Lemmin"
-release = "4.5.6"
+release = "4.5.7"
 
 
 import plotly.io as pio
@@ -29,6 +29,7 @@ extensions = [
     "sphinx_design",
     "nbsphinx",
     "sphinxmermaid",
+    "sphinx_gallery.load_style",
     # "sphinx_panels",
     # "sphinx_gallery.gen_gallery",
 ]
