@@ -79,14 +79,16 @@ This code will automatically add the glycan to all ASN residues in the list `res
 
 from collections import defaultdict
 from typing import Union
-
+import warnings
+import numpy as np
+from scipy.spatial.distance import cdist
 
 from glycosylator.core.Glycan import Glycan
 import glycosylator.resources as resources
-import glycosylator.utils.iupac as iupac
 
 from buildamol.core import Molecule, Linkage, molecule
 import buildamol.core.entity as entity
+import buildamol.utils.defaults as defaults
 import buildamol.core.base_classes as base_classes
 import buildamol.utils.auxiliary as aux
 import buildamol.structural as structural
@@ -177,6 +179,7 @@ class Scaffold(entity.BaseEntity):
         self._excluded_residues = set()
 
         self._attached_glycans = defaultdict(dict)
+        self._glycan_chain_mapping = {}
         self._internal_residues = set()
         self._internal_bonds = set()
 
@@ -283,25 +286,53 @@ class Scaffold(entity.BaseEntity):
             for atom in res.get_atoms():
                 new._AtomGraph.remove_node(atom)
 
-        new._attached_glycans = defaultdict(dict)
-        for root, glycan in self._attached_glycans.items():
-            new_glycan = Glycan.empty(glycan.id)
+        for root, glycan in new._attached_glycans.items():
+            _chain = new._glycan_chain_mapping[glycan]
+
+            for chain in glycan.get_chains():
+                glycan._model.child_dict.pop(chain.get_id(), None)
+                chain._new_id()
+                glycan._model.child_dict[chain.get_id()] = chain
+
             for res in glycan.get_residues():
-                _res = new.get_residue(res.serial_number)
-                new_glycan._chain.add(_res)
-                new_glycan._AtomGraph.add_nodes_from(_res.get_atoms())
-                _res.set_parent(new.get_chain(res.parent.id))
+                chain = res.parent
+                chain.child_dict.pop(res.get_id(), None)
+                _chain.child_dict.pop(res.get_id(), None)
+                res._new_id()
+                _chain.child_dict[res.get_id()] = res
+                chain.child_dict[res.get_id()] = res
 
-            new_glycan.set_root(new.get_atom(glycan.root_atom.serial_number))
+            for atom in glycan.get_atoms():
+                res = atom.parent
+                res.child_dict.pop(atom.get_id(), None)
+                atom._new_id()
+                res.child_dict[atom.get_id()] = atom
 
-            new_glycan._add_bonds(
-                *(
-                    (new.get_atom(b[0].serial_number), new.get_atom(b[1].serial_number))
-                    for b in glycan.bonds
-                )
+            glycan._AtomGraph.clear()
+            bonds = glycan.get_bonds()
+            for bond in bonds:
+                atom1, atom2 = bond
+                order = bond.order
+                glycan._AtomGraph.add_edge(atom1, atom2, order=order, bond_obj=bond)
+                new._AtomGraph.add_edge(atom1, atom2, order=order, bond_obj=bond)
+            new._AtomGraph.add_edge(
+                root,
+                glycan.root_atom,
+                order=1,
+                bond_obj=new.get_bond(root, glycan.root_atom),
             )
-            new._attached_glycans[new.get_atom(root.serial_number)] = new_glycan
+
         return new
+
+    def reindex(
+        self, start_chainid: int = 1, start_resid: int = 1, start_atomid: int = 1
+    ):
+        super().reindex(start_chainid, start_resid, start_atomid)
+        count = self.count_atoms() + 1
+        for glycan in self._attached_glycans.values():
+            glycan.reindex(start_atomid=count)
+            count += glycan.count_atoms()
+        return self
 
     def exclude_chain(self, chain: Union[str, base_classes.Chain]):
         """
@@ -323,6 +354,20 @@ class Scaffold(entity.BaseEntity):
         else:
             raise ValueError(f"Chain '{chain}' not found")
 
+    def exclude_chains(self, *chains: Union[str, base_classes.Chain]):
+        """
+        Exclude multiple chains from the scaffold from letting any
+        Glycans attach to any of its residues. This will also
+        prevent any sequon matches to be found by the `find` method.
+
+        Parameters
+        ----------
+        chains : str or Chain
+            The chains to exclude
+        """
+        for chain in chains:
+            self.exclude_chain(chain)
+
     def include_chain(self, chain: Union[str, base_classes.Chain]):
         """
         Include a previously excluded chain in the scaffold again to let Glycans
@@ -343,6 +388,20 @@ class Scaffold(entity.BaseEntity):
         elif _chain in self._excluded_chains:
             self._excluded_chains.remove(_chain)
 
+    def include_chains(self, *chains: Union[str, base_classes.Chain]):
+        """
+        Include multiple previously excluded chains in the scaffold again to let Glycans
+        attach to their residues. This will also
+        allow sequon matches to be found by the `find` method.
+
+        Parameters
+        ----------
+        chains : str or Chain
+            The chains to include
+        """
+        for chain in chains:
+            self.include_chain(chain)
+
     def exclude_residue(self, residue: Union[int, base_classes.Residue]):
         """
         Exclude a residue of the scaffold from modification
@@ -359,6 +418,19 @@ class Scaffold(entity.BaseEntity):
         else:
             raise ValueError(f"Residue '{residue}' not found")
 
+    def exclude_residues(self, *residues: Union[int, base_classes.Residue]):
+        """
+        Exclude multiple residues of the scaffold from modification
+        by a Glycan
+
+        Parameters
+        ----------
+        residues : int or Residue
+            The residues to exclude
+        """
+        for residue in residues:
+            self.exclude_residue(residue)
+
     def include_residue(self, residue: Union[int, base_classes.Residue]):
         """
         Include a previously excluded residue of the scaffold again for modification
@@ -374,6 +446,19 @@ class Scaffold(entity.BaseEntity):
             raise ValueError(f"Residue '{residue}' not found")
         elif res in self._excluded_residues:
             self._excluded_residues.remove(res)
+
+    def include_residues(self, *residues: Union[int, base_classes.Residue]):
+        """
+        Include multiple previously excluded residues of the scaffold again for modification
+        by a Glycan
+
+        Parameters
+        ----------
+        residues : int or Residue
+            The residues to include
+        """
+        for residue in residues:
+            self.include_residue(residue)
 
     def is_excluded_chain(self, chain: Union[str, base_classes.Chain]) -> bool:
         """
@@ -416,125 +501,323 @@ class Scaffold(entity.BaseEntity):
             raise ValueError(f"Residue '{residue}' not found")
         return res in self._excluded_residues
 
-    def find_glycans(self, infer_bonds: bool = False, autolabel: bool = False) -> dict:
+    def get_glycan(self, anchor_or_index) -> Glycan:
         """
-        Find all glycan residues that are present in the scaffold structure.
+        Get a glycan that is attached to the scaffold
 
         Parameters
         ----------
-        infer_bonds : bool
-            If True, all atomic bonds are inferred for the glycans. This is useful if not all atomic
-            bonds should be inferred for an entire scaffold structure, but only for the glycans.
-        autolabel : bool
-            If True, the atoms within the glycans are automatically labelled according to the
-            IUPAC naming scheme. This requires that bonds are available for all atoms in the glycans.
-            If you are unsure, also set `infer_bonds` to True. Note however, that that due to aberrant
-            bonding patterns in larger glycans the automatic labelling might not always work as expected!
+        anchor_or_index : int or str or Atom or Residue
+            This can be either the anchor atom to which the glycan attached
+            or the parent residue of the anchor atom. Alternatively it can be an index
+            from the glycan id (this requires that the glycan id string ends in this number; a string is also acceptible).
 
         Returns
         -------
-        dict
-            A dictionary of all glycans that are present in the scaffold structure
+        Glycan
+            The glycan that is attached to the scaffold
         """
-        residue_connections = self.get_residue_connections(triplet=False)
-        if len(residue_connections) == 0:
-            residue_connections = self.infer_residue_connections(triplet=False)
-        residue_connections = [
-            (i, i.parent, j, j.parent) for i, j in residue_connections
+        if isinstance(anchor_or_index, (int, str)):
+            for root, glycan in self._attached_glycans.items():
+                if glycan.id.endswith(str(anchor_or_index)):
+                    return glycan
+            return None
+        elif isinstance(anchor_or_index, base_classes.Atom):
+            return self._attached_glycans.get(anchor_or_index, None)
+        elif isinstance(anchor_or_index, base_classes.Residue):
+            for root, glycan in self._attached_glycans.items():
+                if root.parent == anchor_or_index:
+                    return glycan
+            return None
+
+    def extend_glycan(self, glycan: Glycan, new_iupac_string: str):
+        """
+        Extend a glycan by adding new residues onto it based on an IUPAC string.
+        This method will forward to `Glycan.extend_to`.
+
+        Parameters
+        ----------
+        glycan : Glycan
+            The glycan to extend
+        new_iupac_string : str
+            The IUPAC string of the new residue to add
+        """
+        # first identify the glycan
+        for root, g in self._attached_glycans.items():
+            if g == glycan:
+                break
+        else:
+            raise ValueError(f"Glycan '{glycan}' not found")
+
+        glycan = g
+        glycan.extend_to(new_iupac_string)
+
+        adx = self.count_atoms()
+        for atom in glycan.get_atoms():
+            atom.serial_number = adx
+            adx += 1
+
+        # now make sure all the residues and bonds are assosciated with the scaffold
+        chain = self._glycan_chain_mapping[glycan]
+        for res in glycan.get_residues():
+            if chain.child_dict.get(res.get_id(), None):
+                continue
+            chain.child_list.append(res)
+            chain.child_dict[res.get_id()] = res
+        # self.add_residues(
+        #     *(i for i in glycan.get_residues() if i not in chain.child_list),
+        #     adjust_seqid=False,
+        #     chain=chain,
+        # )
+        self._AtomGraph.migrate_bonds(glycan._AtomGraph)
+        self._set_bonds(*glycan.get_bonds())
+
+    def find_glycans(
+        self, chain: str = "same", infer_bonds: bool = False, autolabel: bool = False
+    ):
+        """
+        Find existing glycans in the scaffold structure.
+
+        Parameters
+        ----------
+        chain : str
+            The chain to which the glycans should be added. If 'same', the glycans are added to the
+            same chain as the scaffold residue onto which they are attached. If 'new' all glycans are added
+            to a single new chain. If 'each', each glycan is added to a new chain of it's own.
+        infer_bonds : bool
+            If True, all atomic bonds are inferred for the glycans. This is useful if you do not want to infer the bonds for the entire structure and only need the data for the glycans.
+        autolabel : bool
+            Whether to autolabel the atoms in the glycans according to the IUPAC naming scheme. This requires that all bonds are available for the glycans. If you are unsure, also set `infer_bonds` to True. Note however, that due to aberrant bonding patterns in larger glycans the automatic labelling might not always work as expected!
+        """
+        ref_residues = resources.reference_glycan_residue_ids()
+        _glycan_residues = [r for r in self.get_residues() if r.resname in ref_residues]
+        glycan_residues = np.empty(len(_glycan_residues), dtype=object)
+        glycan_residues[:] = _glycan_residues
+        glycan_residue_centers = np.array([r.coord for r in _glycan_residues])
+
+        # due to the automatic unpacking of numpy this should be fine
+        # (if not for some reason, change to the version below...)
+        glycan_residue_atoms = np.array(_glycan_residues, dtype=object)
+        # glycan_residue_atoms = np.array(
+        #     [list(r.child_list) for r in glycan_residues], dtype=object
+        # )
+
+        glycan_residue_atom_coords = [
+            np.array([a.coord for a in atoms]) for atoms in glycan_residue_atoms
         ]
 
-        ref_residues = resources.reference_glycan_residue_ids()
-        glycan_residues = [r for r in self.get_residues() if r.resname in ref_residues]
+        yet_to_add = set(glycan_residues)
+
+        scaffold_residues = np.array(
+            list((set(self.get_residues()).difference(yet_to_add))), dtype=object
+        )
+        scaffold_residue_centers = np.array([r.coord for r in scaffold_residues])
 
         glycans = {}
+        glycan_chain_map = {}
         gdx = 1
-        yet_to_add = set(glycan_residues)
-        for a, res_a, b, res_b in residue_connections:
-            # first find find all glycan "starts" by searching for residues
-            # that are attached to a non-glycan residue
-            if res_a not in glycan_residues and res_b in glycan_residues:
-                glycan = Glycan.empty("glycan" + str(gdx))
-                glycan.add_residues(res_b, adjust_seqid=False)
+        min_length, max_length = (
+            defaults.DEFAULT_BOND_LENGTH / 2,
+            defaults.DEFAULT_BOND_LENGTH * 1.2,
+        )
 
-                glycan._add_bonds(*self.get_bonds(res_b))
-                glycan.set_root(b)
-                glycans[a] = glycan
-                yet_to_add.remove(res_b)
-                gdx += 1
+        residue_mapping = {}
+
+        # first parse through all glycan_residues to find the ones
+        # that are attached directly to the scaffold
+        for idx, glycan_residue in enumerate(glycan_residues):
+            if not glycan_residue in yet_to_add:
                 continue
 
-            # then add all residues that are attached to a glycan residue
-            # and are glycan residues themselves
-            elif res_a in glycan_residues and res_b not in glycan_residues:
-                glycan = Glycan.empty("glycan" + str(gdx))
-                glycan.add_residues(res_a, adjust_seqid=False)
-                glycan._add_bonds(*self.get_bonds(res_a))
-                glycan.set_root(a)
-                glycans[b] = glycan
-                yet_to_add.remove(res_a)
-                gdx += 1
+            # get close-by residues
+            mask = (
+                np.linalg.norm(scaffold_residue_centers - glycan_residue.coord, axis=1)
+                < 10
+            )
+            if not np.any(mask):
                 continue
 
-        # then add all remaining residues to the glycans
-        _counter = 0
-        while len(yet_to_add) > 0 or _counter > 200:
-            for a, res_a, b, res_b in residue_connections:
-                if res_a in yet_to_add and res_b in yet_to_add:
-                    continue
-                elif res_a not in glycan_residues and res_b in glycan_residues:
-                    continue
-                for glycan in glycans.values():
-                    if (
-                        res_a in glycan.get_residues()
-                        and res_b not in glycan.get_residues()
-                    ):
-                        glycan.add_residues(res_b, adjust_seqid=False)
-                        glycan._add_bonds(*self.get_bonds(res_b))
-                        glycan._add_bond(a, b)
-                        yet_to_add.discard(res_b)
-                        break
-                    elif (
-                        res_b in glycan.get_residues()
-                        and res_a not in glycan.get_residues()
-                    ):
-                        glycan.add_residues(res_a, adjust_seqid=False)
-                        glycan._add_bonds(*self.get_bonds(res_a))
-                        glycan._add_bond(a, b)
-                        yet_to_add.discard(res_a)
-                        break
-            _counter += 1
+            close_residues = scaffold_residues[mask]
+            close_by_atoms = list((i for r in close_residues for i in r.child_list))
+            close_by_atom_coords = np.array([a.coord for a in close_by_atoms])
 
-        glycans.update(self._attached_glycans)
+            residue_atom_coords = glycan_residue_atom_coords[idx]
+
+            # find atoms that would be in the right distance range to be bonding
+            dists = cdist(residue_atom_coords, close_by_atom_coords)
+            _match_mask = (dists < max_length) & (dists > min_length)
+            if not np.any(_match_mask):
+                continue
+
+            # now get the bonding atoms
+            _match_indices = np.where(_match_mask)
+            incoming_root = glycan_residue.child_list[_match_indices[0][0]]
+            scaffold_root = close_by_atoms[_match_indices[1][0]]
+
+            # create the glycan
+            glycan_residue.parent.detach_child(glycan_residue.get_id())
+            glycan = Glycan.empty("glycan" + str(gdx))
+            glycan.add_residues(glycan_residue, adjust_seqid=False)
+            glycan.set_root(incoming_root)
+            glycans[scaffold_root] = glycan
+            residue_mapping[glycan_residue] = glycan
+            yet_to_add.remove(glycan_residue)
+            gdx += 1
+
+        # then parse through all glycans to find the ones that are attached
+        # to other glycan residues
+        if len(yet_to_add) > 0:
+            runs = 0
+            ref = len(yet_to_add)
+            preemptive_mapping = {}
+            while len(yet_to_add) > 0:
+                glycan_residue = yet_to_add.pop()
+
+                # get close-by residues
+                d = np.linalg.norm(
+                    glycan_residue_centers - glycan_residue.coord, axis=1
+                )
+                mask = (0 < d) & (d < 10)
+                if not np.any(mask):
+                    yet_to_add.add(glycan_residue)
+                    runs += 1
+                    if runs > ref * 3:
+                        raise RuntimeError(
+                            f"Cannot infer glycan association for at least one of {yet_to_add}"
+                        )
+                    continue
+                close_residues = glycan_residues[mask]
+                close_by_atoms = list((i for r in close_residues for i in r.child_list))
+                close_by_atom_coords = np.array([a.coord for a in close_by_atoms])
+
+                residue_atoms = glycan_residue.child_list
+                residue_atom_coords = np.array([a.coord for a in residue_atoms])
+
+                # find atoms that would be in the right distance range to be bonding
+                dists = cdist(residue_atom_coords, close_by_atom_coords)
+                _match_mask = (dists < max_length) & (dists > min_length)
+
+                if not np.any(_match_mask):
+                    yet_to_add.add(glycan_residue)
+                    runs += 1
+                    if runs > ref * 3:
+                        raise RuntimeError(
+                            f"Cannot infer glycan association for at least one of {yet_to_add}"
+                        )
+                    continue
+
+                # now get the bonding atoms
+                _match_indices = np.where(_match_mask)
+                incoming_root = residue_atoms[_match_indices[0][0]]
+                close_by_root = close_by_atoms[_match_indices[1][0]]
+                close_by_residue = close_by_root.parent
+                glycan = residue_mapping.get(close_by_residue, None)
+                if glycan is None:
+                    preemptive_mapping[glycan_residue] = (
+                        close_by_residue,
+                        incoming_root,
+                        close_by_root,
+                    )
+                    continue
+
+                glycan.add_residues(glycan_residue, adjust_seqid=False)
+                glycan._set_bond(close_by_root, incoming_root)
+                self._set_bond(close_by_root, incoming_root)
+                residue_mapping[glycan_residue] = glycan
+                yet_to_add.discard(glycan_residue)
+
+            # now add any residues which could not be added directly
+            # to the glycans
+            for glycan_residue, (
+                close_by_residue,
+                glycan_root,
+                close_by_root,
+            ) in preemptive_mapping.items():
+                glycan = residue_mapping.get(close_by_residue, None)
+                if glycan is None:
+                    warnings.warn(
+                        RuntimeWarning(
+                            "[weird residue] No close-by glycan found for: "
+                            + str(close_by_residue)
+                            + " @ "
+                            + str(close_by_residue.full_id)
+                        )
+                    )
+                    continue
+
+                glycan.add_residues(glycan_residue, adjust_seqid=False)
+                glycan._set_bond(close_by_root, glycan_root)
+                self._set_bond(close_by_root, glycan_root)
+                residue_mapping[glycan_residue] = glycan
+                yet_to_add.discard(glycan_residue)
+
+        # postprocessing
+        if chain == "new":
+            _chain = base_classes.Chain("")
+            self.add_chains(_chain)
 
         for root, glycan in glycans.items():
+
+            for res in glycan.get_residues():
+                glycan._set_bonds(*self.get_bonds(res))
+
             if infer_bonds:
                 glycan.infer_bonds(restrict_residues=True)
             if autolabel:
                 glycan.autolabel()
-            if infer_bonds:
-                glycan.infer_residue_connections(triplet=False)
 
-            # make sure to fill the glycan trees
-            for bond in glycan.get_residue_connections(triplet=False, direct_by="root"):
-                a, b = bond
-                res_a, res_b = a.parent, b.parent
-                if res_a not in glycan_residues or res_b not in glycan_residues:
-                    continue
-                pass
-                id = iupac.make_link_id(bond)
-                _link = Linkage(
-                    id=id, description="<auto-generated from scaffold: labels only>"
-                )
-                _link.atom1 = a
-                _link.atom2 = b
-                glycan._glycan_tree.add(res_a, res_b, _link)
+            glycan.infer_glycan_tree()
+            self._set_bond(root, glycan.root_atom)
 
-            # make sure that all glycan residues still officially belong to the scaffold
+            if chain == "each":
+                _chain = base_classes.Chain("")
+                self.add_chains(_chain)
+            elif chain == "same":
+                _chain = root.parent.parent
+
+            glycan.rename_chain(glycan._working_chain, _chain.id)
+
             for res in glycan.get_residues():
-                res.set_parent(root.parent.parent)
+                if _chain.child_dict.get(res.get_id(), None):
+                    continue
+                _chain.child_list.append(res)
+                _chain.child_dict[res.get_id()] = res
 
-        self._attached_glycans = glycans
+            glycan_chain_map[glycan] = _chain
+            self._AtomGraph.migrate_bonds(glycan._AtomGraph)
+            self._set_bonds(*glycan.get_bonds())
+
+        self._attached_glycans.update(glycans)
+        self._glycan_chain_mapping.update(glycan_chain_map)
         return glycans
+
+    def add_glycan(self, glycan: "Glycan", root: Union[int, base_classes.Atom]):
+        """
+        Manually add a glycan to the scaffold structure. This is useful if you have a scaffold
+        where you know which glycans are attached to which root atoms, so you do not have to
+        search for them, which may take some time, depending on the size of the scaffold.
+
+        Note
+        ----
+        This method simply adds an entry to the glycan registry of the scaffold, it does **not**
+        attach any external glycans to the scaffold structure! Use the `attach` or `glycosylate` methods
+        for doing so!
+
+        Parameters
+        ----------
+        glycan : Glycan
+            The glycan to add. All residues of the glycan should be part of the scaffold structure.
+
+        root : int or Atom
+            The root atom of the glycan. This is the atom to which the glycan is attached.
+        """
+        root = self.get_atom(root)
+        if root is None:
+            raise ValueError(f"Root Atom '{root}' not found")
+        if not glycan.root_atom:
+            raise ValueError("Glycan has no root atom defined")
+
+        self._attached_glycans[root] = glycan
 
     def count_glycans(self) -> int:
         """
@@ -663,7 +946,7 @@ class Scaffold(entity.BaseEntity):
         mol: "Glycan",
         link: "Linkage" = None,
         residues: list = None,
-        chain=None,
+        chain="same",
         inplace: bool = True,
         _topology=None,
     ):
@@ -679,7 +962,7 @@ class Scaffold(entity.BaseEntity):
         residues : list
             A list of residues at which to attach copies of the glycan. This is an alternative to using a sequon.
         chain : str
-            The chain to which the glycan should be attached. If None, the glycan is attached to the same chain as the respective scaffold residue.
+            The chain to which the glycan should be attached. If "same", the glycan is attached to the same chain as the respective scaffold residue.
             This can be set to "new" to create a new chain for all incoming glycans, or "each" to create a new chain for each glycan that is attached.
         inplace : bool
             Whether to modify the scaffold inplace or copy it before attaching the glycan(s) at the specified residue(s).
@@ -735,6 +1018,8 @@ class Scaffold(entity.BaseEntity):
         else:
             scaffold = self
 
+        adx = self.count_atoms()
+
         # ==========================================================
         #          attach Glycan to multiple residues
         # ==========================================================
@@ -763,7 +1048,7 @@ class Scaffold(entity.BaseEntity):
                 if each_new_chain:
                     _chain = base_classes.Chain(chr(65 + len(scaffold.chains)))
                     scaffold._model.add(_chain)
-                elif chain is None:
+                elif chain == "same" or chain is None:
                     _chain = residue.parent
 
                 # copy the Glycan to avoid changing the original
@@ -781,13 +1066,21 @@ class Scaffold(entity.BaseEntity):
                     _mol.attach_residue,
                 )
 
-                scaffold.add_residues(*_mol.get_residues(), chain=_chain)
+                # new policy for adding residues
+                for res in _mol.get_residues():
+                    _chain.child_list.append(res)
+                    _chain.child_dict[res.get_id()] = res
+                    for atom in res.child_list:
+                        atom.serial_number = adx
+                        adx += 1
+                # scaffold.add_residues(*_mol.get_residues(), chain=_chain)
                 scaffold._bonds.extend(_mol.get_bonds())
                 scaffold._AtomGraph.migrate_bonds(_mol._AtomGraph)
                 scaffold._add_bond(s._anchors[0], s._anchors[1])
 
                 root = scaffold.get_atom(s._anchors[0], residue=residue)
                 scaffold._attached_glycans[root] = _mol
+                scaffold._glycan_chain_mapping[_mol] = _chain
 
             return scaffold
 
@@ -816,18 +1109,28 @@ class Scaffold(entity.BaseEntity):
 if __name__ == "__main__":
     import glycosylator as gl
 
-    s = Scaffold.from_pdb(
-        "/Users/noahhk/GIT/glycosylator/support/examples/4tvp.prot.pdb"
-    )
-    s.reindex()
-    s.infer_bonds()
-    g = gl.glycan(
-        "GalNAc(b1-4)[Fuc(a1-3)]GlcNAc(b1-2)Man(a1-6)[GalNAc(b1-2)Man(a1-3)]Man(b1-4)GlcNAc(b1-4)[Fuc(a1-6)]GlcNAc"
-    )
+    s = Scaffold.from_pdb("/Users/noahhk/GIT/glycosylator/__projects__/SOLF/solf.pdb")
+    g = s.find_glycans(infer_bonds=True)
+    assert len(g) > 0
+    o = s.copy()
+    o.reindex()
+    o.to_pdb("o.pdb")
+    # g = next(iter(g.values()))
+    # s.extend_glycan(g, "ManNAc(b1-4)[Fuc(a1-6)]GlcNAc(b1-")
+    # s.snfg().show()
 
-    s.attach(g, residues=[*s.get_residues("ASN", by="name")[:3]])
-    out = s.copy()
-    s.show3d(residue_graph=True)
+    # s = Scaffold.from_pdb(
+    #     "/Users/noahhk/GIT/glycosylator/support/examples/4tvp.prot.pdb"
+    # )
+    # s.reindex()
+    # s.infer_bonds()
+    # g = gl.glycan(
+    #     "GalNAc(b1-4)[Fuc(a1-3)]GlcNAc(b1-2)Man(a1-6)[GalNAc(b1-2)Man(a1-3)]Man(b1-4)GlcNAc(b1-4)[Fuc(a1-6)]GlcNAc"
+    # )
+
+    # s.attach(g, residues=[*s.get_residues("ASN", by="name")[:3]])
+    # out = s.copy()
+    # s.show3d(residue_graph=True)
 
     # original_glycosylated = "/Users/noahhk/GIT/glycosylator/support/examples/4tvp.pdb"
     # s = Scaffold.from_pdb(original_glycosylated)
