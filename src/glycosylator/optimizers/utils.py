@@ -56,7 +56,7 @@ def make_scaffold_graph(
 
         if len(glycan.residues) > 1:
             g = glycan.get_residue_graph()
-            g.make_detailed()
+            g.make_detailed(include_clashes=False)
         else:
             continue
 
@@ -88,96 +88,29 @@ def make_scaffold_graph(
             _rotatable_edges, len(scaffold.glycans), slice
         )
 
-    # if only_clashing_glycans:
-    #     glycan_residues = {
-    #         glycan: [res for res in glycan.get_residues()]
-    #         for glycan in scaffold.glycans.values()
-    #     }
-    #     _residues_flat = set(
-    #         [res for glycan in glycan_residues.values() for res in glycan]
-    #     )
-    #     _added_glycans = set()
-    #     clashes = scaffold.find_clashes()
-    #     if only_clashes_between_glycans:
-    #         _check = (
-    #             lambda a, b: a.parent in _residues_flat and b.parent in _residues_flat
-    #         )
-    #     else:
-    #         _check = (
-    #             lambda a, b: a.parent in _residues_flat or b.parent in _residues_flat
-    #         )
-
-    #         for clash in clashes:
-    #             if _check(*clash):
-    #                 for i in clash:
-    #                     glycan = next(
-    #                         (
-    #                             glycan
-    #                             for glycan, residues in glycan_residues.items()
-    #                             if i.parent in residues
-    #                         ),
-    #                         None,
-    #                     )
-
-    #                     if glycan is None or glycan in _added_glycans:
-    #                         continue
-
-    #                     G.add_edge(glycan.root_residue, glycan.root_atom)
-    #                     if include_root:
-    #                         scaffold_root = next(
-    #                             atom
-    #                             for atom, _glycan in scaffold.glycans.items()
-    #                             if glycan == _glycan
-    #                         )
-    #                         G.add_edge(scaffold_root, glycan.root_atom)
-    #                         G.add_edge(scaffold_root.parent, scaffold_root)
-    #                         _rotatable_edges.append((scaffold_root, glycan.root_atom))
-
-    #                     if slice > 0:
-    #                         _rotatable_edges.extend(
-    #                             _slice_residue_connections(glycan, slice)
-    #                         )
-    #                     else:
-    #                         _rotatable_edges.extend(
-    #                             glycan.get_residue_connections(direct_by="root")
-    #                         )
-
-    #                     _added_glycans.add(glycan)
-
-    # else:
-    #     for glycan in scaffold.glycans.values():
-    #         if slice > 0:
-    #             _rotatable_edges.extend(_slice_residue_connections(glycan, slice))
-    #         else:
-    #             _rotatable_edges.extend(
-    #                 glycan.get_residue_connections(direct_by="root")
-    #             )
-
-    # G.add_atomic_bonds(_rotatable_edges)
-
     return G, _rotatable_edges
 
 
-def _slice_residue_connections(glycan, slice: int):
-    """
-    Slice a number of residue connections from the glycan.
+# def _slice_residue_connections(glycan, slice: int):
+#     """
+#     Slice a number of residue connections from the glycan.
 
-    Parameters
-    ----------
-    glycan: Glycan
-        The glycan to slice
-    slice: int
-        The number of residue connections to slice from the glycan
+#     Parameters
+#     ----------
+#     glycan: Glycan
+#         The glycan to slice
+#     slice: int
+#         The number of residue connections to slice from the glycan
 
-    Returns
-    -------
-    list
-        The sliced residue connections
-    """
-    bonds = glycan.get_residue_connections(direct_by="root")
-    if slice > 1:
-        bonds = [bonds[i] for i in range(1, len(bonds), len(bonds) // slice)]
-    return bonds
+#     Returns
+#     -------
+#     list
+#         The sliced residue connections
+#     """
+#     bonds = glycan.get_residue_connections(direct_by="root")
+#     if slice > 1:
+#         bonds = [bonds[i] for i in range(1, len(bonds), len(bonds) // slice)]
+#     return bonds
 
 
 if __name__ == "__main__":
