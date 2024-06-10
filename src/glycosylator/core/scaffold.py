@@ -889,6 +889,32 @@ class Scaffold(entity.BaseEntity):
         self._glycan_chain_mapping[glycan] = chain
         glycan.rename_chain(glycan._working_chain, chain.id)
         glycan._scaffold = self
+        return self
+
+    def remove_glycan(self, glycan: "Glycan"):
+        """
+        Remove a glycan from the scaffold structure
+
+        Parameters
+        ----------
+        glycan : Glycan
+            The glycan to remove
+        """
+        if glycan not in self._attached_glycans.values():
+            raise ValueError(f"Glycan '{glycan}' not found")
+        chain = self._glycan_chain_mapping[glycan]
+        for res in glycan.get_residues():
+            chain.detach_child(res.get_id())
+        root = next(k for k, v in self._attached_glycans.items() if v == glycan)
+        self._attached_glycans.pop(root)
+        self._glycan_chain_mapping.pop(glycan)
+        self._remove_bond(root, glycan.root_atom)
+        glycan._scaffold = None
+
+        # re add a hydrogen to the root atom
+        hydrogenator = structural.Hydrogenator()
+        hydrogenator.add_hydrogens(root, self)
+        return self
 
     def count_glycans(self) -> int:
         """
@@ -1152,7 +1178,8 @@ class Scaffold(entity.BaseEntity):
                 root = scaffold.get_atom(s._anchors[0], residue=residue)
                 scaffold._attached_glycans[root] = _mol
                 scaffold._glycan_chain_mapping[_mol] = _chain
-                if hasattr(_mol, "_scaffold"): _mol._scaffold = self
+                if hasattr(_mol, "_scaffold"):
+                    _mol._scaffold = self
             return scaffold
 
     # alias
