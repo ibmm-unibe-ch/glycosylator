@@ -519,15 +519,21 @@ def make_iupac_string(glycan, add_terminal_conformation: bool = True):
         The IUPAC string for the glycan molecule.
     """
     if len(glycan._glycan_tree._segments) == 0 and len(glycan.residues) > 1:
+        glycan.infer_glycan_tree()
+    if len(glycan._glycan_tree._segments) == 0 and len(glycan.residues) > 1:
         raise ValueError(
-            "This glycan does not have any entries in its glycan tree. Make sure it was generated using glycosylator! Currently, only glycans generated using glycosylator are supported."
+            "This glycan does not have any entries in its glycan tree and they couldn't be inferred. Make sure it was generated using glycosylator! Currently, only glycans generated using glycosylator are supported."
         )
     elif len(glycan.residues) == 1:
         _id = glycan.residues[0].resname
         string = names.id_to_name(_id)
         if add_terminal_conformation:
-            prefix = "b" if names.is_beta(_id) else "a"
-            string += f"({prefix}1-"
+            if names.is_beta(_id):
+                prefix = "b"
+                string = string[2:] + f"({prefix}1-"
+            else:
+                prefix = "a"
+                string += f"({prefix}1-"
         return string
     return __default_IUPACStringMaker__.write_string(glycan, add_terminal_conformation)
 
