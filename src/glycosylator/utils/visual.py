@@ -5,6 +5,7 @@ Visualizations for glycosylator
 import networkx as nx
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
+
 # from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 # from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 
@@ -355,9 +356,18 @@ class ScaffoldViewer2D:
         self.scaffold = scaffold
         self._chain_lengths = {
             chain: sum(1 for i in seq if i != "X")
-            for chain, seq in scaffold.seq.items()
+            for chain, seq in scaffold.get_sequence().items()
             if chain not in scaffold._excluded_chains
         }
+        for i in scaffold._excluded_chains:
+            self._chain_lengths[i] = 0
+        _remove = []
+        for chain, length in self._chain_lengths.items():
+            if length == 0:
+                _remove.append(chain)
+        for i in _remove:
+            del self._chain_lengths[i]
+
         self.fig, self.subplots = plt.subplots(len(self._chain_lengths), 1)
         if len(self._chain_lengths) == 1:
             self.subplots = [self.subplots]
@@ -448,9 +458,10 @@ class ScaffoldViewer2D:
             v.disable_glycowork()
             v.canvas.tree_layout()
 
-            scale = scalar * (self.height / v.canvas.ylim[1])
+            _y = max(1, v.canvas.ylim[1])
+            scale = scalar * (self.height / _y)
             v.canvas.scale(scale)
-            scales[_chain] = max(scales[_chain], v.canvas.ylim[1])
+            scales[_chain] = max(scales[_chain], _y)
 
             self._switch_direction(v, drawn, chain, rdx)
             v._native_draw_no_layout(ax, draw_edge_labels=False, adjust_axes=False)
@@ -486,7 +497,9 @@ class ScaffoldViewer2D:
             (n_linked, o_linked), (n_linked_color, o_linked_color)
         ):
             for chain, residues in _dict.items():
-                ax = self._subplot_dict[chain]
+                ax = self._subplot_dict.get(chain, None)
+                if not ax:
+                    continue
                 for residue in residues:
                     _, idx = self.scaffold.index(residue)
                     rect = Rectangle(
