@@ -350,7 +350,7 @@ class ScaffoldViewer2D:
         self,
         scaffold,
         bar_color: str = "xkcd:sandy",
-        bar_height: int = 10,
+        bar_height: int = 6,
         height: float = 20,
     ):
         self.scaffold = scaffold
@@ -443,6 +443,7 @@ class ScaffoldViewer2D:
         scalar : float
             A scalar to use for artificially upscaling the glycans.
         """
+        self._got_flipped = False
         drawn = set()
         scales = {chain: self.height for chain in self.scaffold.chains}
         for root, glycan in self.scaffold.glycans.items():
@@ -461,15 +462,17 @@ class ScaffoldViewer2D:
             _y = max(1, v.canvas.ylim[1])
             scale = scalar * (self.height / _y)
             v.canvas.scale(scale)
+            _y = max(1, v.canvas.ylim[1])
             scales[_chain] = max(scales[_chain], _y)
 
             self._switch_direction(v, drawn, chain, rdx)
             v._native_draw_no_layout(ax, draw_edge_labels=False, adjust_axes=False)
 
         for chain, ax in self._subplot_dict.items():
-            yextreme = scales[chain]
+            ytop = scales[chain]
+            ybottom = self.bar_height if not self._got_flipped else ytop
             ax.set_xlim(0, self._chain_lengths[chain])
-            ax.set_ylim(-yextreme * 1.2, (self.bar_height + yextreme) * 1.2)
+            ax.set_ylim(-ybottom, (self.bar_height + ytop * 1.2))
             # ax.set_box_aspect(0.3)
 
     def draw_glycosylation_sites(
@@ -536,6 +539,7 @@ class ScaffoldViewer2D:
         """
         min_diff = min((20, *(rdx - i for _, i, d in drawn if _ == chain)))
         direction = 1
+
         if min_diff < 20:
             closest = next(i for i in drawn if i[0] == chain and rdx - i[1] == min_diff)
             ref_direction = closest[2]
@@ -543,6 +547,7 @@ class ScaffoldViewer2D:
                 v.canvas.flip(vertical=True)
                 v.canvas.root_nodes[0].move_to(rdx, -v.canvas.scalar * 0.3)
                 direction = 0
+                self._got_flipped = True
             else:
                 v.canvas.root_nodes[0].move_to(
                     rdx, self.bar_height + v.canvas.scalar * 0.3
