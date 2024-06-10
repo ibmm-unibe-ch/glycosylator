@@ -353,6 +353,7 @@ class Glycan(core.Molecule):
         else:
             super().__init__(structure, root_atom, model, chain)
         self._glycan_tree = GlycanTree()
+        self._scaffold = None
 
     @classmethod
     def from_pdb(cls, filename: str):
@@ -565,12 +566,12 @@ class Glycan(core.Molecule):
                 if link.can_apply(obj, incoming, target_residue=candidate):
                     attach_residue = candidate
                     break
-            
+
             if attach_residue is None:
                 raise ValueError(
                     f"Could not find a residue matching {segment[0]} to attach to in the current glycan"
                 )
-            
+
             # attach the residue
             obj.attach(
                 incoming,
@@ -624,6 +625,44 @@ class Glycan(core.Molecule):
         for s in _strips_to_remove:
             self._glycan_tree.remove(*s)
         return residues
+
+    def clashes_with_scaffold(
+        self,
+        clash_threshold: float = 1.0,
+        ignore_hydrogens: bool = True,
+        coarse_precheck: bool = True,
+    ) -> bool:
+        """
+        Check if the glycan clashes with the scaffold
+
+        Parameters
+        ----------
+        clash_threshold : float
+            The minimum distance to consider a clash
+        ignore_hydrogens : bool
+            Whether to ignore hydrogens
+        coarse_precheck : bool
+            Whether to use a coarse pre-check to speed up the process. This may lead to false negatives,
+            especially if the scaffold has very large residues (e.g. lipids with long carbon chains).
+
+        Returns
+        -------
+        bool
+            Whether the glycan clashes with the scaffold
+        """
+        if self._scaffold is None:
+            return False
+        return (
+            len(
+                self.find_clashes_with(
+                    self._scaffold,
+                    clash_threshold=clash_threshold,
+                    ignore_hydrogens=ignore_hydrogens,
+                    coarse_precheck=coarse_precheck,
+                )
+            )
+            > 0
+        )
 
     def draw2d(
         self,

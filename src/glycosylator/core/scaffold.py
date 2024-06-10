@@ -96,6 +96,16 @@ import buildamol.structural as structural
 
 __all__ = ["Scaffold", "scaffold", "glycosylate"]
 
+_acceptable_glycan_anchor_atoms = ("O", "N")
+"""
+The elements to restrict to when searching for anchor atoms for glycans that are directly attached to the scaffold.
+"""
+
+_acceptable_glycan_root_atoms = ("C",)
+"""
+The elements to restrict to when searching for the root atom of a glycan.
+"""
+
 
 def scaffold(scaf=None) -> "Scaffold":
     """
@@ -208,18 +218,18 @@ class Scaffold(entity.BaseEntity):
         return chain.id, index
 
     @property
-    def glycans(self) -> dict:
+    def glycans(self) -> list:
+        """
+        Returns a list of all glycans that have been attached to the scaffold.
+        """
+        return list(self._attached_glycans.values())
+
+    def get_glycans(self) -> dict:
         """
         Returns a dictionary of all glycan Glycans that have been attached to the scaffold
         The dictionary contains the atoms which are connected to the glycan Glycans as keys and the glycan Glycans as values.
-
-
-        Returns
-        -------
-        dict
         """
-        # double call to dict to make a copy
-        return dict(self._attached_glycans)
+        return self._attached_glycans
 
     @property
     def glycan_residues(self) -> set:
@@ -650,9 +660,21 @@ class Scaffold(entity.BaseEntity):
                 continue
 
             # now get the bonding atoms
-            _match_indices = np.where(_match_mask)
-            incoming_root = glycan_residue.child_list[_match_indices[0][0]]
-            scaffold_root = close_by_atoms[_match_indices[1][0]]
+            _matching_x_indices, _matching_y_indices = np.where(_match_mask)
+
+            for i in _matching_x_indices:
+                incoming_root = glycan_residue.child_list[i]
+                if incoming_root.element in _acceptable_glycan_root_atoms:
+                    break
+            else:
+                continue
+
+            for j in _matching_y_indices:
+                scaffold_root = close_by_atoms[j]
+                if scaffold_root.element in _acceptable_glycan_anchor_atoms:
+                    break
+            else:
+                continue
 
             # create the glycan
             glycan_residue.parent.detach_child(glycan_residue.get_id())
@@ -707,9 +729,36 @@ class Scaffold(entity.BaseEntity):
                     continue
 
                 # now get the bonding atoms
-                _match_indices = np.where(_match_mask)
-                incoming_root = residue_atoms[_match_indices[0][0]]
-                close_by_root = close_by_atoms[_match_indices[1][0]]
+                _matching_x_indices, _matching_y_indices = np.where(_match_mask)
+
+                for i in _matching_x_indices:
+                    incoming_root = residue_atoms[i]
+                    if incoming_root.element in _acceptable_glycan_root_atoms:
+                        break
+                else:
+                    yet_to_add.add(glycan_residue)
+                    runs += 1
+                    if runs > ref * 3:
+                        raise RuntimeError(
+                            f"Cannot infer glycan association for at least one of {yet_to_add}"
+                        )
+                    continue
+
+                for j in _matching_y_indices:
+                    close_by_root = close_by_atoms[j]
+                    if close_by_root.element in _acceptable_glycan_anchor_atoms:
+                        break
+
+                else:
+                    yet_to_add.add(glycan_residue)
+                    runs += 1
+                    if runs > ref * 3:
+                        raise RuntimeError(
+                            f"Cannot infer glycan association for at least one of {yet_to_add}"
+                        )
+                    continue
+
+                # get the glycan that the close_by_residue is part of
                 close_by_residue = close_by_root.parent
                 glycan = residue_mapping.get(close_by_residue, None)
                 if glycan is None:
@@ -786,12 +835,15 @@ class Scaffold(entity.BaseEntity):
             glycan_chain_map[glycan] = _chain
             self._AtomGraph.migrate_bonds(glycan._AtomGraph)
             self._set_bonds(*glycan.get_bonds())
+            glycan._scaffold = self
 
         self._attached_glycans.update(glycans)
         self._glycan_chain_mapping.update(glycan_chain_map)
         return glycans
 
-    def add_glycan(self, glycan: "Glycan", root: Union[int, base_classes.Atom]):
+    def add_glycan(
+        self, glycan: "Glycan", root: Union[int, base_classes.Atom], chain: str = "same"
+    ):
         """
         Manually add a glycan to the scaffold structure. This is useful if you have a scaffold
         where you know which glycans are attached to which root atoms, so you do not have to
@@ -810,6 +862,11 @@ class Scaffold(entity.BaseEntity):
 
         root : int or Atom
             The root atom of the glycan. This is the atom to which the glycan is attached.
+
+        chain : str
+            The chain to which the glycan should be added. If 'same', the glycan is added to the
+            same chain as the scaffold residue onto which it is attached. If 'new', the glycan is added
+            to a new chain. Alternatively, a specific chain can be provided.
         """
         root = self.get_atom(root)
         if root is None:
@@ -817,7 +874,21 @@ class Scaffold(entity.BaseEntity):
         if not glycan.root_atom:
             raise ValueError("Glycan has no root atom defined")
 
+        if chain == "same":
+            chain = root.parent.parent
+        elif chain == "new":
+            chain = base_classes.Chain("")
+            self.add_chains(chain)
+        else:
+            _chain = self.get_chain(chain)
+            if _chain is None:
+                raise ValueError(f"Chain '{chain}' not found")
+            chain = _chain
+
         self._attached_glycans[root] = glycan
+        self._glycan_chain_mapping[glycan] = chain
+        glycan.rename_chain(glycan._working_chain, chain.id)
+        glycan._scaffold = self
 
     def count_glycans(self) -> int:
         """
@@ -1081,7 +1152,7 @@ class Scaffold(entity.BaseEntity):
                 root = scaffold.get_atom(s._anchors[0], residue=residue)
                 scaffold._attached_glycans[root] = _mol
                 scaffold._glycan_chain_mapping[_mol] = _chain
-
+                if hasattr(_mol, "_scaffold"): _mol._scaffold = self
             return scaffold
 
     # alias
@@ -1109,7 +1180,9 @@ class Scaffold(entity.BaseEntity):
 if __name__ == "__main__":
     import glycosylator as gl
 
-    s = Scaffold.from_pdb("/Users/noahhk/GIT/glycosylator/__projects__/SOLF/solf.pdb")
+    s = Scaffold.from_pdb(
+        "/Users/noahhk/GIT/glycosylator/__projects__/solf2/solf2_man5_glycosylated_raw.pdb"
+    )
     g = s.find_glycans(infer_bonds=True)
     assert len(g) > 0
     o = s.copy()
