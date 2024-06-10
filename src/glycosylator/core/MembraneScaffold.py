@@ -87,6 +87,7 @@ class Membrane(Scaffold):
         color: str = "beige",
         glycan_style: str = "stick",
         glycan_color: str = None,
+        glycans: bool = True,
     ):
         """
         Visualize the scaffold in a 3D viewer using py3Dmol.
@@ -101,6 +102,8 @@ class Membrane(Scaffold):
             The style of the glycan representation. Defaults to "stick".
         glycan_color : str
             The color of the glycan representation. Defaults to None.
+        glycans : bool
+            Whether to include glycans in the visualization. Defaults to True.
         """
         tmp = Molecule.empty()
         tmp.add_residues(
@@ -109,9 +112,10 @@ class Membrane(Scaffold):
             _copy=True,
         )
         viewer = Scaffold.py3dmol(tmp, style, color)
-        for glycan in self.glycans.values():
-            v = glycan.py3dmol(style=glycan_style, color=glycan_color)
-            viewer.add(v)
+        if glycans:
+            for glycan in self.get_glycans().values():
+                v = glycan.py3dmol(style=glycan_style, color=glycan_color)
+                viewer.add(v)
         return viewer
 
 

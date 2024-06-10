@@ -326,6 +326,7 @@ class Protein(Scaffold):
         color: str = "spectrum",
         glycan_style: str = "stick",
         glycan_color: str = None,
+        glycans: bool = True,
     ):
         """
         Visualize the scaffold in a 3D viewer using py3Dmol.
@@ -340,11 +341,14 @@ class Protein(Scaffold):
             The style of the glycan representation. Defaults to "stick".
         glycan_color : str
             The color of the glycan representation. Defaults to None.
+        glycans : bool
+            If True, the glycans are drawn.
         """
         viewer = super().py3dmol(style, color)
-        for glycan in self.glycans.values():
-            v = glycan.py3dmol(style=glycan_style, color=glycan_color)
-            viewer.add(v)
+        if glycans:
+            for glycan in self.get_glycans().values():
+                v = glycan.py3dmol(style=glycan_style, color=glycan_color)
+                viewer.add(v)
         return viewer
 
 
