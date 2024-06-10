@@ -34,10 +34,15 @@ def _compute_glycan_scaffold_distances(
             )
 
     a = np.mean(_glycan_scaffold_distances)
-    b = np.apply_along_axis(
-        lambda x: x[x > -1].min(), 1, _glycan_glycan_distances
-    ).mean()
+    b = np.apply_along_axis(_along_axis_min, 1, _glycan_glycan_distances).mean()
     return a, b
+
+
+def _along_axis_min(x):
+    mask = x > -1
+    if mask.any():
+        return x[mask].min()
+    return 0
 
 
 class ScaffoldRotatron(ConstraintRotatron):
@@ -50,14 +55,17 @@ class ScaffoldRotatron(ConstraintRotatron):
         The Rotatron to use for the base optimization. This needs to be a fully initialized Rotatron.
     """
 
-    def __init__(self, base_rotatron: "Rotatron"):
-        super().__init__(base_rotatron, self.constraint)
+    def __init__(self, base_rotatron: "Rotatron", *args, **kwargs):
+        super().__init__(base_rotatron, self.constraint, **kwargs)
         self.mol = base_rotatron.graph._molecule
         self.graph = base_rotatron.graph
+        self.hyperparameters = self.rotatron.hyperparameters
         self._identify_nodes()
         self._compute_glycan_scaffold_distances = (
             self._normal_compute_glycan_scaffold_distances
         )
+        self.n_edges = len(self.rotatron.rotatable_edges)
+        self.rotatable_edges = self.rotatron.rotatable_edges
 
     def _identify_nodes(self):
         """
@@ -131,7 +139,7 @@ if __name__ == "__main__":
         "/Users/noahhk/GIT/glycosylator/test.scaf.optimize.distrot-full.pkl"
     )
 
-    rot = ScaffoldRotatron(rot, numba=True)
+    rot = ScaffoldRotatron(rot, numba=False)
     e = rot.eval(rot.rotatron.state)
     print("allright")
     final = gl.optimizers.optimize(rot.mol.copy(), rot)
