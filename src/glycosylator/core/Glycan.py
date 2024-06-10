@@ -532,6 +532,8 @@ class Glycan(core.Molecule):
             A particular topology to use. If None, the default topology is used.
         """
         full = Glycan.from_iupac(None, full_iupac, _topology)
+        if self.root_residue is not None:
+            full.rename_chain("A", self.root_residue.parent.id)
 
         obj = self if inplace else self.copy()
 
@@ -552,19 +554,23 @@ class Glycan(core.Molecule):
             # get the linkage to attach with
             link = full._glycan_tree.get_linkage(*segment)
 
-            # get the residue in the current glycan to attach to
-            attach_residue = next(
-                (i for i in obj.get_residues() if i.matches(segment[0])), None
-            )
-            if attach_residue is None:
-                raise ValueError(
-                    f"Could not find a residue matching {segment[0]} to attach to in the current glycan"
-                )
-
             # get the residue to attach to from the loaded compounds
             # they should be available since all standard IUPAC-represented glycans should be there
             incoming = Glycan.from_compound(segment[1].resname, by="id")
 
+            # get the residue in the current glycan to attach to
+            attach_residue = None
+            candidates = (i for i in obj.get_residues() if i.matches(segment[0]))
+            for candidate in candidates:
+                if link.can_apply(obj, incoming, target_residue=candidate):
+                    attach_residue = candidate
+                    break
+            
+            if attach_residue is None:
+                raise ValueError(
+                    f"Could not find a residue matching {segment[0]} to attach to in the current glycan"
+                )
+            
             # attach the residue
             obj.attach(
                 incoming,
