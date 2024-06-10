@@ -49,7 +49,7 @@ import glycosylator.resources as resources
 import glycosylator.utils.visual as visual
 
 
-from buildamol.core import Linkage, molecule
+from buildamol.core import Linkage, molecule, base_classes
 
 
 import re
@@ -87,20 +87,56 @@ class Protein(Scaffold):
     @property
     def seq(self) -> str:
         """
-        Returns the sequences of the scaffold (if it is a protein)
+        Returns the sequences of the protein
         for each chain in the structure
 
         Returns
         -------
-        dict
-            A dictionary of the sequences of the scaffold for each chain in the structure
+        str
+            The sequence of the structure. Different chains are delimited by a ":" character.
+        """
+        ":".join(self.get_sequence().values())
+
+    def get_sequence(
+        self, chains: Union[str, list] = None, ignore_unknown: bool = True
+    ) -> Union[str, dict]:
+        """
+        Returns the sequences of the scaffold (if it is a protein)
+        for each chain in the structure
+
+        Parameters
+        ----------
+        chains : str or list
+            The chain(s) for which to get the sequence. If None, all chains are considered.
+        ignore_unknown : bool
+            Whether to ignore unknown residues in the sequence. If False, unknown residues are
+            included as an 'X' in the sequence.
+
+        Returns
+        -------
+        str or dict
+            If a single chain is provided as a string, the string of the sequence, otherwise
+            a dictionary of the sequences of the scaffold for each chain in the structure
         """
         compounds = resources.get_default_compounds()
         seqs = {}
-        for chain in self._base_struct.get_chains():
+        if chains is None:
+            chain_iter = self._base_struct.get_chains()
+        elif isinstance(chains, (str, base_classes.Chain)):
+            chain_iter = iter((self.get_chain(chains),))
+        elif isinstance(chains, (tuple, list)):
+            chain_iter = iter([self.get_chain(c) for c in chains])
+        else:
+            raise ValueError(
+                f"Invalid chains argument. Must be a string, list or None, but got: {chains}"
+            )
+        for chain in chain_iter:
             ids = [residue.resname for residue in chain.get_residues()]
-            ids = compounds.translate_ids_3_to_1(ids)
+            ids = compounds.translate_ids_3_to_1(ids, ignore_unknown=ignore_unknown)
             seqs[chain] = "".join(ids)
+
+        if isinstance(chains, str):
+            return seqs[chains]
 
         return seqs
 
@@ -114,20 +150,27 @@ class Protein(Scaffold):
             A regex pattern sequon to search for, which must contain a single capturing group
             specifying the residue at which the Glycan should be attached. Defaults to the "N-linked"
             sequon which matches Asn-X-Ser/Thr sites. Alternatively, "O-linked" can be used, which matches
-            Ser/Thr-X-Ser/Thr sites.
+            Ser/Thr-X-Ser/Thr sites. If a custom sequon is provided, it must contain a single capturing group
+            specifying the residue at which the Glycan should be attached. To search for all registered sequons
+            use "all".
 
         Returns
         -------
         dict
             A dictionary of lists of matching residues in each chain.
         """
+        if sequon == "all":
+            sequons = resources.SEQUONS
+            sequons = [sequons[key] for key in sequons]
+            sequons = [sequon.pattern for sequon in sequons]
+            sequon = "|".join(sequons)
 
         if sequon in resources.SEQUONS:
             sequon = resources.SEQUONS[sequon]
         elif isinstance(sequon, str):
             sequon = resources.Sequon("new", sequon)
 
-        seqs = self.seq
+        seqs = self.get_sequence()
         sequons = {
             chain: re.finditer(sequon.pattern, seqs[chain], re.IGNORECASE)
             for chain in self.chains
