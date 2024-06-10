@@ -1,4 +1,4 @@
-import glycosylator.utils as utils
+import glycosylator.utils as __utils
 import glycosylator.utils.visual as visual
 from glycosylator.core import *
 
@@ -11,11 +11,15 @@ import buildamol.structural as structural
 from glycosylator.resources import *
 
 import glycosylator.resources as resources
-from glycosylator.optimizers import *
 import glycosylator.optimizers as optimizers
+from glycosylator.optimizers import *
+
+# little hack to make sure the global utils refers to the glycosylator.utils module
+# and not the glycosylator.optimizers.utils module
+utils = __utils
 
 # from the resources module
 load_glycosylator_compounds()
 
-__version__ = "4.5.7"
+__version__ = "4.5.17"
 __author__ = "Noah Kleinschmidt"
