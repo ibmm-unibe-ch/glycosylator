@@ -73,7 +73,7 @@ class ScaffoldRotatron(ConstraintRotatron):
         """
         _glycan_nodes = []
         _each_glycan_nodes = []
-        for glycan in self.mol.glycans.values():
+        for glycan in self.mol.get_glycans().values():
             _each_glycan_nodes.append([])
             for residue in glycan.get_residues():
                 _glycan_nodes.append(residue)
@@ -90,7 +90,7 @@ class ScaffoldRotatron(ConstraintRotatron):
 
         _each_glycan_scaffold_vicinity_nodes = []
         scaff_coords = self.rotatron.state[self.scaffold_nodes]
-        for i, glycan in enumerate(self.mol.glycans.values()):
+        for i, glycan in enumerate(self.mol.get_glycans().values()):
 
             x = np.array(
                 [

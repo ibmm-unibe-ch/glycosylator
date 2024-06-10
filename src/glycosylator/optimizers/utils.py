@@ -39,11 +39,11 @@ def make_scaffold_graph(
     if only_clashing_glycans:
         glycan_gen = (
             (root, glycan)
-            for (root, glycan) in scaffold.glycans.items()
-            if glycan.count_clashes() > 0
+            for (root, glycan) in scaffold.get_glycans().items()
+            if glycan.count_clashes() > 0 or glycan.clashes_with_scaffold()
         )
     else:
-        glycan_gen = scaffold.glycans.items()
+        glycan_gen = scaffold.get_glycans().items()
 
     _atoms_to_fill_in = []
     _rotatable_edges = []
@@ -56,7 +56,7 @@ def make_scaffold_graph(
 
         if len(glycan.residues) > 1:
             g = glycan.get_residue_graph()
-            g.make_detailed(include_clashes=False)
+            g.make_detailed(include_clashes=True)
         else:
             continue
 

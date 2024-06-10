@@ -446,7 +446,7 @@ class ScaffoldViewer2D:
         self._got_flipped = False
         drawn = set()
         scales = {chain: self.height for chain in self.scaffold.chains}
-        for root, glycan in self.scaffold.glycans.items():
+        for root, glycan in self.scaffold.get_glycans().items():
 
             chain, rdx = self.scaffold.index(root.parent)
             _chain = self.scaffold.get_chain(chain)
