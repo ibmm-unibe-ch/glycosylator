@@ -245,6 +245,13 @@ class Scaffold(entity.BaseEntity):
         )
 
     @property
+    def scaffold_residues(self) -> set:
+        """
+        Returns a set of all residues that belong to the scaffold structure.
+        """
+        return set(self.get_residues()) - self.glycan_residues
+
+    @property
     def internal_residues(self) -> set:
         """
         Returns a set of all residues that have been labelled as "internal" based on
