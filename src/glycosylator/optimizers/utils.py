@@ -81,6 +81,19 @@ def make_scaffold_graph(
             _rotatable_edges.append((root, glycan.root_atom))
             G.add_edge(root, glycan.root_atom)
 
+            # now also check if we can add one more bond from the next neighbor to the root
+            # atom of the scaffold to allow for a more versatile placement
+            neighs = scaffold.get_neighbors(
+                root, filter=lambda x: x.element != "H" and x is not glycan.root_atom
+            )
+            if len(neighs) == 1:
+                neigh = neighs.pop()
+                G.add_edge(neigh, root)
+                if G.has_edge(root, root.parent):
+                    G.remove_edge(root, root.parent)
+                G.add_edge(neigh, neigh.parent)
+                _rotatable_edges.append((neigh, root))
+
         _atoms_to_fill_in.clear()
 
     if slice > 0:
@@ -91,38 +104,13 @@ def make_scaffold_graph(
     return G, _rotatable_edges
 
 
-# def _slice_residue_connections(glycan, slice: int):
-#     """
-#     Slice a number of residue connections from the glycan.
-
-#     Parameters
-#     ----------
-#     glycan: Glycan
-#         The glycan to slice
-#     slice: int
-#         The number of residue connections to slice from the glycan
-
-#     Returns
-#     -------
-#     list
-#         The sliced residue connections
-#     """
-#     bonds = glycan.get_residue_connections(direct_by="root")
-#     if slice > 1:
-#         bonds = [bonds[i] for i in range(1, len(bonds), len(bonds) // slice)]
-#     return bonds
-
-
 if __name__ == "__main__":
     import glycosylator as gl
 
-    rot = gl.utils.load_pickle(
-        "/Users/noahhk/GIT/glycosylator/test.scaf.optimize.distrot-raworig.pkl"
+    scaf = gl.utils.load_pickle(
+        "//Users/noahhk/GIT/glycosylator/__projects__/solf3/solF_plus_3G_rsr017_coot_30_man5.pdb_glycosylated_optimized.pkl"
     )
-    scaf = rot.graph._molecule
-    # scaf = gl.Scaffold.load(
-    #     "/Users/noahhk/GIT/glycosylator/src/glycosylator/__figure_makery/scaf_glycosylated.optimized.5.pkl"
-    # )
+    scaf.apply_standard_bonds_for(*[i.parent for i in scaf.get_glycans().keys()])
 
     graph, rotatable_edges = make_scaffold_graph(
         scaf,
@@ -132,12 +120,15 @@ if __name__ == "__main__":
     )
 
     rotatron = gl.optimizers.DistanceRotatron(
-        graph, rotatable_edges, pushback=1.5, n_processes=8
+        graph,
+        rotatable_edges,
+        pushback=1.5,
     )
 
     # scaf_opt = gl.optimizers.optimize(scaf.copy(), rotatron)
     # scaf_opt.to_pdb("scaf_opt_new_slice_graph.pdb")
 
     split = gl.optimizers.split_environment(rotatron, 4)
-    scaf_opt = gl.optimizers.parlallel_optimize(scaf, split)
+    split = [gl.optimizers.ScaffoldRotatron(i) for i in split]
+    scaf_opt = gl.optimizers.parallel_optimize(scaf, split)
     scaf_opt.to_pdb("scaf_opt_new_slice_parallel.pdb")
