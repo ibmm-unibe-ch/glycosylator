@@ -269,7 +269,7 @@ class GlycoShield:
             import plotly.graph_objs as go
 
             fig = px.bar(
-                df,
+                self.df,
                 x="serial",
                 y="exposure",
                 facet_row="chain",
