@@ -4,11 +4,13 @@ simulation of the shielding effect of glycans on a scaffold molecule, and can be
 used to obtain numeric data or visualizations of the scaffold at different glycan conformations.
 """
 
+from pathlib import Path
 import numpy as np
 from scipy.spatial.distance import cdist
 import pandas as pd
 
 import glycosylator.core as core
+import buildamol.structural as structural
 import glycosylator.utils as utils
 
 __all__ = ["quickshield", "GlycoShield"]
@@ -53,15 +55,27 @@ class GlycoShield:
     ----------
     scaffold
         A scaffold molecule with glycans to analyze
+    exposure_metric: callable
+        The metric function to use for evaluating "exposure". This function will receive three arguments (in order): `self` (the GlycoShield object itself), `scaffold_coords` (the coordinates of the scaffold residues), and `glycan_coords` (the coordinates of the glycan residues).
+        The function must return a 1D array of exposure values for each scaffold residue. By default `line_of_sight_exposzure` is used.
+    concatenation_function: callable
+        The function to use to concatenate the exposure values from each iteration of the simulation into the final dataframe. The default is `np.add` which will sum the exposure values from each iteration.
+        This function should take two 1D arrays (the total exposure and the exposure from the current iteration) and return a new 1D array (the updated total exposure).
     """
 
-    def __init__(self, scaffold: core.Scaffold):
+    def __init__(
+        self,
+        scaffold: core.Scaffold,
+        exposure_metric: callable = None,
+        concatenation_function: callable = None,
+    ):
         if scaffold.count_glycans() == 0:
             raise ValueError("The scaffold must have at least one glycan attached")
         self.scaffold = scaffold
         self.df = None
         self.conformation_viewer = None
         self.conformations = None
+
         self._scaffold_residues = list(self.scaffold.scaffold_residues)
         self._scaffold_coords = np.array([i.coord for i in self._scaffold_residues])
 
@@ -81,6 +95,15 @@ class GlycoShield:
         self._glycan_coords = glycan_coords
         self._glycan_index_masks = glycan_index_masks
 
+        if exposure_metric is None:
+            exposure_metric = line_of_sight_exposure
+            setup_line_of_sight_exposure(self)
+        if concatenation_function is None:
+            concatenation_function = lambda x, y: x + y
+
+        self.exposure_metric = exposure_metric
+        self.concatenation_function = concatenation_function
+
     def simulate(
         self,
         repeats: int = 3,
@@ -88,7 +111,7 @@ class GlycoShield:
         angle_step: int = 30,
         coarse_precheck: bool = True,
         visualize_conformations: bool = False,
-        record_conformations: bool = False,
+        save_conformations_to: str = None,
     ) -> pd.DataFrame:
         """
         Perform a quick simulation of the shielding effect of glycans on a scaffold molecule.
@@ -96,7 +119,7 @@ class GlycoShield:
         Parameters
         ----------
         repeats: int
-            The number of times to repeat the simulation process for each glycan.
+            The number of times to repeat the edge sampling and simulation process for each glycan. If edge_samples is "all" this will be ignored.
         edge_samples: int or str
             The number of rotatable edges within the glycan to sample. Either give a number
             of edges to sample from. Alternatively, provide "all" to use all available rotatable edges in the glycan (e.g. even bonds to protruding OH-groups),
@@ -112,10 +135,8 @@ class GlycoShield:
         visualize_conformations: bool
             If True, each accepted conformation will be visualized in Py3DMol and a combined view (total overlay of all conformations) will be returned at the end together with the dataframe.
             This will make the computation slower.
-        record_conformations: bool
-            If True, each accepted conformation is saved and returned at the end. This will make the computation considerably slower!
-            Also since each model will be a copy of the entire scaffold this will consume a lot of memory! If you do not absolutely require these models
-            do *not* set this to true!
+        save_conformations_to: str
+            If a path for a directory is provided, the conformations will be saved to that path as PDB files (one file per glycan, containing models for each accepted conformation).
 
         Returns
         -------
@@ -130,6 +151,7 @@ class GlycoShield:
             edge_sampler = (
                 lambda glycan, glycan_graph: glycan_graph.find_rotatable_edges()
             )
+            repeats = 1
         elif edge_samples == "connections":
             edge_sampler = lambda glycan, glycan_graph: glycan.get_residue_connections()
         elif isinstance(edge_samples, int):
@@ -151,7 +173,12 @@ class GlycoShield:
         else:
             v = _dummy()
 
+        metric = self.exposure_metric
+        concatenate = self.concatenation_function
+
+        record_conformations = save_conformations_to is not None
         if record_conformations:
+            save_conformations_to = Path(save_conformations_to)
             self.conformations = self.scaffold.copy()
 
             def save_model(model):
@@ -164,37 +191,50 @@ class GlycoShield:
             def save_model(model):
                 pass
 
-        for gdx, glycan in enumerate(self.scaffold.glycans):
-            glycan_graph = glycan._AtomGraph
+        with utils.progress_bar(len(self.scaffold.glycans) * repeats) as bar:
 
-            for _ in range(repeats):
-                sampled_edges = edge_sampler(glycan, glycan_graph)
-                sampled_edges = glycan_graph.direct_edges(
-                    glycan.root_atom, [tuple(i) for i in sampled_edges]
-                )
+            for gdx, glycan in enumerate(self.scaffold.glycans):
+                glycan_graph = glycan._AtomGraph
 
-                for edge in sampled_edges:
-                    for angle in angle_range:
+                if record_conformations:
+                    self.conformations = self.scaffold.copy()
 
-                        glycan.rotate_descendants(*edge, angle)
-                        if glycan.count_clashes() or glycan.clashes_with_scaffold(
-                            coarse_precheck=coarse_precheck
-                        ):
-                            continue
+                for _ in range(repeats):
+                    sampled_edges = edge_sampler(glycan, glycan_graph)
+                    sampled_edges = glycan_graph.direct_edges(
+                        glycan.root_atom, [tuple(i) for i in sampled_edges]
+                    )
 
-                        glycan_coords = np.array(
-                            [i.coord for i in glycan.get_residues()]
-                        )
-                        self._glycan_coords[self._glycan_index_masks[gdx]] = (
-                            glycan_coords
-                        )
+                    for edge in sampled_edges:
+                        for angle in angle_range:
 
-                        distances = cdist(self._scaffold_coords, self._glycan_coords)
-                        exposure = distances.min(axis=1)
-                        exposures += exposure
+                            glycan.rotate_descendants(*edge, angle)
+                            if glycan.count_clashes() or glycan.clashes_with_scaffold(
+                                coarse_precheck=coarse_precheck
+                            ):
+                                continue
 
-                        v.add(glycan, style={"stick": {"color": "lightblue"}})
-                        save_model(self.scaffold._model)
+                            glycan_coords = np.array(
+                                [i.coord for i in glycan.get_residues()]
+                            )
+                            self._glycan_coords[self._glycan_index_masks[gdx]] = (
+                                glycan_coords
+                            )
+
+                            exposure = metric(
+                                self, self._scaffold_coords, self._glycan_coords
+                            )
+                            exposures = concatenate(exposures, exposure)
+
+                            v.add(glycan, style={"stick": {"color": "lightblue"}})
+                            save_model(self.scaffold._model)
+
+                    bar()
+
+                if record_conformations:
+                    self.conformations.to_pdb(
+                        save_conformations_to / f"{glycan.id}_conformations.pdb"
+                    )
 
         exposures /= len(self.scaffold.glycans) * repeats * len(angle_range)
 
@@ -206,17 +246,9 @@ class GlycoShield:
         }
         self.df = pd.DataFrame(_df)
 
-        to_return = (self.df,)
-
         if visualize_conformations:
-            to_return = to_return + (v,)
-        if record_conformations:
-            to_return = to_return + (self.conformations,)
-
-        if len(to_return) == 1:
-            to_return = to_return[0]
-
-        return to_return
+            return self.df, v
+        return self.df
 
     def plot_exposure(self, backend: str = "matplotlib", cmap: str = "viridis"):
         """
@@ -399,6 +431,68 @@ class _dummy:
         pass
 
 
+def _line_of_sight_vector(scaf_coords, idx, length=20) -> np.ndarray:
+    res_coord = scaf_coords[idx]
+    close_by_mask = np.linalg.norm(scaf_coords - res_coord, axis=1) < 15
+    if not np.any(close_by_mask):
+        return np.zeros(3)
+
+    close_by_coords = scaf_coords[close_by_mask]
+
+    vec = structural.plane_of_points(close_by_coords)
+    if np.linalg.norm(close_by_coords - res_coord - vec) < np.linalg.norm(
+        close_by_coords - res_coord + vec
+    ):
+        vec = -vec
+
+    vec *= length
+    return vec
+
+
+def _line_to_linspace(start, vec, n_points):
+    return np.linspace(start, start + vec, n_points)
+
+
+def _distance_to_line(points, line_linspace):
+    dists = cdist(points, line_linspace)
+    dists = dists.min()
+    return dists
+
+
+def line_of_sight_exposure(self, scaffold_coords, glycan_coords):
+    """
+    Line of sight exposure measures the distances of glycan residue coordinates to
+    perpendicular cylinders that protrude from each scaffold residue's surface upward (the residue's "line of sight").
+    The exposure is measured as the minimal distance of each line of sight to any glycan residue.
+    """
+    straight_line_coverage = np.zeros(len(scaffold_coords))
+    for rdx in range(len(scaffold_coords)):
+        linspace = self._line_of_sight_linspaces[rdx]
+        distance = _distance_to_line(glycan_coords, linspace)
+        straight_line_coverage[rdx] = distance
+
+    return straight_line_coverage
+
+
+def setup_line_of_sight_exposure(glycoshield, length: int = 20):
+    """
+    Perpare the Glycoshield object for line of sight exposure calculations.
+    This is necessary since the function will draw on some precomputed values for
+    enhanced performance.
+    (This function is called automatically if a GlycoShield is setup using default settings)
+    """
+    glycoshield._line_of_sight_linspaces = []
+    for rdx in range(len(glycoshield._scaffold_coords)):
+        vec = _line_of_sight_vector(glycoshield._scaffold_coords, rdx, length=length)
+        linspace = _line_to_linspace(
+            glycoshield._scaffold_coords[rdx], vec, length // 3
+        )
+        glycoshield._line_of_sight_linspaces.append(linspace)
+    glycoshield._line_of_sight_linspaces = np.array(
+        glycoshield._line_of_sight_linspaces
+    )
+
+
 if __name__ == "__main__":
     prot = utils.load_pickle(
         "/Users/noahhk/GIT/glycosylator/__projects__/solf3/solF_plus_3G_rsr017_coot_30_man5.pdb_glycosylated_optimized.pkl"
@@ -408,7 +502,7 @@ if __name__ == "__main__":
 
     print("shielding")
     t1 = time()
-    df = shield.simulate(record_conformations=True, repeats=1)
+    df = shield.simulate(edge_samples=3, repeats=1)
     print("done, took " + str(time() - t1) + " seconds")
     fig = shield.plot_exposure()
     fig.savefig("exposure.png")
