@@ -1170,13 +1170,17 @@ class Scaffold(entity.BaseEntity):
                     _mol.attach_residue,
                 )
 
+                # adjust the glycan-id if it is not given
+                if not _mol.id:
+                    _mol.id = f"glycan-{len(scaffold.glycans) + 1}"
+
                 # new policy for adding residues
                 for res in _mol.get_residues():
-                    _chain.child_list.append(res)
-                    _chain.child_dict[res.get_id()] = res
+                    _chain.link(res)
                     for atom in res.child_list:
                         atom.serial_number = adx
                         adx += 1
+
                 # scaffold.add_residues(*_mol.get_residues(), chain=_chain)
                 scaffold._bonds.extend(_mol.get_bonds())
                 scaffold._AtomGraph.migrate_bonds(_mol._AtomGraph)
