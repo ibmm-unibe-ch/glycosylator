@@ -12,6 +12,7 @@ def make_scaffold_graph(
     only_clashing_glycans: bool = True,
     slice: int = 0,
     include_root: bool = False,
+    include_n_ancestors: int = 0,
 ) -> tuple["ResidueGraph.ResidueGraph", list]:
     """
     Make a ResidueGraph from a glycosylated scaffold in order to optimize the conformations of the attached glycans.
@@ -24,8 +25,14 @@ def make_scaffold_graph(
         If True, only glycans that clash with the protein or each other will will contribute rotatable edges.
     slice: int
         The number of residue connections to slice from each glycan. This will sub-sample the rotatable edges of the glycans. At 0 all rotatable edges are included.
+        Set to -1 to exclude all glycan-internal rotatable edges. This is useful for glycans that are already optimized. And only their placement relative to the scaffold
+        needs to be optimized (i.e. you only want to optimize the root connections).
     include_root: bool
         If True, the root connection (to the scaffold) will always be included in the rotatable edges.
+    include_n_ancestors: int
+        If > 0, the n ancestor atoms (upstream of the scaffold anchor atom) will also be included in the rotatable edges.
+        This will allow for a more versatile placement of glycans as it allows partial movement of the scaffold rather than just the glycan.
+        This requires `include_root` to be True.
 
     Returns
     -------
@@ -54,13 +61,15 @@ def make_scaffold_graph(
 
     for root, glycan in glycan_gen:
 
-        if len(glycan.residues) > 1:
+        if glycan.count_residues() > 1:
             g = glycan.get_residue_graph()
             g.make_detailed(include_clashes=True)
+            if slice >= 0:
+                _rotatable_edges.extend(
+                    glycan.get_residue_connections(direct_by="root")
+                )
         else:
-            continue
-
-        _rotatable_edges.extend(glycan.get_residue_connections(direct_by="root"))
+            g = glycan.get_residue_graph(detailed=True)
 
         root_residue = root.parent
         neighboring_residues = (
@@ -77,29 +86,20 @@ def make_scaffold_graph(
         G.remove_nodes_from(g.residues)
         G.add_nodes_from(_atoms_to_fill_in)
         G.add_edges_from(g.edges)
-        if include_root:
-            _rotatable_edges.append((root, glycan.root_atom))
-            G.add_edge(root, glycan.root_atom)
 
-            # now also check if we can add one more bond from the next neighbor to the root
-            # atom of the scaffold to allow for a more versatile placement
-            neighs = scaffold.get_neighbors(
-                root, filter=lambda x: x.element != "H" and x is not glycan.root_atom
+        if slice > 0:
+            _rotatable_edges = G.sample_edges(
+                _rotatable_edges, len(scaffold.glycans), slice
             )
-            if len(neighs) == 1:
-                neigh = neighs.pop()
-                G.add_edge(neigh, root)
-                if G.has_edge(root, root.parent):
-                    G.remove_edge(root, root.parent)
-                G.add_edge(neigh, neigh.parent)
-                _rotatable_edges.append((neigh, root))
+
+        if include_root:
+            incoming = scaffold.get_glycan_root_connections(
+                include_scaffold_ancestors=include_n_ancestors,
+            )
+            _rotatable_edges.extend(incoming)
+            G.add_edges_from(incoming)
 
         _atoms_to_fill_in.clear()
-
-    if slice > 0:
-        _rotatable_edges = G.sample_edges(
-            _rotatable_edges, len(scaffold.glycans), slice
-        )
 
     return G, _rotatable_edges
 
