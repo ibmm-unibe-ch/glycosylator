@@ -47,6 +47,10 @@ class Membrane(Scaffold):
     modification in form of one or more :class:`glycosylator.core.Glycan.Glycan`s can be added.
     """
 
+    def __init__(self, structure, model: int = 0) -> None:
+        super().__init__(structure, model)
+        self.type = "membrane"
+
     def attach(
         self,
         mol: "Glycan",

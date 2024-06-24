@@ -192,6 +192,7 @@ class Scaffold(entity.BaseEntity):
         self._glycan_chain_mapping = {}
         self._internal_residues = set()
         self._internal_bonds = set()
+        self.type = "scaffold"
 
     def index(self, residue: Union[int, base_classes.Residue]) -> int:
         """
@@ -934,9 +935,47 @@ class Scaffold(entity.BaseEntity):
         """
         return len(self.glycans)
 
+    def get_glycan_root_connections(self, include_scaffold_ancestors: int = 0) -> list:
+        """
+        Get the bonds that connect the glycans to the scaffold.
+
+        Parameters
+        ----------
+        include_scaffold_ancestors : int
+            By default (0) only the direct bonds between scaffold-anchor atom and glycan-root atom are included.
+            This may cause some glycans to be virtually un-optimizable due to bad orientation of the scaffold residue.
+            To mitigate this, one can include a number of "upstream" bonds from the scaffold-anchor atoms up to n neighbors
+            to ensure a better orientation of the glycan by also allowing adjustments in the scaffold structure.
+            Set this value to the number of ancestor bonds to include.
+
+        Returns
+        -------
+        list
+            A list of tuples specifying the connections between the scaffold and the glycans. As well as any scaffold ancestors that are included.
+        """
+        _filter = lambda x: x.element != "H" and x not in glycan.get_atoms()
+        connections = []
+        for root, glycan in self.get_glycans().items():
+            connections.append((root, glycan.root_atom))
+            if include_scaffold_ancestors > 0:
+                neighs = self.get_neighbors(
+                    root, include_scaffold_ancestors, filter=_filter
+                )
+                for n in neighs:
+                    neighs2 = self.get_neighbors(n, 1, filter=_filter)
+                    if len(neighs2) < 2:
+                        continue
+                    for n2 in neighs2:
+                        if len(self.get_neighbors(n2, 1, filter=_filter)) < 2:
+                            continue
+                        if glycan.root_atom in self.get_descendants(n2, n):
+                            connections.append((n2, n))
+                            break
+        return connections
+
     def add_residues(
         self,
-        *residues: base_classes.Residue,
+        *residues: base_classes.Residue,    
         chain: str = None,
         adjust_seqid: bool = True,
         _copy: bool = False,
@@ -1035,6 +1074,34 @@ class Scaffold(entity.BaseEntity):
         self.fill()  # fill the structure before writing it to a file
         super().to_pdb(filename, symmetric=symmetric)
 
+    def to_molfile(self, filename: str):
+        self.fill()
+        super().to_molfile(filename)
+
+    def to_json(self, filename: str):
+        self.fill()
+        super().to_json(filename)
+
+    def to_biopython(self):
+        self.fill()
+        return super().to_biopython()
+
+    def to_rdkit(self):
+        self.fill()
+        return super().to_rdkit()
+
+    def to_pybel(self):
+        self.fill()
+        return super().to_pybel()
+
+    def to_stk(self):
+        self.fill()
+        return super().to_stk()
+
+    def to_smiles(self):
+        self.fill()
+        return super().to_smiles()
+
     def make_residue_graph(self, detailed: bool = False, locked: bool = True):
         graph = super().make_residue_graph(detailed, locked)
         # also add all remaining non connected (scaffold residues)
@@ -1050,7 +1117,7 @@ class Scaffold(entity.BaseEntity):
         mol: "Glycan",
         link: "Linkage" = None,
         residues: list = None,
-        chain="same",
+        chain="each",
         inplace: bool = True,
         _topology=None,
     ):
@@ -1198,6 +1265,17 @@ class Scaffold(entity.BaseEntity):
 
     draw3d = entity.BaseEntity.draw
     show3d = entity.BaseEntity.show
+
+    def to_psfgen(self, filename: str):
+        """
+        Write a psfgen script for the scaffold structure
+
+        Parameters
+        ----------
+        filename : str
+            The filename to write the psfgen script to
+        """
+        raise NotImplementedError("This method is not yet implemented")
 
     def __add__(self, mol):
         """
