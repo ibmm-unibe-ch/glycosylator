@@ -1545,7 +1545,7 @@
         },
         {
             "version": "3.9.68",
-            "id": "NGLA",
+            "id": "NGLB",
             "description": "og make model compound 3 by adding equat",
             "bond": {
                 "target": "1ND2",
