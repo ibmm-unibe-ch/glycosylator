@@ -664,14 +664,14 @@ class Glycan(core.Molecule):
             > 0
         )
 
-    def draw2d(
+    def snfg(
         self,
         ax=None,
         axis="y",
         **kwargs,
     ) -> "utils.visual.plt.Axes":
         """
-        Draw the 2D schematic of the glycan
+        Draw the SNFG 2D schematic of the glycan
 
         Parameters
         ----------
@@ -692,140 +692,30 @@ class Glycan(core.Molecule):
             **kwargs,
         )
 
-    snfg = draw2d
+    draw2d = snfg
 
-    def show2d(
-        self,
-        axis="y",
-        **kwargs,
-    ):
-        """
-        Draw and show the 2D schematic of the glycan
+    # def show2d(
+    #     self,
+    #     axis="y",
+    #     **kwargs,
+    # ):
+    #     """
+    #     Draw and show the 2D schematic of the glycan
 
-        Parameters
-        ----------
-        axis : str
-            The orientation of the glycan y-axis = vertical, x-axis = horizontal.
-        node_size : int
-            The size of the nodes
-        """
-        ax = self.draw2d(
-            axis=axis,
-            **kwargs,
-        )
-        if kwargs.get("svg", False):
-            return ax
-        utils.visual.plt.show()
-
-    def draw3d(
-        self, residue_graph: bool = False, atoms: bool = True, line_color: str = "black"
-    ) -> "plotly.graphs_objs.Figure":
-        """
-        Draw the 3D structure of the molecule
-
-        Parameters
-        ----------
-        residue_graph : bool
-            Whether to show the residue graph only
-        atoms : bool
-            Whether to show the atoms
-        line_color : str
-            The line color to use for bonds
-
-        Returns
-        -------
-        plotly.Figure
-            The figure
-        """
-        return super().draw(
-            residue_graph=residue_graph, atoms=atoms, line_color=line_color
-        )
-
-    def show3d(
-        self, residue_graph: bool = False, atoms: bool = True, line_color: str = "black"
-    ):
-        """
-        Draw and show the 3D structure of the molecule
-
-        Parameters
-        ----------
-        residue_graph : bool
-            Whether to show the residue graph only
-        atoms : bool
-            Whether to show the atoms
-        line_color : str
-            The line color to use for bonds
-        """
-        super().show(residue_graph=residue_graph, atoms=atoms, line_color=line_color)
-
-    def draw(
-        self,
-        representation: str = "3d",
-        residue_graph: bool = False,
-        atoms: bool = True,
-        line_color: str = "black",
-    ):
-        """
-        Draw the molecule
-
-        Parameters
-        ----------
-        representation : str
-            The representation to draw
-        residue_graph : bool
-            Whether to show the residue graph only (3D only)
-        atoms : bool
-            Whether to show the atoms (3D only)
-        line_color : str
-            The line color to use for drawing bonds (3D only)
-
-        Returns
-        -------
-        matplotlib.Axes or plotly.Figure
-            The axes or figure
-        """
-        if representation == "2d":
-            return self.draw2d()
-        elif representation == "3d":
-            return self.draw3d(
-                residue_graph=residue_graph, atoms=atoms, line_color=line_color
-            )
-        elif isinstance(representation, bool):
-            return self.draw3d(residue_graph=representation, line_color=line_color)
-        else:
-            raise ValueError(f"Representation {representation} not supported")
-
-    def show(
-        self,
-        representation: str = "3d",
-        residue_graph: bool = False,
-        atoms: bool = True,
-        line_color: str = "black",
-    ):
-        """
-        Draw and show the molecule
-
-        Parameters
-        ----------
-        representation : str
-            The representation to draw
-        residue_graph : bool
-            Whether to show the residue graph only (3D only)
-        atoms : bool
-            Whether to show the atoms (3D only)
-        line_color : str
-            The line color to use when drawing bonds (3d only)
-        """
-        if representation == "2d":
-            self.show2d()
-        elif representation == "3d":
-            self.show3d(residue_graph=residue_graph, atoms=atoms, line_color=line_color)
-        elif isinstance(representation, bool):
-            self.show3d(
-                residue_graph=representation, atoms=atoms, line_color=line_color
-            )
-        else:
-            raise ValueError(f"Representation {representation} not supported")
+    #     Parameters
+    #     ----------
+    #     axis : str
+    #         The orientation of the glycan y-axis = vertical, x-axis = horizontal.
+    #     node_size : int
+    #         The size of the nodes
+    #     """
+    #     ax = self.draw2d(
+    #         axis=axis,
+    #         **kwargs,
+    #     )
+    #     if kwargs.get("svg", False):
+    #         return ax
+    #     utils.visual.plt.show()
 
     def __repr__(self):
         return f"Glycan({self.id})"
@@ -854,9 +744,6 @@ def _parse_iupac_graph(id, glycan_segments, _topology=None):
         link = segment[-1]
 
         if not _topology.has_patch(link):
-            # ---------------------------- TO REMOVE LATER ----------------------------
-            # STILL SOME DEBUG STUFF HERE
-            # ---------------------------- TO REMOVE LATER ----------------------------
             raise ValueError(
                 f"No patch/recipe available for linkage: {link}. Try adding a patch or recipe to the topology."
             )
