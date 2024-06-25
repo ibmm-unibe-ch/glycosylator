@@ -4,6 +4,8 @@ simulation of the shielding effect of glycans on a scaffold molecule, and can be
 used to obtain numeric data or visualizations of the scaffold at different glycan conformations.
 """
 
+from copy import deepcopy
+
 from pathlib import Path
 import numpy as np
 from scipy.spatial.distance import cdist
@@ -82,7 +84,7 @@ class GlycoShield:
         glycan_coords = [
             [i.coord for i in glycan.get_residues()] for glycan in scaffold.glycans
         ]
-        glycan_coords = np.array(glycan_coords).reshape(-1, 3)
+        glycan_coords = np.concatenate(glycan_coords).reshape(-1, 3)
         glycan_index_masks = []
         start = 0
         for glycan in scaffold.glycans:
@@ -155,15 +157,19 @@ class GlycoShield:
         elif edge_samples == "connections":
             edge_sampler = lambda glycan, glycan_graph: glycan.get_residue_connections()
         elif isinstance(edge_samples, int):
-            edge_sampler = lambda glycan, glycan_graph: glycan_graph.sample_edges(
-                glycan.get_residue_connections(), m=edge_samples
+            edge_sampler = lambda glycan, glycan_graph: (
+                glycan_graph.sample_edges(
+                    glycan.get_residue_connections(), m=edge_samples
+                )
+                if glycan.count_residues() > 1
+                else []
             )
         else:
             raise ValueError(
                 f"edge_samples must be 'all', 'connections', or an integer, got {edge_samples}"
             )
 
-        angle_range = range(0, 360, angle_step)
+        angle_range = range(0, 360 + angle_step, angle_step)
 
         exposures = np.zeros(len(self._scaffold_residues))
 
@@ -193,8 +199,12 @@ class GlycoShield:
 
         with utils.progress_bar(len(self.scaffold.glycans) * repeats) as bar:
 
-            for gdx, glycan in enumerate(self.scaffold.glycans):
+            for gdx, (root, glycan) in enumerate(self.scaffold.get_glycans().items()):
                 glycan_graph = glycan._AtomGraph
+
+                # a backup so we can reset the glycan to its original conformation
+                glycan_atoms = list(glycan.get_atoms())
+                current_coords = [deepcopy(i.coord) for i in glycan_atoms]
 
                 if record_conformations:
                     self.conformations = self.scaffold.copy()
@@ -202,13 +212,41 @@ class GlycoShield:
                 for _ in range(repeats):
                     sampled_edges = edge_sampler(glycan, glycan_graph)
                     sampled_edges = glycan_graph.direct_edges(
-                        glycan.root_atom, [tuple(i) for i in sampled_edges]
+                        glycan.root_atom, sampled_edges
                     )
 
+                    # first rotate around the root connection
+                    for angle in angle_range:
+                        self.scaffold._rotate_around_bond(
+                            root, glycan.root_atom, angle, descendants_only=True
+                        )
+                        if glycan.clashes_with_scaffold(
+                            coarse_precheck=coarse_precheck
+                        ):
+                            continue
+
+                        glycan_coords = np.array(
+                            [i.coord for i in glycan.get_residues()]
+                        )
+                        self._glycan_coords[self._glycan_index_masks[gdx]] = (
+                            glycan_coords
+                        )
+
+                        exposure = metric(
+                            self, self._scaffold_coords, self._glycan_coords
+                        )
+                        exposures = concatenate(exposures, exposure)
+
+                        v.add(glycan, style={"stick": {"color": "lightblue"}})
+                        save_model(self.scaffold._model)
+
+                    # then rotate around the sampled edges
                     for edge in sampled_edges:
                         for angle in angle_range:
 
-                            glycan.rotate_descendants(*edge, angle)
+                            glycan._rotate_around_bond(
+                                *edge, angle, descendants_only=True
+                            )
                             if glycan.count_clashes() or glycan.clashes_with_scaffold(
                                 coarse_precheck=coarse_precheck
                             ):
@@ -230,6 +268,10 @@ class GlycoShield:
                             save_model(self.scaffold._model)
 
                     bar()
+
+                    # now reset the glycan to its original conformation
+                    for idx, atom in enumerate(glycan_atoms):
+                        atom.coord = current_coords[idx]
 
                 if record_conformations:
                     self.conformations.to_pdb(
@@ -388,7 +430,7 @@ class GlycoShield:
             )
 
         for glycan in self.scaffold.glycans:
-            v += glycan.draw(line_color=glycan_color, atoms=False)
+            v += glycan.plotly(line_color=glycan_color, atoms=False)
 
         return v
 
