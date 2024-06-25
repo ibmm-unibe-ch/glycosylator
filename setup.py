@@ -5,14 +5,14 @@ with open("README.md", "r") as f:
 
 setuptools.setup(
     name="glycosylator",
-    version="4.5.20",
+    version="4.5.21",
     author="Noah H. Kleinschmidt",
     author_email="noah.kleinschmidt@students.unibe.ch",
     description="A python package for structural simulation of protein glycosylation",
     long_description=long_description,
     long_description_content_type="text/markdown",
     package_data={
-        "glycosylator.resources": ["*.pkl", "*.json"],
+        "glycosylator.resources": ["*.pkl", "*.json", "*.xml"],
         "glycosylator.resources.icons": ["*.png"],
     },
     url="https://github.com/ibmm-unibe-ch/glycosylator/",
