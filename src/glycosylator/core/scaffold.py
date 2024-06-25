@@ -636,7 +636,7 @@ class Scaffold(entity.BaseEntity):
         gdx = 1
         min_length, max_length = (
             defaults.DEFAULT_BOND_LENGTH / 2,
-            defaults.DEFAULT_BOND_LENGTH * 1.2,
+            defaults.DEFAULT_BOND_LENGTH * 1.3,
         )
 
         residue_mapping = {}
@@ -975,7 +975,7 @@ class Scaffold(entity.BaseEntity):
 
     def add_residues(
         self,
-        *residues: base_classes.Residue,    
+        *residues: base_classes.Residue,
         chain: str = None,
         adjust_seqid: bool = True,
         _copy: bool = False,
@@ -1262,20 +1262,6 @@ class Scaffold(entity.BaseEntity):
 
     # alias
     glycosylate = attach
-
-    draw3d = entity.BaseEntity.draw
-    show3d = entity.BaseEntity.show
-
-    def to_psfgen(self, filename: str):
-        """
-        Write a psfgen script for the scaffold structure
-
-        Parameters
-        ----------
-        filename : str
-            The filename to write the psfgen script to
-        """
-        raise NotImplementedError("This method is not yet implemented")
 
     def __add__(self, mol):
         """
