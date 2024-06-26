@@ -15,4 +15,5 @@ On this page you will find some tutorials on how to use Glycosylator. Feel free 
     examples/building_glycan_manually
     examples/glycosylate_protein
     examples/glycosylate_membrane
+    examples/glycan_shield
 
