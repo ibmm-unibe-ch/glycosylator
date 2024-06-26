@@ -172,6 +172,9 @@ cython_debug/
 __dev
 __meta*
 __tools
+__figure*
+__projects*
+__stuff__
 pdbs/*
 wrapped/*
 .dvc*
