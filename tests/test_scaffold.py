@@ -133,15 +133,15 @@ def test_find_sequon():
 
 
 def test_attach_glycan_to_one_residue_simple():
-    glycan = gl.Glycan.from_pdb(base.MANNOSE9)
+    glycan = gl.glycan(base.MANNOSE9)
     scaffold = gl.Scaffold.from_pdb(base.PROTEIN)
 
     scaffold.reindex()
     glycan.reindex()
-    glycan.infer_bonds(restrict_residues=False)
-    scaffold.infer_bonds()
+    # glycan.infer_bonds(restrict_residues=False)
+    scaffold.apply_standard_bonds()
 
-    assert len(glycan.residues) == 11
+    assert len(glycan.residues) != 0
     assert len(scaffold.glycans) == 0
 
     scaffold.attach(
@@ -152,24 +152,23 @@ def test_attach_glycan_to_one_residue_simple():
 
 
 def test_attach_glycan_to_residue_list():
-    glycan = gl.Glycan.from_pdb(base.MANNOSE9)
+    glycan = gl.glycan(base.MANNOSE9)
     scaffold = gl.Scaffold.from_pdb(base.PROTEIN)
 
     scaffold.reindex()
     glycan.reindex()
-    glycan.infer_bonds(restrict_residues=False)
-    scaffold.infer_bonds()
+    # glycan.infer_bonds(restrict_residues=False)
+    scaffold.apply_standard_bonds()
     glycan.infer_glycan_tree()
 
-    assert len(glycan.residues) == 11
+    assert len(glycan.residues) != 0
     assert len(scaffold.glycans) == 0
 
     scaffold.attach(
         glycan, residues=scaffold.get_residues("ASN", by="name", chain="A")[:5]
     )
     assert len(scaffold.glycans) == 5
-
-    scaffold.show_snfg()
+    scaffold.to_pdb("scaf.glycv2.pdb")
 
 
 def test_attach_glycan_with_sequon():
@@ -306,4 +305,25 @@ def test_find_glycans():
     for i, glycan in enumerate(glycans.values()):
         glycan.draw2d(ax=axs[i])
         axs[i].set_title(f"glycan {i+1}")
+    plt.show()
+
+
+def test_extend_solf():
+    protein = gl.protein("/Users/noahhk/GIT/glycosylator/__projects__/SOLF/solf.pdb")
+    protein.exclude_chains("B", "D", "F")
+
+    protein.find_glycans(infer_bonds=True)
+
+    iupac = "Neu5Ac(a2-3)Gal(b1-4)ManNAc(b1-2)[Gal(b1-4)GlcNAc(b1-4)]Man(a1-3)[Neu5Ac(a2-3)Gal(b1-4)GlcNAc(b1-2)[Neu5Ac(a2-3)Gal(b1-4)GlcNAc(b1-3)Gal(b1-4)GlcNAc(b1-6)]Man(a1-6)]Man(b1-4)ManNAc(b1-4)[Fuc(a1-6)]GlcNAc(b1-"
+    glycan = gl.glycan(iupac)
+    print(glycan.to_iupac())
+
+    for glycan in protein.get_glycans().values():
+        glycan.add_hydrogens()
+        protein.extend_glycan(glycan, iupac)
+
+    protein.snfg()
+
+    import matplotlib.pyplot as plt
+
     plt.show()

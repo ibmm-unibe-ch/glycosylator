@@ -86,6 +86,12 @@ def test_extend_branched2():
     # v.show()
 
 
+def test_extend_big():
+    iupac = "Neu5Ac(a2-6)Gal(b1-4)GlcNAc(b1-2)[Neu5Ac(a2-3)Gal(b1-4)GlcNAc(b1-4)]Man(a1-3)[Neu5Ac(a2-6)Gal(b1-4)GlcNAc(b1-2)Man(a1-6)]Man(b1-4)GlcNAc(b1-4)[Fuc(a1-6)]GlcNAc(b1-"
+    glycan = gl.glycan("b-GlcNAc")
+    glycan.extend_to(iupac)
+    glycan.to_pdb("glycan_big.pdb")
+    
 def test_draw2d():
     iupac = "Gal(b1-3)[GlcNAc(b1-6)]GalNAc"
     glycan = gl.glycan(iupac)
