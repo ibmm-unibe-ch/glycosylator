@@ -73,7 +73,9 @@ class GlycoShield:
     ):
         if scaffold.count_glycans() == 0:
             raise ValueError("The scaffold must have at least one glycan attached")
-        self.scaffold = scaffold
+        self.scaffold = (
+            scaffold.copy()
+        )  # the copy is a precaution since the simulation will modify the scaffold
         self.df = None
         self.conformation_viewer = None
         self.conformations = None
