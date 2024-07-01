@@ -60,7 +60,7 @@ html_theme_options = {
     "pygment_light_style": "tango",
     "pygment_dark_style": "monokai",
     "logo": {
-        "image_light": "source/_resources/logo_small.svg",
-        "image_dark": "source/_resources/logo_small.svg",
+        "image_light": "source/_static/_resources/logo_small.svg",
+        "image_dark": "source/_static/_resources/logo_small.svg",
     },
 }
