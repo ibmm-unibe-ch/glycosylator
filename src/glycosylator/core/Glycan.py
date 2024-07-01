@@ -439,8 +439,13 @@ class Glycan(core.Molecule):
         """
         Infer the glycan tree connectivity in case of a glycan molecule that was loaded externally
         """
+        if not self.root_atom:
+            self.root_atom = 1 
+            
         # now be sure to fill the glycan tree
-        for bond in self.get_residue_connections(triplet=False, direct_by="root"):
+        connections = self.get_residue_connections(triplet=False)
+        connections = self._AtomGraph.direct_edges(self.root_atom, edges=connections)
+        for bond in connections:
             a, b = bond
             res_a, res_b = a.parent, b.parent
 
