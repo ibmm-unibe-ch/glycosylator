@@ -1,9 +1,9 @@
 
-![logo](docs/source/_resources/logo_large.png)
+![logo](docs/source/_static/_resources/logo_large.png)
 
 # A Python framework for the rapid modeling of glycans
 
-Glycosylator is a Python framework for the identification, modeling and
+Built using [BuildAMol](https://github.com/NoahHenrikKleinschmidt/buildamol) Glycosylator is a Python framework for the identification, modeling and
 modification of glycans. Glycosylator can build atomic models of glycans and can glycosylate proteins and membranes. Glycosylator can perform conformational optimization to minimize clashes in glycosylated structures or to sample alternative conformations for individual glycans. Glycosylator supports a variety of file-formats and can work hand in hand with other libraries such as RDKit to faciliate research workflows. 
 
 
@@ -24,7 +24,7 @@ glycan.to_pdb("my_glycan.pdb")
 glycan.show3d()
 ```
 
-> ![](docs/source/_resources/glycan_dark.gif)
+> ![](docs/source/_static/_resources/glycan_light.gif)
 > Note: This visualization was hand-made in ChimeraX from the PDB file, so the actual output of show3d will not be quite this pretty, but it will be interactive... 
 
 Glycosylating a protein
@@ -35,7 +35,7 @@ To glycosylate a protein we can use a simple snippet like the one below. Check o
 import glycosylator as gl
 
 # get some protein scaffold
-protein = gl.Scaffold.from_pdb("my_protein.pdb")
+protein = gl.Protein.from_pdb("my_protein.pdb")
 
 # get some glycan (maybe we already have one as a PDB file)
 glycan = gl.Glycan.from_pdb("my_glycan.pdb")
@@ -46,7 +46,7 @@ glycoprotein = gl.glycosylate(protein, glycan, sequon="N-linked")
 glycoprotein.to_pdb("my_glycoprotein.pdb")
 ```
 
-> ![](docs/source/_resources/prot_glyco.gif)
+> ![](docs/source/_static/_resources/prot_glyco.gif)
 
 <!-- Please cite:
 https://bmcbioinformatics.biomedcentral.com/articles/10.1186/s12859-019-3097-6 -->
