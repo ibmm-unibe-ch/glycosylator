@@ -6,6 +6,35 @@
 Built using [BuildAMol](https://github.com/NoahHenrikKleinschmidt/buildamol) Glycosylator is a Python framework for the identification, modeling and
 modification of glycans. Glycosylator can build atomic models of glycans and can glycosylate proteins and membranes. Glycosylator can perform conformational optimization to minimize clashes in glycosylated structures or to sample alternative conformations for individual glycans. Glycosylator supports a variety of file-formats and can work hand in hand with other libraries such as RDKit to faciliate research workflows. 
 
+What can Glycosylator do?
+-------------------------
+Here's a list of things that you could do with Glycosylator: 
+
+- Model new glycans
+    - From IUPAC strings
+    - From GlyCosmos IDs
+    - Manually through fragment-based assembly
+    - Create non-standard sugars by adding functional groups or other small molecule fragments
+
+- Modify existing glycans
+  - Extend small glycans to larger ones
+  - Trim large glycans to smaller ones
+  - Modify individual sugar residues
+  - Sample or optimize glycan conformations
+  - Rename atoms/residues to conform to different forcefield conventions
+
+- Obtain structural data on glycans
+  - Get data for angles / dihedrals
+  - Get compositional data for sugar residues
+
+- Glycosylate Biomolecules
+  - Glycosylate Proteins at specific residues or search by Sequons
+  - Glycosylate Membranes at specific lipids such as Ceramide
+  - Glycosylate arbitrary molecular scaffolds in pretty much any way
+
+- Sample or optimize glycan conformations on the surface of scaffold molecules
+- Simulate the shielding effect of glycans on scaffold molecules
+
 
 Building a glycan from IUPAC
 ----------------------------
