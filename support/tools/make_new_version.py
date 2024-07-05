@@ -1,6 +1,7 @@
 """
-Make a new version of biobuild
+Make a new version of buildamol
 """
+
 import argparse
 import os
 import re
@@ -9,12 +10,12 @@ import subprocess
 BASE_DIR = os.path.abspath(__file__)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(BASE_DIR)))
 CODE_DIR = BASE_DIR + "/glycosylator"
-DOCS_DIR = BASE_DIR + "/docs/source"
+DOCS_DIR = BASE_DIR + "/docs"
 
 FILES_TO_UPDATE = {
     CODE_DIR + "/__init__.py": "inpackage",
     BASE_DIR + "/setup.py": "setup",
-    DOCS_DIR + "/conf.py": "docs",
+    DOCS_DIR + "/source/conf.py": "docs",
 }
 
 
@@ -48,7 +49,7 @@ def version_to_tuple(version: str):
 
 def get_current_version(filename: str, pattern: str):
     """
-    Get the current version of biobuild
+    Get the current version of buildamol
 
     Parameters
     ----------
@@ -101,7 +102,7 @@ def increment_new_version(
     base_increment: int,
 ):
     """
-    Get the new version of biobuild
+    Get the new version of buildamol
 
     Parameters
     ----------
@@ -183,6 +184,13 @@ def setup():
         "-i", "--install", action="store_true", help="pip-install the new version"
     )
     parser.add_argument(
+        "-e",
+        "--editable",
+        action="store_true",
+        help="install the package in editable mode",
+    )
+
+    parser.add_argument(
         "-g", "--git", action="store_true", help="commit the updated files"
     )
 
@@ -225,16 +233,38 @@ def build_docs():
     """
     Build the documentation
     """
+    import add_example_gallery
+
+    os.chdir(DOCS_DIR + "/source")
+
+    g = add_example_gallery.gallery("_static/gallery/")
+    with open("./index.rst", "r") as f:
+        contents = []
+        keep_line = True
+        for line in f:
+            if line == ".. <gallery>\n":
+                keep_line = not keep_line
+                continue
+            if keep_line:
+                contents.append(line)
+
+    contents = "".join(contents)
+    with open("./index.rst", "w") as f:
+        f.write(g)
+        f.write("\n")
+        f.write(contents)
+
     os.chdir(DOCS_DIR)
     subprocess.run("make clean", shell=True)
     subprocess.run("make html", shell=True)
 
 
-def install():
+def install(editable: bool = False):
     """
     Install the package
     """
-    subprocess.run("pip install " + BASE_DIR, shell=True)
+    editable = "--editable " if editable else ""
+    subprocess.run("pip install " + editable + BASE_DIR, shell=True)
 
 
 def main(args):
@@ -243,7 +273,7 @@ def main(args):
         update_file(filename, pattern, new_version)
         print(f"Updated {filename} to {new_version}")
     if args.install:
-        install()
+        install(args.editable)
     if args.build_docs:
         build_docs()
     if args.git:

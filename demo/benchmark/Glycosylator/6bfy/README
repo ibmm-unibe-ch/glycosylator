@@ -1,3 +1,0 @@
-glycosylateIt.py: glycosylator script
-6bfy.pdb: Output from Glycosylator
-6bfy_min.pdb: Structure aftwer 5000 steps of minimization

@@ -7,7 +7,7 @@ import os
 
 HOME = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-MANNOSE9 = os.path.join(HOME, "support/examples/man9.pdb")
+MANNOSE9 = os.path.join(HOME, "support/examples/man8.json")
 """
 The PDB file for the example Mannose9 glycan
 """
