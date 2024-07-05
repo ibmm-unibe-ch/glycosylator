@@ -21,5 +21,5 @@ utils = __utils
 # from the resources module
 load_glycosylator_compounds()
 
-__version__ = "4.5.21"
+__version__ = "5.5.21"
 __author__ = "Noah Kleinschmidt"
