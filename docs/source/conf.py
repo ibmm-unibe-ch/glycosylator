@@ -9,7 +9,7 @@
 project = "glycosylator"
 copyright = "2023, Noah Kleinschmidt"
 author = "Noah Kleinschmidt, Boris Gusev, and Thomas Lemmin"
-release = "4.4.0"
+release = "5.5.21"
 
 
 import plotly.io as pio
@@ -29,6 +29,8 @@ extensions = [
     "sphinx_design",
     "nbsphinx",
     "sphinxmermaid",
+    "sphinx_gallery.load_style",
+    "sphinx_carousel.carousel",
     # "sphinx_panels",
     # "sphinx_gallery.gen_gallery",
 ]
@@ -58,7 +60,7 @@ html_theme_options = {
     "pygment_light_style": "tango",
     "pygment_dark_style": "monokai",
     "logo": {
-        "image_light": "_resources/logo_small.svg",
-        "image_dark": "_resources/logo_small_dark.svg",
+        "image_light": "source/_static/_resources/logo_small.svg",
+        "image_dark": "source/_static/_resources/logo_small.svg",
     },
 }
