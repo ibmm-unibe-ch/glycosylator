@@ -73,6 +73,7 @@ class GlycanViewer2D:
 
         if USE_GLYCOWORK:
             if importlib.util.find_spec("glycowork") is not None:
+                global GlycoDraw
                 from glycowork.motif.draw import GlycoDraw
             else:
                 raise ImportError("GlycoWork is not available")
@@ -352,6 +353,7 @@ class ScaffoldViewer2D:
         bar_color: str = "xkcd:sandy",
         bar_height: int = 6,
         height: float = 20,
+        figsize: tuple = None,
     ):
         self.scaffold = scaffold
         self._chain_lengths = {
@@ -368,7 +370,7 @@ class ScaffoldViewer2D:
         for i in _remove:
             del self._chain_lengths[i]
 
-        self.fig, self.subplots = plt.subplots(len(self._chain_lengths), 1)
+        self.fig, self.subplots = plt.subplots(len(self._chain_lengths), 1, figsize=figsize)
         if len(self._chain_lengths) == 1:
             self.subplots = [self.subplots]
         self._subplot_dict = {
@@ -446,6 +448,7 @@ class ScaffoldViewer2D:
         self._got_flipped = False
         drawn = set()
         scales = {chain: self.height for chain in self.scaffold.chains}
+        flipped = {chain: False for chain in self.scaffold.chains}
         for root, glycan in self.scaffold.get_glycans().items():
 
             chain, rdx = self.scaffold.index(root.parent)
@@ -459,6 +462,13 @@ class ScaffoldViewer2D:
             v.disable_glycowork()
             v.canvas.tree_layout()
 
+            # seems like the canvas is inverted already
+            if v.canvas.ylim[1] == 0 and v.canvas.ylim[0] < 0:
+                v.canvas.flip(vertical=True)
+                # v.canvas.root_nodes[0].move_to(
+                #     v.canvas.root_nodes[0].x, -v.canvas.scalar * 0.3
+                # )
+                # self._got_flipped = True
             _y = max(1, v.canvas.ylim[1])
             scale = scalar * (self.height / _y)
             v.canvas.scale(scale)
@@ -466,13 +476,20 @@ class ScaffoldViewer2D:
             scales[_chain] = max(scales[_chain], _y)
 
             self._switch_direction(v, drawn, chain, rdx)
+            flipped[_chain] = self._got_flipped
+
             v._native_draw_no_layout(ax, draw_edge_labels=False, adjust_axes=False)
 
         for chain, ax in self._subplot_dict.items():
             ytop = scales[chain]
-            ybottom = self.bar_height if not self._got_flipped else ytop
+            _got_flipped = flipped[chain]
+            ybottom = (
+                -(1.2 * self.bar_height)
+                if not _got_flipped
+                else -(self.bar_height + ytop * 1.05)
+            )
             ax.set_xlim(0, self._chain_lengths[chain])
-            ax.set_ylim(-ybottom, (self.bar_height + ytop * 1.2))
+            ax.set_ylim(ybottom, (self.bar_height + ytop * 1.2))
             # ax.set_box_aspect(0.3)
 
     def draw_glycosylation_sites(
@@ -537,8 +554,10 @@ class ScaffoldViewer2D:
         """
         Make sure that close-by glycans are drawn in different directions
         """
+
         min_diff = min((20, *(rdx - i for _, i, d in drawn if _ == chain)))
         direction = 1
+        self._got_flipped = False
 
         if min_diff < 20:
             closest = next(i for i in drawn if i[0] == chain and rdx - i[1] == min_diff)
@@ -1217,16 +1236,16 @@ if __name__ == "__main__":
     # plt.show()
     # # pass
 
-    s = gl.Scaffold.load(
-        "/Users/noahhk/GIT/glycosylator/final_scaffold_superduper.2023-07-26 20:51:40.416918.pkl"
+    s = gl.Protein.load(
+        "/Users/noahhk/GIT/glycosylator/docs/source/examples/files/protein_optimized.pkl"
     )
     # s.find_glycans()
     # s.save("/Users/noahhk/GIT/glycosylator/final_scaffold_superduper.2023-07-26 20:51:40.416918.pkl")
     # exit()
     # s = gl.Scaffold.load("/Users/noahhk/GIT/glycosylator/scaffold.3.glycan.pkl")
-    s.exclude_chain("B")
+    # s.exclude_chain("B")
 
-    v = ScaffoldViewer2D(s)
+    v = ScaffoldViewer2D(s, figsize=(10, 10))
 
     v.draw_glycans(1)
     v.draw_glycosylation_sites(draw_legend=True)
