@@ -1,4 +1,4 @@
-import buildamol.optimizers.ConstraintRotatron as ConstraintRotatron
+from buildamol.optimizers import Rotatron, ConstraintRotatron
 import numpy as np
 from scipy.spatial.distance import cdist
 
