@@ -8,7 +8,7 @@ import os
 
 
 def test_from_pdb():
-    scaffold = gl.Scaffold.from_pdb(base.PROTEIN)
+    scaffold = gl.Protein.from_pdb(base.PROTEIN)
     assert scaffold is not None
 
     assert len(scaffold.chains) == 2
@@ -26,9 +26,9 @@ def test_from_pdb():
 
 
 def test_seq():
-    scaffold = gl.Scaffold.from_pdb(base.PROTEIN)
+    scaffold = gl.Protein.from_pdb(base.PROTEIN)
 
-    seq = scaffold.seq
+    seq = scaffold.get_sequence()
     assert isinstance(seq, dict)
     assert len(seq) == 2
 
@@ -44,7 +44,7 @@ def test_seq():
 
 
 def test_atomgraph_sync():
-    scaffold = gl.Scaffold.from_pdb(base.PROTEIN)
+    scaffold = gl.Protein.from_pdb(base.PROTEIN)
 
     for atom in scaffold.get_atoms():
         assert (
@@ -69,7 +69,7 @@ def test_atomgraph_sync():
 
 
 def test_exclude_include_chain():
-    scaffold = gl.Scaffold.from_pdb(base.PROTEIN)
+    scaffold = gl.Protein.from_pdb(base.PROTEIN)
     scaffold.reindex()
 
     scaffold.exclude_chain("B")
@@ -95,7 +95,7 @@ def test_exclude_include_chain():
 
 
 def test_exclude_include_residue():
-    scaffold = gl.Scaffold.from_pdb(base.PROTEIN)
+    scaffold = gl.Protein.from_pdb(base.PROTEIN)
     scaffold.reindex()
 
     asns = scaffold.find_glycosylation_sites()
@@ -121,7 +121,7 @@ def test_exclude_include_residue():
 
 
 def test_find_sequon():
-    scaffold = gl.Scaffold.from_pdb(base.PROTEIN)
+    scaffold = gl.Protein.from_pdb(base.PROTEIN)
     scaffold.reindex()
 
     sequon = "(N)(?=[A-OQ-Z][ST])"
@@ -134,7 +134,7 @@ def test_find_sequon():
 
 def test_attach_glycan_to_one_residue_simple():
     glycan = gl.glycan(base.MANNOSE9)
-    scaffold = gl.Scaffold.from_pdb(base.PROTEIN)
+    scaffold = gl.Protein.from_pdb(base.PROTEIN)
 
     scaffold.reindex()
     glycan.reindex()
@@ -153,7 +153,7 @@ def test_attach_glycan_to_one_residue_simple():
 
 def test_attach_glycan_to_residue_list():
     glycan = gl.glycan(base.MANNOSE9)
-    scaffold = gl.Scaffold.from_pdb(base.PROTEIN)
+    scaffold = gl.Protein.from_pdb(base.PROTEIN)
 
     scaffold.reindex()
     glycan.reindex()
@@ -173,7 +173,7 @@ def test_attach_glycan_to_residue_list():
 
 def test_attach_glycan_with_sequon():
     glycan = gl.Glycan.from_pdb(base.MANNOSE9)
-    scaffold = gl.Scaffold.from_pdb(base.PROTEIN)
+    scaffold = gl.Protein.from_pdb(base.PROTEIN)
 
     scaffold.reindex()
     glycan.reindex()
@@ -189,7 +189,7 @@ def test_attach_glycan_with_sequon():
 
 def test_attach_with_operator_inplace():
     glycan = gl.Glycan.from_pdb(base.MANNOSE9)
-    scaffold = gl.Scaffold.from_pdb(base.PROTEIN)
+    scaffold = gl.Protein.from_pdb(base.PROTEIN)
 
     scaffold.reindex()
     glycan.reindex()
@@ -207,7 +207,7 @@ def test_attach_with_operator_inplace():
 
 def test_attach_with_operator_inplace_twice():
     glycan = gl.Glycan.from_pdb(base.MANNOSE9)
-    scaffold = gl.Scaffold.from_pdb(base.PROTEIN)
+    scaffold = gl.Protein.from_pdb(base.PROTEIN)
 
     scaffold.reindex()
     glycan.reindex()
@@ -228,7 +228,7 @@ def test_attach_with_operator_inplace_twice():
 
 def test_attach_with_operator_copy():
     glycan = gl.Glycan.from_pdb(base.MANNOSE9)
-    scaffold = gl.Scaffold.from_pdb(base.PROTEIN)
+    scaffold = gl.Protein.from_pdb(base.PROTEIN)
 
     scaffold.reindex()
     glycan.reindex()
@@ -246,7 +246,7 @@ def test_attach_with_operator_copy():
 
 
 def test_hollow_out():
-    scaffold = gl.Scaffold.from_pdb(base.PROTEIN)
+    scaffold = gl.Protein.from_pdb(base.PROTEIN)
     scaffold.reindex()
 
     old_residues = len(scaffold.residues)
@@ -260,7 +260,7 @@ def test_hollow_out():
 
 
 def test_fill():
-    scaffold = gl.Scaffold.from_pdb(base.PROTEIN)
+    scaffold = gl.Protein.from_pdb(base.PROTEIN)
     scaffold.reindex()
 
     old_residues = len(scaffold.residues)
@@ -293,7 +293,7 @@ def test_fill():
 
 
 def test_find_glycans():
-    scaffold = gl.Scaffold.from_pdb(base.PDB_GLYCOSYLATED_PROTEIN)
+    scaffold = gl.Protein.from_pdb(base.PDB_GLYCOSYLATED_PROTEIN)
     assert len(scaffold.glycans) == 0, "glycans found in scaffold without searching"
 
     glycans = scaffold.find_glycans()
@@ -305,25 +305,4 @@ def test_find_glycans():
     for i, glycan in enumerate(glycans.values()):
         glycan.draw2d(ax=axs[i])
         axs[i].set_title(f"glycan {i+1}")
-    plt.show()
-
-
-def test_extend_solf():
-    protein = gl.protein("/Users/noahhk/GIT/glycosylator/__projects__/SOLF/solf.pdb")
-    protein.exclude_chains("B", "D", "F")
-
-    protein.find_glycans(infer_bonds=True)
-
-    iupac = "Neu5Ac(a2-3)Gal(b1-4)ManNAc(b1-2)[Gal(b1-4)GlcNAc(b1-4)]Man(a1-3)[Neu5Ac(a2-3)Gal(b1-4)GlcNAc(b1-2)[Neu5Ac(a2-3)Gal(b1-4)GlcNAc(b1-3)Gal(b1-4)GlcNAc(b1-6)]Man(a1-6)]Man(b1-4)ManNAc(b1-4)[Fuc(a1-6)]GlcNAc(b1-"
-    glycan = gl.glycan(iupac)
-    print(glycan.to_iupac())
-
-    for glycan in protein.get_glycans().values():
-        glycan.add_hydrogens()
-        protein.extend_glycan(glycan, iupac)
-
-    protein.snfg()
-
-    import matplotlib.pyplot as plt
-
     plt.show()
