@@ -9,6 +9,15 @@
 Built using [BuildAMol](https://github.com/NoahHenrikKleinschmidt/buildamol) Glycosylator is a Python framework for the identification, modeling and
 modification of glycans. Glycosylator can build atomic models of glycans and can glycosylate proteins and membranes. Glycosylator can perform conformational optimization to minimize clashes in glycosylated structures or to sample alternative conformations for individual glycans. Glycosylator supports a variety of file-formats and can work hand in hand with other libraries such as RDKit to faciliate research workflows. 
 
+Installing Glycosylator
+-----------------------
+Glycosylator is distributed via the Python Package Index and can be installed via:
+
+```bash
+pip install glycosylator
+```
+
+
 What can Glycosylator do?
 -------------------------
 Here's a list of things that you could do with Glycosylator: 
