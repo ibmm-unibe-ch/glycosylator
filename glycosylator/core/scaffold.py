@@ -89,7 +89,7 @@ import glycosylator.resources as resources
 from buildamol.core import Molecule, Linkage, molecule
 import buildamol.core.entity as entity
 import buildamol.utils.defaults as defaults
-import buildamol.core.base_classes as base_classes
+import buildamol.base_classes as base_classes
 import buildamol.utils.auxiliary as aux
 import buildamol.structural as structural
 

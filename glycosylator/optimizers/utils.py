@@ -2,7 +2,7 @@
 This module contains additional utility functions for the optimizers that are Glycosylator specific.
 """
 
-import buildamol.graphs.ResidueGraph as ResidueGraph
+import buildamol.graphs.residue_graph as residue_graph
 import buildamol.structural as structural
 import numpy as np
 
@@ -13,7 +13,7 @@ def make_scaffold_graph(
     slice: int = 0,
     include_root: bool = False,
     include_n_ancestors: int = 0,
-) -> tuple["ResidueGraph.ResidueGraph", list]:
+) -> tuple["residue_graph.ResidueGraph", list]:
     """
     Make a ResidueGraph from a glycosylated scaffold in order to optimize the conformations of the attached glycans.
 
