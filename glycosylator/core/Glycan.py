@@ -336,7 +336,7 @@ class Glycan(core.Molecule):
     def __init__(
         self,
         structure,
-        root_atom: Union[str, int, core.base_classes.Atom] = None,
+        root_atom: Union[str, int, core.Atom] = None,
         model: int = 0,
         chain: str = None,
     ):
@@ -440,8 +440,8 @@ class Glycan(core.Molecule):
         Infer the glycan tree connectivity in case of a glycan molecule that was loaded externally
         """
         if not self.root_atom:
-            self.root_atom = 1 
-            
+            self.root_atom = 1
+
         # now be sure to fill the glycan tree
         connections = self.get_residue_connections(triplet=False)
         connections = self._AtomGraph.direct_edges(self.root_atom, edges=connections)
@@ -479,8 +479,8 @@ class Glycan(core.Molecule):
         self,
         other: "core.Molecule",
         link: Union[str, "core.Linkage"] = None,
-        at_residue: Union[int, "core.base_classes.Residue"] = None,
-        other_residue: Union[int, "core.base_classes.Residue"] = None,
+        at_residue: Union[int, "core.Residue"] = None,
+        other_residue: Union[int, "core.Residue"] = None,
         use_patch: bool = True,
         inplace: bool = True,
         other_inplace: bool = False,
@@ -618,9 +618,7 @@ class Glycan(core.Molecule):
 
         return obj
 
-    def remove_residues(
-        self, *residues: Union[int, "core.base_classes.Residue"]
-    ) -> list:
+    def remove_residues(self, *residues: Union[int, "core.Residue"]) -> list:
         residues = core.Molecule.remove_residues(self, *residues)
         _strips_to_remove = set()
         for strip in self._glycan_tree:

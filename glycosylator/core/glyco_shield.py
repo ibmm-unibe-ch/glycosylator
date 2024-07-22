@@ -18,7 +18,9 @@ import glycosylator.utils as utils
 __all__ = ["quickshield", "GlycoShield"]
 
 
-def quickshield(scaffold) -> "GlycoShield":
+def quickshield(
+    scaffold, repeats: int = 1, angle_step: int = 50, save_conformations_to: str = None
+) -> "GlycoShield":
     """
     A convenience function to perform a quick simulation of the glycan shielding on a scaffold.
     This function will set up a GlycoShield and perform a standard simulation. Use a manual procedure
@@ -28,6 +30,13 @@ def quickshield(scaffold) -> "GlycoShield":
     ----------
     scaffold
         The scaffold molecule with attached glycans
+    repeats: int
+        The number of times to repeat the edge sampling and simulation process for each glycan.
+    angle_step: int
+        The step size in degrees to rotate each sampled rotatable edge during the simulation.
+        The smaller this is the more fine-grained the simulation will be, but the longer it will take.
+    save_conformations_to: str
+        If a path for a directory is provided, the conformations will be saved to that path as PDB files (one file per glycan, containing models for each accepted conformation).
 
     Returns
     -------
@@ -36,8 +45,159 @@ def quickshield(scaffold) -> "GlycoShield":
         or any available visualizations.
     """
     shield = GlycoShield(scaffold)
-    shield.simulate()
+    shield.simulate(
+        repeats=repeats,
+        angle_step=angle_step,
+        save_conformations_to=save_conformations_to,
+    )
     return shield
+
+
+class ExposureData:
+    """
+    A class to house the data of per-residue exposure values for a scaffold molecule.
+    """
+
+    def __init__(self):
+        self.df = None
+        self.scaffold = None
+
+    def plot(self, backend: str = "matplotlib", cmap: str = "viridis"):
+        """
+        Plot the exposure for each residue using Matplotlib or Plotly
+
+        Parameters
+        ----------
+        backend: str
+            The plotting backend to use. Either "matplotlib" or "plotly".
+        cmap: str
+            The colormap to use when coloring the bars. This must be an acceptable
+            colormap name for either matplotlib or plotly (depending on the backend).
+
+        Returns
+        -------
+        fig
+            The figure, either a Matplotlib figure or a Plotly figure.
+        """
+        if self.df is None:
+            raise ValueError("No exposure data available. Run simulate() first.")
+
+        if backend == "matplotlib":
+            return self.matplotlib(cmap)
+
+        elif backend == "plotly":
+            return self.plotly(cmap)
+
+        else:
+            raise ValueError(f"Unknown plotting backend: {backend}")
+
+    def plotly(self, cmap: str = "viridis"):
+        """
+        Plot the exposure for each residue using Plotly
+
+        Parameters
+        ----------
+        cmap: str
+            The colormap to use when coloring the bars. This must be an acceptable
+            colormap name for Plotly.
+
+        Returns
+        -------
+        fig
+            The Plotly figure.
+        """
+        import plotly.express as px
+        import plotly.graph_objs as go
+
+        fig = px.bar(
+            self.df,
+            x="serial",
+            y="exposure",
+            facet_row="chain",
+            color="exposure",
+            color_continuous_scale=cmap,
+        )
+
+        return fig
+
+    def matplotlib(self, cmap: str = "viridis"):
+        """
+        Plot the exposure for each residue using Matplotlib
+
+        Parameters
+        ----------
+        cmap: str
+            The colormap to use when coloring the bars. This must be an acceptable
+            colormap name for Matplotlib.
+
+        Returns
+        -------
+        fig
+            The Matplotlib figure.
+        """
+        global plt
+        import matplotlib.pyplot as plt
+        import seaborn as sns
+
+        _, get_color = _prepare_colormap(self.df, cmap)
+
+        sns.set_style("ticks")
+        fig, axes = plt.subplots(len(self.df["chain"].unique()), 1)
+        for i, chain in enumerate(sorted(self.df["chain"].unique())):
+            ax = axes[i]
+            chain_df = self.df[self.df["chain"] == chain]
+            ax.bar(
+                chain_df["serial"],
+                chain_df["exposure"],
+                color=[get_color(e, hex=True) for e in chain_df["exposure"].values],
+            )
+            ax.set_title(f"Chain {chain}")
+            ax.set_xticks(chain_df["serial"][::10])
+
+        fig.suptitle(f"Exposure of Residues in {self.scaffold.id}")
+        fig.supylabel("Exposure")
+        fig.supxlabel("Residue Serial")
+        sns.despine()
+        plt.tight_layout()
+        return fig
+
+    def show(self, backend: str = "matplotlib", cmap: str = "viridis"):
+        """
+        Show the exposure plot using Matplotlib or Plotly
+
+        Parameters
+        ----------
+        backend: str
+            The plotting backend to use. Either "matplotlib" or "plotly".
+        cmap: str
+            The colormap to use when coloring the bars. This must be an acceptable
+            colormap name for either matplotlib or plotly (depending on the backend).
+        """
+        fig = self.plot(backend, cmap)
+        if backend == "matplotlib":
+            plt.show(fig)
+        elif backend == "plotly":
+            fig.show()
+
+    def save(self, path: str, backend: str = "matplotlib", cmap: str = "viridis"):
+        """
+        Save the exposure plot to a file using Matplotlib or Plotly
+
+        Parameters
+        ----------
+        path: str
+            The path to save the plot to.
+        backend: str
+            The plotting backend to use. Either "matplotlib" or "plotly".
+        cmap: str
+            The colormap to use when coloring the bars. This must be an acceptable
+            colormap name for either matplotlib or plotly (depending on the backend).
+        """
+        fig = self.plot(backend, cmap)
+        if backend == "matplotlib":
+            fig.savefig(path)
+        elif backend == "plotly":
+            fig.write_html(path)
 
 
 class GlycoShield:
@@ -76,7 +236,10 @@ class GlycoShield:
         self.scaffold = (
             scaffold.copy()
         )  # the copy is a precaution since the simulation will modify the scaffold
-        self.df = None
+
+        self.exposure = ExposureData()
+        self.exposure.scaffold = self.scaffold
+
         self.conformation_viewer = None
         self.conformations = None
 
@@ -107,6 +270,10 @@ class GlycoShield:
 
         self.exposure_metric = exposure_metric
         self.concatenation_function = concatenation_function
+
+    @property
+    def df(self):
+        return self.exposure.df
 
     def simulate(
         self,
@@ -176,6 +343,11 @@ class GlycoShield:
 
         angle_range = range(0, 360 + angle_step, angle_step)
         root_angle_range = range(0, 360 + min(angle_step, 30), min(angle_step, 30))
+
+        # we need to convert to radians since the _rotate_around_bond function expects radians
+        angle_range = np.deg2rad(angle_range)
+        root_angle_range = np.deg2rad(root_angle_range)
+
         exposures = np.zeros(len(self._scaffold_residues))
 
         if visualize_conformations:
@@ -302,72 +474,11 @@ class GlycoShield:
             "serial": [i.serial_number for i in self._scaffold_residues],
             "exposure": exposures,
         }
-        self.df = pd.DataFrame(_df)
+        self.exposure.df = pd.DataFrame(_df)
 
         if visualize_conformations:
             return self.df, v
         return self.df
-
-    def plot_exposure(self, backend: str = "matplotlib", cmap: str = "viridis"):
-        """
-        Plot the exposure for each residue using Matplotlib or Plotly
-
-        Parameters
-        ----------
-        backend: str
-            The plotting backend to use. Either "matplotlib" or "plotly".
-        cmap: str
-            The colormap to use when coloring the bars. This must be an acceptable
-            colormap name for either matplotlib or plotly (depending on the backend).
-
-        Returns
-        -------
-        fig
-            The figure, either a Matplotlib figure or a Plotly figure.
-        """
-        if self.df is None:
-            raise ValueError("No exposure data available. Run simulate() first.")
-
-        if backend == "matplotlib":
-            import matplotlib.pyplot as plt
-            import seaborn as sns
-
-            _, get_color = _prepare_colormap(self.df, cmap)
-
-            sns.set_style("ticks")
-            fig, axes = plt.subplots(len(self.df["chain"].unique()), 1)
-            for i, chain in enumerate(sorted(self.df["chain"].unique())):
-                ax = axes[i]
-                chain_df = self.df[self.df["chain"] == chain]
-                ax.bar(
-                    chain_df["serial"],
-                    chain_df["exposure"],
-                    color=[get_color(e, hex=True) for e in chain_df["exposure"].values],
-                )
-                ax.set_title(f"Chain {chain}")
-                ax.set_xticks(chain_df["serial"][::10])
-
-            fig.suptitle(f"Exposure of Residues in {self.scaffold.id}")
-            fig.supylabel("Exposure")
-            fig.supxlabel("Residue Serial")
-            sns.despine()
-            plt.tight_layout()
-            return fig
-
-        elif backend == "plotly":
-            import plotly.express as px
-            import plotly.graph_objs as go
-
-            fig = px.bar(
-                self.df,
-                x="serial",
-                y="exposure",
-                facet_row="chain",
-                color="exposure",
-                color_continuous_scale=cmap,
-            )
-
-            return fig
 
     def py3dmol(
         self,
