@@ -19,7 +19,11 @@ __all__ = ["quickshield", "GlycoShield"]
 
 
 def quickshield(
-    scaffold, repeats: int = 1, angle_step: int = 50, save_conformations_to: str = None
+    scaffold,
+    repeats: int = 1,
+    angle_step: int = 50,
+    save_conformations_to: str = None,
+    verbose: bool = False,
 ) -> "GlycoShield":
     """
     A convenience function to perform a quick simulation of the glycan shielding on a scaffold.
@@ -37,6 +41,8 @@ def quickshield(
         The smaller this is the more fine-grained the simulation will be, but the longer it will take.
     save_conformations_to: str
         If a path for a directory is provided, the conformations will be saved to that path as PDB files (one file per glycan, containing models for each accepted conformation).
+    verbose: bool
+        If True, a progress bar will be shown during the simulation.
 
     Returns
     -------
@@ -49,6 +55,7 @@ def quickshield(
         repeats=repeats,
         angle_step=angle_step,
         save_conformations_to=save_conformations_to,
+        verbose=verbose,
     )
     return shield
 
@@ -284,6 +291,7 @@ class GlycoShield:
         visualize_conformations: bool = False,
         save_conformations_to: str = None,
         capture_full_scaffold: bool = False,
+        verbose: bool = False,
     ) -> pd.DataFrame:
         """
         Perform a quick simulation of the shielding effect of glycans on a scaffold molecule.
@@ -311,6 +319,8 @@ class GlycoShield:
             If a path for a directory is provided, the conformations will be saved to that path as PDB files (one file per glycan, containing models for each accepted conformation).
         capture_full_scaffold: bool
             If True the conformations that are saved are the full scaffold. Otherwise only the glycan in question is saved.
+        verbose: bool
+            If True, a progress bar will be shown during the simulation.
 
         Returns
         -------
@@ -373,9 +383,12 @@ class GlycoShield:
             def save_model(model):
                 pass
 
-        with utils.progress_bar(
-            len(self.scaffold.glycans) * repeats * len(root_angle_range)
-        ) as bar:
+        total = len(self.scaffold.glycans) * repeats * len(root_angle_range)
+        if verbose:
+            _bar = utils.progress_bar
+        else:
+            _bar = utils.DummyBar
+        with _bar(total) as bar:
 
             for gdx, (root, glycan) in enumerate(self.scaffold.get_glycans().items()):
                 glycan_graph = glycan._AtomGraph
@@ -393,8 +406,7 @@ class GlycoShield:
                         root, glycan.root_atom, angle, descendants_only=True
                     )
                     if glycan.clashes_with_scaffold(coarse_precheck=coarse_precheck):
-                        for i in range(repeats):
-                            bar()
+                        bar.update(repeats)
                         continue
 
                     glycan_coords = np.array([i.coord for i in glycan.get_residues()])
@@ -448,7 +460,7 @@ class GlycoShield:
                                     save_model(self.scaffold._model)
                                 else:
                                     save_model(glycan._model)
-                        bar()
+                        bar.update(1)
 
                     # now reset the glycan to its original conformation
                     for idx, atom in enumerate(glycan_atoms):
