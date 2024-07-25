@@ -71,6 +71,9 @@ class GlycanViewer2D:
         self.root_residue = self.root.get_parent()
         self.canvas = None
 
+        if len(glycan._glycan_tree._segments) == 0:
+            glycan.infer_glycan_tree()
+
         if USE_GLYCOWORK:
             if importlib.util.find_spec("glycowork") is not None:
                 global GlycoDraw
@@ -370,7 +373,9 @@ class ScaffoldViewer2D:
         for i in _remove:
             del self._chain_lengths[i]
 
-        self.fig, self.subplots = plt.subplots(len(self._chain_lengths), 1, figsize=figsize)
+        self.fig, self.subplots = plt.subplots(
+            len(self._chain_lengths), 1, figsize=figsize
+        )
         if len(self._chain_lengths) == 1:
             self.subplots = [self.subplots]
         self._subplot_dict = {
