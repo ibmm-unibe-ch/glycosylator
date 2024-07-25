@@ -3,7 +3,6 @@ Functions to work with the IUPAC glycan nomenclature.
 """
 
 import re
-from typing import Any
 import networkx as nx
 import glycosylator.resources.names as names
 from buildamol.extensions.bio.glycans import IUPACParser
@@ -25,10 +24,13 @@ def make_link_id(bond: "Bond") -> str:
         The linkage id string in Glycosylator format.
     """
     atom1, atom2 = bond
+    if atom1.element != "O" and atom2.element == "O":
+        atom1, atom2 = atom2, atom1
     if atom1.element != "O" or atom2.element != "C":
-        raise ValueError(
-            f"This linkage does not seem to be a glycosidic bond and cannot be converted to a linkage id string.\nExpected a bond between an oxygen atom and a carbon atom, but got a bond between a {atom1.element} atom and a {atom2.element} atom."
-        )
+        return f"<{atom2.id}-{atom1.id}>"
+        # raise ValueError(
+        #     f"This linkage does not seem to be a glycosidic bond and cannot be converted to a linkage id string.\nExpected a bond between an oxygen atom and a carbon atom, but got a bond between a {atom1.element} atom and a {atom2.element} atom."
+        # )
     numeral_atom1 = atom1.id[1:]
     numeral_atom2 = atom2.id[1:]
     conf_res1 = "b" if names.is_beta(atom1.parent.resname) else "a"
@@ -80,9 +82,9 @@ def reverse_format_link(string, pretty: bool = False, small: bool = False):
         return string
     a, b, type = match.groups()
     if pretty:
-        pre = "α" if type[1] == "a" else "β"
+        pre = "α" if type[0] == "a" else "β"
     else:
-        pre = type[1]
+        pre = type[0]
     if small:
         return pre + b
     if pretty:
@@ -97,6 +99,8 @@ class IUPACStringMaker:
 
     double_beta_pattern = r"(b-(\w+\(b))"
     double_beta_replacement = r"\2"
+    beta_alpha_mismatch_pattern = r"b-(\w+)\((a)"
+    beta_alpha_mismatch_replacement = r"\1(b"
     terminal_beta_pattern = r"b-(\w+)$"
     terminal_beta_replacement = r"\1(b1-"
     terminal_alpha_pattern = r"([\]\)]\w+)$"
@@ -144,6 +148,11 @@ class IUPACStringMaker:
         #     self._string = self._string.replace(key, "]" + value + "[")
         string = self._string[::-1]
         string = re.sub(self.double_beta_pattern, self.double_beta_replacement, string)
+        string = re.sub(
+            self.beta_alpha_mismatch_pattern,
+            self.beta_alpha_mismatch_replacement,
+            string,
+        )
         if add_terminal_conformation:
             string = re.sub(
                 self.terminal_alpha_pattern, self.terminal_alpha_replacement, string
