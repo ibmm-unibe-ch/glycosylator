@@ -2,7 +2,7 @@
 This module contains additional utility functions for the optimizers that are Glycosylator specific.
 """
 
-import buildamol.graphs.ResidueGraph as ResidueGraph
+import buildamol.graphs.residue_graph as residue_graph
 import buildamol.structural as structural
 import numpy as np
 
@@ -13,7 +13,7 @@ def make_scaffold_graph(
     slice: int = 0,
     include_root: bool = False,
     include_n_ancestors: int = 0,
-) -> tuple["ResidueGraph.ResidueGraph", list]:
+) -> tuple["residue_graph.ResidueGraph", list]:
     """
     Make a ResidueGraph from a glycosylated scaffold in order to optimize the conformations of the attached glycans.
 
@@ -47,7 +47,7 @@ def make_scaffold_graph(
         glycan_gen = (
             (root, glycan)
             for (root, glycan) in scaffold.get_glycans().items()
-            if glycan.count_clashes() > 0 or glycan.clashes_with_scaffold()
+            if (glycan.count_clashes() > 0 or glycan.clashes_with_scaffold())
         )
     else:
         glycan_gen = scaffold.get_glycans().items()
@@ -94,8 +94,10 @@ def make_scaffold_graph(
 
         if include_root:
             incoming = scaffold.get_glycan_root_connections(
+                glycan=glycan,
                 include_scaffold_ancestors=include_n_ancestors,
             )
+
             _rotatable_edges.extend(incoming)
             G.add_edges_from(incoming)
 
@@ -107,16 +109,34 @@ def make_scaffold_graph(
 if __name__ == "__main__":
     import glycosylator as gl
 
-    scaf = gl.utils.load_pickle(
-        "//Users/noahhk/GIT/glycosylator/__projects__/solf3/solF_plus_3G_rsr017_coot_30_man5.pdb_glycosylated_optimized.pkl"
+    glycan = gl.glycan(
+        "Gal(b1-4)GlcNAc(b1-3)[Gal(b1-4)[Fuc(a1-3)]GlcNAc(b1-6)]Gal(b1-4)Glc"
     )
-    scaf.apply_standard_bonds_for(*[i.parent for i in scaf.get_glycans().keys()])
+    scaf = gl.Protein.from_pdb(
+        "/Users/noahhk/GIT/glycosylator/__projects__/SOLF/solf.pdb"
+    )
+    sites = [
+        scaf.get_residue(179, chain="A"),
+        scaf.get_residue(141, chain="A"),
+        scaf.get_residue(179, chain="C"),
+        scaf.get_residue(179, chain="E"),
+    ]
+    scaf.apply_standard_bonds_for(*sites)
+    scaf.add_hydrogens(*[i.get_atom("ND2") for i in sites])
+    scaf.rename_atoms("HND22", "HD22").rename_atoms("HND21", "HD21")
+    scaf.glycosylate(glycan, residues=sites)
+
+    # scaf = gl.utils.load_pickle(
+    #     "//Users/noahhk/GIT/glycosylator/__projects__/solf3/solF_plus_3G_rsr017_coot_30_man5.pdb_glycosylated_optimized.pkl"
+    # )
+    # scaf.apply_standard_bonds_for(*[i.parent for i in scaf.get_glycans().keys()])
 
     graph, rotatable_edges = make_scaffold_graph(
         scaf,
-        only_clashing_glycans=False,
+        only_clashing_glycans=True,
         slice=5,
         include_root=True,
+        include_n_ancestors=2,
     )
 
     rotatron = gl.optimizers.DistanceRotatron(

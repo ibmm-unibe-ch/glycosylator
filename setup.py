@@ -5,7 +5,7 @@ with open("README.md", "r") as f:
 
 setuptools.setup(
     name="glycosylator",
-    version="5.5.21",
+    version="5.6.3",
     author="Noah H. Kleinschmidt",
     author_email="noah.kleinschmidt@students.unibe.ch",
     description="A Python framework for the rapid modeling of glycans",

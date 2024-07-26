@@ -9,6 +9,15 @@
 Built using [BuildAMol](https://github.com/NoahHenrikKleinschmidt/buildamol) Glycosylator is a Python framework for the identification, modeling and
 modification of glycans. Glycosylator can build atomic models of glycans and can glycosylate proteins and membranes. Glycosylator can perform conformational optimization to minimize clashes in glycosylated structures or to sample alternative conformations for individual glycans. Glycosylator supports a variety of file-formats and can work hand in hand with other libraries such as RDKit to faciliate research workflows. 
 
+Installing Glycosylator
+-----------------------
+Glycosylator is distributed via the Python Package Index and can be installed via:
+
+```bash
+pip install glycosylator
+```
+
+
 What can Glycosylator do?
 -------------------------
 Here's a list of things that you could do with Glycosylator: 
@@ -79,6 +88,23 @@ glycoprotein.to_pdb("my_glycoprotein.pdb")
 ```
 
 > ![](docs/source/_static/_resources/prot_glyco.gif)
+
+Simulating Glycan Shielding
+---------------------------
+To simulate the shielding effect of glycans on the surface of proteins we can use the `quickshield` function or the `GlycoShield` class. These will perform torsional sampling around random subsets of edges in order to obtain a great number of conformations in a relatively short time. Here is how: 
+
+```python
+# using a previously glycosylated protein
+protein = gl.Protein.load("my_glycoprotein.pkl")
+
+# perform a quick simulation of glycan shielding
+# (with very rough settings)
+shield = gl.quickshield(protein, angle_step=100, repeats=1, save_conformations_to="./glycoshield_simulation")
+
+```
+
+> ![](docs/source/_static/_resources/glycoshield.gif)
+
 
 <!-- Please cite:
 https://bmcbioinformatics.biomedcentral.com/articles/10.1186/s12859-019-3097-6 -->
