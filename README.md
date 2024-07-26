@@ -2,12 +2,20 @@
 ![logo](docs/source/_static/_resources/logo_large.png)
 
 # A Python framework for the rapid modeling of glycans
-
+[![Made with Python](https://img.shields.io/badge/Python->=3.10-blue?logo=python&logoColor=white)](https://python.org "Go to Python homepage")
+[![code style - black](https://img.shields.io/badge/code_style-black-black)](https://black.readthedocs.io/ "Go to Black homepage")
 [![Documentation Status](https://readthedocs.org/projects/glycosylator/badge/?version=latest)](https://glycosylator.readthedocs.io/en/latest/?badge=latest)
+[![Check out - Tutorials](https://img.shields.io/badge/check_out-Tutorials-e61882)](https://glycosylator.readthedocs.io/en/latest/tutorials.html)
+
 [![PyPI version](https://badge.fury.io/py/glycosylator.svg)](https://badge.fury.io/py/glycosylator)
+[![Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://glycosylator.streamlit.app)
 
 Built using [BuildAMol](https://github.com/NoahHenrikKleinschmidt/buildamol) Glycosylator is a Python framework for the identification, modeling and
 modification of glycans. Glycosylator can build atomic models of glycans and can glycosylate proteins and membranes. Glycosylator can perform conformational optimization to minimize clashes in glycosylated structures or to sample alternative conformations for individual glycans. Glycosylator supports a variety of file-formats and can work hand in hand with other libraries such as RDKit to faciliate research workflows. 
+
+Running the GUI
+---------------
+Glycosylator provides a graphical user interface in the form of a Streamlit Web Application. This app supports modeling new glycans and glycosylating proteins and memrbanes as well as modeling the shielding effect. Of course, the library itself is more versatile and some things may not be doable via the GUI. The app can be reached via [glycosylator.streamlit.app](glycosylator.streamlit.app) or via the _Open in Streamlit_ badge at the top. If you would like to run the app locally you clone [the app's Github Repository](https://github.com/NoahHenrikKleinschmidt/Streamlit-Glycosylator). 
 
 Installing Glycosylator
 -----------------------
