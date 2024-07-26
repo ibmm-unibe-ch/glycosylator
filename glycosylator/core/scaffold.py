@@ -935,12 +935,16 @@ class Scaffold(entity.BaseEntity):
         """
         return len(self.glycans)
 
-    def get_glycan_root_connections(self, include_scaffold_ancestors: int = 0) -> list:
+    def get_glycan_root_connections(
+        self, glycan: Union["Glycan", int] = None, include_scaffold_ancestors: int = 0
+    ) -> list:
         """
         Get the bonds that connect the glycans to the scaffold.
 
         Parameters
         ----------
+        glycan : Glycan or int
+            A specific glycan to get the connections for. If None, all glycans are considered.
         include_scaffold_ancestors : int
             By default (0) only the direct bonds between scaffold-anchor atom and glycan-root atom are included.
             This may cause some glycans to be virtually un-optimizable due to bad orientation of the scaffold residue.
@@ -955,7 +959,20 @@ class Scaffold(entity.BaseEntity):
         """
         _filter = lambda x: x.element != "H" and x not in glycan.get_atoms()
         connections = []
-        for root, glycan in self.get_glycans().items():
+        if glycan is not None:
+            if not isinstance(glycan, Glycan):
+                g = self.get_glycan(glycan)
+                if g is None:
+                    raise ValueError(
+                        f"Glycan '{glycan}' not found. Either provide the glycan directly or use the index of the glycan."
+                    )
+                glycan = g
+            root = next(k for k, v in self._attached_glycans.items() if v == glycan)
+            glycan_gen = ((root, glycan),)
+        else:
+            glycan_gen = self.get_glycans().items()
+
+        for root, glycan in glycan_gen:
             connections.append((root, glycan.root_atom))
             if include_scaffold_ancestors > 0:
                 neighs = self.get_neighbors(
