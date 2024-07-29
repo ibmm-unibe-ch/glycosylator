@@ -26,7 +26,7 @@ setuptools.setup(
         "glycosylator.resources.names",
     ],
     install_requires=[
-        "buildamol",
+        "buildamol>=1.2.5",
         "numpy",
         "pandas",
         "scipy",
@@ -56,5 +56,5 @@ setuptools.setup(
         "Operating System :: OS Independent",
         "Topic :: Scientific/Engineering :: Bio-Informatics",
     ],
-    python_requires=">=3.9",
+    python_requires=">=3.10",
 )
