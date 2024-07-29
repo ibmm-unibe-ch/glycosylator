@@ -114,7 +114,7 @@ def scaffold(scaf=None) -> "Scaffold":
     Parameters
     ----------
     scaf : str or object
-        This can be a path to a file or a structure-like object like a Biobuild or RDKit molecule.
+        This can be a path to a file or a structure-like object like a BuildAMol or RDKit molecule.
 
     Returns
     -------
