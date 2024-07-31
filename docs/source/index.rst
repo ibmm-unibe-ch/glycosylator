@@ -79,7 +79,7 @@
    contain the root `toctree` directive.
 
 
-.. image:: _resources/logo_large.png
+.. image:: _static/_resources/logo_large.png
    :width: 80%
    :align: center
    :alt: glycosylator logo
