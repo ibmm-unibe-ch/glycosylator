@@ -59,7 +59,7 @@ Here's a list of things that you could do with Glycosylator:
 
 Building a glycan from IUPAC
 ----------------------------
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://githubtocolab.com/ibmm-unibe-ch/glycosylator/blob/dev/docs/source/examples/_colab_building_glycan_from_iupac_.ipynb)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://githubtocolab.com/ibmm-unibe-ch/glycosylator/blob/dev/docs/source/examples/_colab_building_glycan_from_iupac.ipynb)
 
 Generating an atomic model from a IUPAC glycan string can be as easy as:
 
