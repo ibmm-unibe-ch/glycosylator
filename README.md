@@ -59,7 +59,7 @@ Here's a list of things that you could do with Glycosylator:
 
 Building a glycan from IUPAC
 ----------------------------
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://githubtocolab.com/ibmm-unibe-ch/glycosylator/blob/main/docs/source/examples/_colab_building_glycan_from_iupac_.ipynb)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://githubtocolab.com/ibmm-unibe-ch/glycosylator/blob/dev/docs/source/examples/_colab_building_glycan_from_iupac_.ipynb)
 
 Generating an atomic model from a IUPAC glycan string can be as easy as:
 
@@ -80,7 +80,7 @@ glycan.show3d()
 
 Glycosylating a protein
 -----------------------
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://githubtocolab.com/ibmm-unibe-ch/glycosylator/blob/main/docs/source/examples/_colab_glycosylate_protein.ipynb)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://githubtocolab.com/ibmm-unibe-ch/glycosylator/blob/dev/docs/source/examples/_colab_glycosylate_protein.ipynb)
 
 To glycosylate a protein we can use a simple snippet like the one below. Check out the tutorials in the documentation for more info on glycosylation and how to optimize a glycosylated protein afterward.
 
@@ -103,7 +103,7 @@ glycoprotein.to_pdb("my_glycoprotein.pdb")
 
 Simulating Glycan Shielding
 ---------------------------
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://githubtocolab.com/ibmm-unibe-ch/glycosylator/blob/main/docs/source/examples/_colab_glycan_shield.ipynb)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://githubtocolab.com/ibmm-unibe-ch/glycosylator/blob/dev/docs/source/examples/_colab_glycan_shield.ipynb)
 
 
 To simulate the shielding effect of glycans on the surface of proteins we can use the `quickshield` function or the `GlycoShield` class. These will perform torsional sampling around random subsets of edges in order to obtain a great number of conformations in a relatively short time. Here is how: 
