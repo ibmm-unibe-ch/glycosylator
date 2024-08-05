@@ -685,7 +685,7 @@ class Scaffold(entity.BaseEntity):
                 continue
 
             # create the glycan
-            glycan_residue.parent.detach_child(glycan_residue.get_id())
+            glycan_residue.parent.unlink(glycan_residue)
             glycan = Glycan.empty("glycan" + str(gdx))
             glycan.add_residues(glycan_residue, adjust_seqid=False)
             glycan.set_root(incoming_root)
@@ -777,6 +777,7 @@ class Scaffold(entity.BaseEntity):
                     )
                     continue
 
+                glycan_residue.parent.unlink(glycan_residue)
                 glycan.add_residues(glycan_residue, adjust_seqid=False)
                 glycan._set_bond(close_by_root, incoming_root)
                 self._set_bond(close_by_root, incoming_root)
@@ -837,8 +838,7 @@ class Scaffold(entity.BaseEntity):
             for res in glycan.get_residues():
                 if _chain.child_dict.get(res.get_id(), None):
                     continue
-                _chain.child_list.append(res)
-                _chain.child_dict[res.get_id()] = res
+                _chain.link(res)
 
             glycan_chain_map[glycan] = _chain
             self._AtomGraph.migrate_bonds(glycan._AtomGraph)
@@ -909,10 +909,13 @@ class Scaffold(entity.BaseEntity):
             The glycan to remove
         """
         if glycan not in self._attached_glycans.values():
+            glycan = self.get_glycan(glycan)
+        if glycan not in self._attached_glycans.values():
             raise ValueError(f"Glycan '{glycan}' not found")
         chain = self._glycan_chain_mapping[glycan]
         for res in glycan.get_residues():
-            chain.detach_child(res.get_id())
+            chain.unlink(res)
+            self._AtomGraph.remove_nodes_from(res.child_list)
         root = next(k for k, v in self._attached_glycans.items() if v == glycan)
         self._attached_glycans.pop(root)
         self._glycan_chain_mapping.pop(glycan)
@@ -920,8 +923,9 @@ class Scaffold(entity.BaseEntity):
         glycan._scaffold = None
 
         # re add a hydrogen to the root atom
-        hydrogenator = structural.Hydrogenator()
-        hydrogenator.add_hydrogens(root, self)
+        if self.get_neighbors(root, 1):
+            hydrogenator = structural.Hydrogenator()
+            hydrogenator.add_hydrogens(root, self)
         return self
 
     def count_glycans(self) -> int:
