@@ -916,6 +916,10 @@ class Scaffold(entity.BaseEntity):
         for res in glycan.get_residues():
             chain.unlink(res)
             self._AtomGraph.remove_nodes_from(res.child_list)
+
+        for bond in glycan.get_bonds():
+            self._remove_bond(*bond)
+
         root = next(k for k, v in self._attached_glycans.items() if v == glycan)
         self._attached_glycans.pop(root)
         self._glycan_chain_mapping.pop(glycan)
