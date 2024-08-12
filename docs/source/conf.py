@@ -9,7 +9,7 @@
 project = "glycosylator"
 copyright = "2023, Noah Kleinschmidt"
 author = "Noah Kleinschmidt, Boris Gusev, and Thomas Lemmin"
-release = "5.6.3"
+release = "5.6.4"
 
 
 import plotly.io as pio
