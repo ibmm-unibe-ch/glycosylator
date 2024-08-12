@@ -697,8 +697,9 @@ class Scaffold(entity.BaseEntity):
         # then parse through all glycans to find the ones that are attached
         # to other glycan residues
         if len(yet_to_add) > 0:
+            yet_to_add = list(yet_to_add)
             runs = 0
-            ref = len(yet_to_add)
+            ref = len(yet_to_add) * 3
             preemptive_mapping = {}
             while len(yet_to_add) > 0:
                 glycan_residue = yet_to_add.pop()
@@ -709,15 +710,15 @@ class Scaffold(entity.BaseEntity):
                 )
                 mask = (0 < d) & (d < 10)
                 if not np.any(mask):
-                    yet_to_add.add(glycan_residue)
+                    yet_to_add.insert(0, glycan_residue)
                     runs += 1
-                    if runs > ref * 3:
+                    if runs > ref:
                         raise RuntimeError(
                             f"Cannot infer glycan association for at least one of {yet_to_add}"
                         )
                     continue
                 close_residues = glycan_residues[mask]
-                close_by_atoms = list((i for r in close_residues for i in r.child_list))
+                close_by_atoms = [i for r in close_residues for i in r.child_list]
                 close_by_atom_coords = np.array([a.coord for a in close_by_atoms])
 
                 residue_atoms = glycan_residue.child_list
@@ -728,9 +729,9 @@ class Scaffold(entity.BaseEntity):
                 _match_mask = (dists < max_length) & (dists > min_length)
 
                 if not np.any(_match_mask):
-                    yet_to_add.add(glycan_residue)
+                    yet_to_add.insert(0, glycan_residue)
                     runs += 1
-                    if runs > ref * 3:
+                    if runs > ref:
                         raise RuntimeError(
                             f"Cannot infer glycan association for at least one of {yet_to_add}"
                         )
@@ -744,9 +745,9 @@ class Scaffold(entity.BaseEntity):
                     if incoming_root.element in _acceptable_glycan_root_atoms:
                         break
                 else:
-                    yet_to_add.add(glycan_residue)
+                    yet_to_add.insert(0, glycan_residue)
                     runs += 1
-                    if runs > ref * 3:
+                    if runs > ref:
                         raise RuntimeError(
                             f"Cannot infer glycan association for at least one of {yet_to_add}"
                         )
@@ -758,9 +759,9 @@ class Scaffold(entity.BaseEntity):
                         break
 
                 else:
-                    yet_to_add.add(glycan_residue)
+                    yet_to_add.insert(0, glycan_residue)
                     runs += 1
-                    if runs > ref * 3:
+                    if runs > ref:
                         raise RuntimeError(
                             f"Cannot infer glycan association for at least one of {yet_to_add}"
                         )
@@ -782,32 +783,46 @@ class Scaffold(entity.BaseEntity):
                 glycan._set_bond(close_by_root, incoming_root)
                 self._set_bond(close_by_root, incoming_root)
                 residue_mapping[glycan_residue] = glycan
-                yet_to_add.discard(glycan_residue)
+                if glycan_residue in yet_to_add:
+                    yet_to_add.remove(glycan_residue)
 
             # now add any residues which could not be added directly
             # to the glycans
-            for glycan_residue, (
-                close_by_residue,
-                glycan_root,
-                close_by_root,
-            ) in preemptive_mapping.items():
-                glycan = residue_mapping.get(close_by_residue, None)
-                if glycan is None:
-                    warnings.warn(
-                        RuntimeWarning(
-                            "[weird residue] No close-by glycan found for: "
-                            + str(close_by_residue)
-                            + " @ "
-                            + str(close_by_residue.full_id)
-                        )
-                    )
-                    continue
+            runs = 0
+            ref = len(preemptive_mapping) * 3
+            successfully_added = set()
+            for _ in range(ref):
+                for glycan_residue, (
+                    close_by_residue,
+                    glycan_root,
+                    close_by_root,
+                ) in preemptive_mapping.items():
+                    if len(successfully_added) == len(preemptive_mapping):
+                        break
+                    if glycan_residue in successfully_added:
+                        continue
 
-                glycan.add_residues(glycan_residue, adjust_seqid=False)
-                glycan._set_bond(close_by_root, glycan_root)
-                self._set_bond(close_by_root, glycan_root)
-                residue_mapping[glycan_residue] = glycan
-                yet_to_add.discard(glycan_residue)
+                    glycan = residue_mapping.get(close_by_residue, None)
+                    if glycan is None:
+                        runs += 1
+                        if runs > ref:
+                            warnings.warn(
+                                RuntimeWarning(
+                                    "[weird residue] No close-by glycan found for: "
+                                    + str(close_by_residue)
+                                    + " @ "
+                                    + str(close_by_residue.full_id)
+                                )
+                            )
+                        continue
+
+                    glycan.add_residues(glycan_residue, adjust_seqid=False)
+                    glycan._set_bond(close_by_root, glycan_root)
+                    self._set_bond(close_by_root, glycan_root)
+                    residue_mapping[glycan_residue] = glycan
+                    if glycan_residue in yet_to_add:
+                        yet_to_add.remove(glycan_residue)
+                    successfully_added.add(glycan_residue)
 
         # postprocessing
         if chain == "new":
@@ -817,7 +832,7 @@ class Scaffold(entity.BaseEntity):
         for root, glycan in glycans.items():
 
             for res in glycan.get_residues():
-                glycan._set_bonds(*self.get_bonds(res))
+                glycan._set_bonds(self.get_bonds(res))
 
             if infer_bonds:
                 glycan.infer_bonds(restrict_residues=True)
@@ -841,8 +856,8 @@ class Scaffold(entity.BaseEntity):
                 _chain.link(res)
 
             glycan_chain_map[glycan] = _chain
-            self._AtomGraph.migrate_bonds(glycan._AtomGraph)
             self._set_bonds(*glycan.get_bonds())
+            # self._AtomGraph.migrate_bonds(glycan._AtomGraph)
             glycan._scaffold = self
 
         self._attached_glycans.update(glycans)
