@@ -816,6 +816,7 @@ class Scaffold(entity.BaseEntity):
                             )
                         continue
 
+                    glycan_residue.parent.unlink(glycan_residue)
                     glycan.add_residues(glycan_residue, adjust_seqid=False)
                     glycan._set_bond(close_by_root, glycan_root)
                     self._set_bond(close_by_root, glycan_root)
