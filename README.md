@@ -115,8 +115,17 @@ shield = gl.quickshield(protein, angle_step=100, repeats=1, save_conformations_t
 > ![](docs/source/_static/_resources/glycoshield.gif)
 
 
-<!-- Please cite:
-https://bmcbioinformatics.biomedcentral.com/articles/10.1186/s12859-019-3097-6 -->
+## Cite
+
+If you use this software in your research, please cite the following publications:
+
+1.  **Kleinschmidt, N., & Lemmin, T.** (2024). **BuildAMol: a versatile Python toolkit for fragment-based molecular design**. *Journal of Cheminformatics*, 16(1), 104.
+    
+    * **DOI:** [10.1186/s13321-024-00900-6](https://jcheminf.biomedcentral.com/articles/10.1186/s13321-024-00900-6)
+    
+2.  **Lemmin, T., & Soto, C. S.** (2019). **Glycosylator: a Python framework for the rapid modeling of glycans**. *BMC Bioinformatics*, 20(1), 513.
+    
+    * **DOI:** [10.1186/s12859-019-3097-6](https://bmcbioinformatics.biomedcentral.com/articles/10.1186/s12859-019-3097-6)
 
 
 ## Contributing
