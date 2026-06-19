@@ -208,3 +208,80 @@ def is_beta(id: str) -> bool:
         True if the monosaccharide is beta-configured, False otherwise.
     """
     return id in __beta_compounds_pdb_ids__
+
+
+try:
+    from buildamol.extensions.naming.charmm import (
+        pdb_to_charmm_mapping as __pdb_to_charmm_mapping__,
+    )
+except ImportError:
+    __pdb_to_charmm_mapping__ = None
+
+
+def rename_to_charmm(glycan) -> None:
+    """
+    Rename the residues of a glycan in-place to their CHARMM36 equivalents.
+
+    For unambiguous PDB codes (e.g. ``BGC`` → ``BGLC``) the mapping is applied
+    directly.  For codes that are anomeric-configuration-ambiguous (e.g. ``MAN``
+    → ``AMAN`` or ``BMAN``) the function consults the glycan's linkage tree: the
+    third character of the linkage identifier encodes the anomeric configuration
+    of the donor residue (``a`` = alpha, ``b`` = beta).  For the root residue,
+    which has no parent linkage, the PDB code itself is used as the indicator via
+    :func:`is_beta`.
+
+    Parameters
+    ----------
+    glycan : Glycan
+        A :class:`~glycosylator.core.glycan.Glycan` instance whose residue names
+        will be updated in-place.
+
+    Raises
+    ------
+    ImportError
+        If the ``buildamol.extensions.naming`` module is not available.
+    """
+    if __pdb_to_charmm_mapping__ is None:
+        raise ImportError(
+            "The buildamol.extensions.naming module is required for CHARMM renaming "
+            "but could not be imported. Make sure buildamol >= the naming-extension "
+            "version is installed."
+        )
+
+    # Build child → linkage_id lookup from the glycan tree so we can resolve
+    # anomeric configuration for ambiguous residue names.
+    child_linkage: dict = {}
+    for (_, child), linkage_id in zip(
+        glycan._glycan_tree._segments, glycan._glycan_tree._linkages
+    ):
+        child_linkage[child] = linkage_id
+
+    for res in glycan.get_residues():
+        pdb_name = res.resname.upper()
+        entry = __pdb_to_charmm_mapping__.get(pdb_name)
+        if entry is None:
+            continue
+
+        charmm_name = entry["charmm"]
+        if isinstance(charmm_name, str):
+            res.resname = charmm_name
+            continue
+
+        # Ambiguous mapping — resolve alpha/beta from the linkage or the PDB code.
+        linkage_id = child_linkage.get(res)
+        if linkage_id is not None and len(linkage_id) >= 3:
+            # Linkage format: "<C_donor><C_acceptor><anomer_donor><anomer_acceptor>"
+            # e.g. "14ab" → donor (child) is alpha, acceptor is beta.
+            anomer = linkage_id[2]  # 'a' or 'b'
+        else:
+            anomer = "b" if is_beta(pdb_name) else "a"
+
+        if anomer == "a":
+            selected = next(
+                (n for n in charmm_name if n.upper().startswith("A")), charmm_name[0]
+            )
+        else:
+            selected = next(
+                (n for n in charmm_name if n.upper().startswith("B")), charmm_name[0]
+            )
+        res.resname = selected
