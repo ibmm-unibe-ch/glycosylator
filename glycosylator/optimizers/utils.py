@@ -6,6 +6,8 @@ import buildamol.graphs.residue_graph as residue_graph
 import buildamol.structural as structural
 import numpy as np
 
+from scipy.spatial.distance import cdist
+
 
 def make_scaffold_graph(
     scaffold,
@@ -57,7 +59,7 @@ def make_scaffold_graph(
 
     _flat_residues = list(scaffold.get_residues())
     _res_coords = [res.coord for res in _flat_residues]
-    dists = structural.cdist(_res_coords, _res_coords) < 8.0
+    dists = cdist(_res_coords, _res_coords) < 8.0
 
     for root, glycan in glycan_gen:
 
