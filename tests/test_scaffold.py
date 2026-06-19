@@ -306,3 +306,17 @@ def test_find_glycans():
         glycan.draw2d(ax=axs[i])
         axs[i].set_title(f"glycan {i+1}")
     plt.show()
+
+def test_attach_inplace():
+
+    asn = gl.Protein.from_molecule(gl.get_compound("ASN"))
+    glycan = gl.glycan("GLC")
+
+    assert sum(1 for i in asn.structure.get_residues()) == 1
+    out = asn.attach(glycan, residues=[1], inplace=False)
+    assert out is not asn
+    assert len(out.glycans) == 1
+    assert len(asn.glycans) == 0
+    assert sum(1 for i in out.structure.get_residues()) == 2
+    assert sum(1 for i in asn.structure.get_residues()) == 1
+    

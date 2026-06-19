@@ -1223,15 +1223,21 @@ class Scaffold(entity.BaseEntity):
         if mol.attach_residue is None:
             mol.attach_residue = 1
 
+
+        if not inplace:
+            scaffold = self.copy()
+        else:
+            scaffold = self
+
         # first check if all residues are present in the scaffold and all have a linkage defined to attach the glycans
         # either from provided input or default linkages
         if residues is not None:
             if isinstance(residues, (str, int, base_classes.Residue)):
                 residues = [residues]
-            must_have_glyco_linkage = self._linkage is None and link is None
+            must_have_glyco_linkage = scaffold._linkage is None and link is None
             _residues = []
             for res in residues:
-                res = self.get_residue(res)
+                res = scaffold.get_residue(res)
                 if not res:
                     raise ValueError(f"Residue '{res}' not found")
                 _residues.append(res)
@@ -1243,20 +1249,15 @@ class Scaffold(entity.BaseEntity):
                         )
             residues = _residues
 
-        elif self.attach_residue is None:
+        elif scaffold.attach_residue is None:
             raise ValueError(
                 "Either a list of residues or an attach_residue must be available to glycosylate anything."
             )
 
-        elif self.attach_residue is not None:
-            residues = [self.attach_residue]
+        elif scaffold.attach_residue is not None:
+            residues = [scaffold.attach_residue]
 
         _topology = _topology or resources.get_default_topology()
-
-        if not inplace:
-            scaffold = self.copy()
-        else:
-            scaffold = self
 
         adx = self.count_atoms()
 
