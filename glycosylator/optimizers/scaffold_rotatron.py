@@ -34,14 +34,15 @@ def _compute_glycan_scaffold_distances(
             )
 
     a = np.mean(_glycan_scaffold_distances)
-    b = np.apply_along_axis(_along_axis_min, 1, _glycan_glycan_distances).mean()
+    b = np.apply_along_axis(_along_axis_closest, 1, _glycan_glycan_distances).mean()
     return a, b
 
 
-def _along_axis_min(x):
+def _along_axis_closest(x):
+    # x holds inverse distances, so the closest glycan has the largest value
     mask = x > -1
     if mask.any():
-        return x[mask].min()
+        return x[mask].max()
     return 0
 
 
@@ -71,13 +72,13 @@ class ScaffoldRotatron(ConstraintRotatron):
         """
         Identify which nodes belong to the scaffold and which belong to the glycans.
         """
-        _glycan_nodes = []
+        _glycan_nodes = set()
         _each_glycan_nodes = []
         for glycan in self.mol.get_glycans().values():
             _each_glycan_nodes.append([])
             for residue in glycan.get_residues():
-                _glycan_nodes.append(residue)
-                _glycan_nodes.extend(residue.child_list)
+                _glycan_nodes.add(residue)
+                _glycan_nodes.update(residue.child_list)
                 _each_glycan_nodes[-1].extend(residue.child_list)
 
         self.scaffold_nodes = []
@@ -88,8 +89,17 @@ class ScaffoldRotatron(ConstraintRotatron):
             else:
                 self.scaffold_nodes.append(self.rotatron.node_dict[node])
 
-        _each_glycan_scaffold_vicinity_nodes = []
-        scaff_coords = self.rotatron.state[self.scaffold_nodes]
+        self.scaffold_nodes = np.array(self.scaffold_nodes)
+        self.glycan_nodes = np.array(self.glycan_nodes)
+
+        # scaffold nodes that move during optimization (e.g. the anchor side chains)
+        # are not suitable as reference points to move away from
+        _moving = self.rotatron.edge_masks.any(axis=0)
+        _static_scaffold_nodes = self.scaffold_nodes[~_moving[self.scaffold_nodes]]
+        scaff_coords = self.rotatron.state[_static_scaffold_nodes]
+
+        self.each_glycan_nodes = []
+        self.each_glycan_scaffold_vicinity_nodes = []
         for i, glycan in enumerate(self.mol.get_glycans().values()):
 
             x = np.array(
@@ -100,22 +110,16 @@ class ScaffoldRotatron(ConstraintRotatron):
                 ]
             )
             if len(x) == 0:
-                _each_glycan_scaffold_vicinity_nodes.append([])
-                _each_glycan_nodes[i].clear()
                 continue
             glycan_mean = glycan.root_residue.coord
-            _each_glycan_scaffold_vicinity_nodes.append(
-                np.where(cdist([glycan_mean], scaff_coords) < 8.0)[1]
+            vicinity = np.where(cdist([glycan_mean], scaff_coords)[0] < 8.0)[0]
+            if len(vicinity) == 0:
+                continue
+            # map back from positions in the scaffold subset to indices in the state
+            self.each_glycan_scaffold_vicinity_nodes.append(
+                _static_scaffold_nodes[vicinity]
             )
-            _each_glycan_nodes[i] = x
-
-        self.scaffold_nodes = np.array(self.scaffold_nodes)
-        self.glycan_nodes = np.array(self.glycan_nodes)
-        self.each_glycan_nodes = [i for i in _each_glycan_nodes if len(i) > 0]
-        self.each_glycan_scaffold_vicinity_nodes = [
-            i for i in _each_glycan_scaffold_vicinity_nodes if len(i) > 0
-        ]
-        pass
+            self.each_glycan_nodes.append(x)
 
     def constraint(self, rotatron, state, **kwargs):
         scaffold_dist, glycan_dist = self._compute_glycan_scaffold_distances(state)
