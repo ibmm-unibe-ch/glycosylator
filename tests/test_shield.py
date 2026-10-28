@@ -10,7 +10,7 @@ def test_shield1():
         glycan.id = f"glycan-{i}"
 
     # setup the shield simulator
-    shield = gl.GlycoShield(protein)
+    shield = gl.GlycoShield(protein.copy())
 
     # now run the simulation
     # (and visualize the conformations)

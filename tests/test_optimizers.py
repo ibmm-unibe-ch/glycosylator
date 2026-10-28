@@ -58,3 +58,83 @@ import glycosylator.optimizers as opt
 
 #         env.reset()
 #         assert np.allclose(initial_coords, env.state)
+
+
+def test_scaffold_graph_optimization():
+    from pathlib import Path
+
+    scaffold = gl.Protein.from_pdb(Path(base.HOME) / "support/examples/small.pdb")
+    glycan = gl.read_iupac("test", "Neu5Ac(a2-3)Gal(b2-4)GlcNAc")
+
+    sites = scaffold.find_n_linked_sites()
+    sites = list(sites.values())[0]
+    scaffold.apply_standard_bonds_for(sites)
+    scaffold.add_hydrogens([atom for res in sites for atom in res.atoms])
+    assert len(sites) == 1
+
+    scaffold.attach(glycan, residues=sites, chain="new")
+    assert len(scaffold.glycans) == 1
+    v = scaffold.plotly(residue_graph=True)
+
+    graph, edges = gl.make_scaffold_graph(
+        scaffold,
+        only_clashing_glycans=False,
+        include_root=True,
+        include_n_ancestors=2,
+    )
+
+    env = gl.optimizers.DistanceRotatron(graph, edges)
+    env = gl.optimizers.ScaffoldRotatron(env)
+
+    sol, val = gl.swarm_optimize(env)
+    out = gl.apply_rotatron_solution(sol, env, scaffold.copy())
+
+    v += out.move([10, 10, 10]).plotly(residue_graph=True, line_color="red")
+    v.show()
+
+
+def test_optimize_glycans_never_worse():
+    from pathlib import Path
+    from glycosylator.optimizers.glycan_optimizer import _GlycanUnit
+
+    scaffold = gl.Protein.from_pdb(Path(base.HOME) / "support/examples/small.pdb")
+    glycan = gl.read_iupac("test", "Neu5Ac(a2-3)Gal(b2-4)GlcNAc")
+
+    sites = list(scaffold.find_n_linked_sites().values())[0]
+    scaffold.apply_standard_bonds_for(sites)
+    scaffold.add_hydrogens([atom for res in sites for atom in res.atoms])
+    scaffold.attach(glycan, residues=sites, chain="new")
+
+    root, glycan = next(iter(scaffold.get_glycans().items()))
+    unit = _GlycanUnit(scaffold, root, glycan, include_n_ancestors=2)
+    assert unit.n_edges > 3
+    assert len(unit.root_edges) == 3
+
+    # batched rotations must match the rotations of the molecule itself
+    angles = np.random.default_rng(1).uniform(-np.pi, np.pi, unit.n_edges)
+    X = unit.rotate(angles[None])[0]
+    reference = scaffold.copy()
+    for angle, (a, b) in zip(angles, unit.edges):
+        reference._AtomGraph.rotate_around_edge(
+            reference.get_atom(a.serial_number),
+            reference.get_atom(b.serial_number),
+            angle,
+            descendants_only=True,
+        )
+    Y = np.array([reference.get_atom(a.serial_number).coord for a in unit.atom_list])
+    assert np.allclose(X, Y, atol=1e-6)
+
+    static = np.array(
+        [a.coord for a in scaffold.get_atoms() if a.element != "H" and a not in unit.atoms]
+    )
+    from scipy.spatial import cKDTree
+
+    before = unit.clash_cost(cKDTree(static), 2.8)
+
+    out = gl.optimize_glycans(scaffold, seed=0, maxiter=10)
+    assert out is not scaffold
+
+    root, glycan = next(iter(out.get_glycans().items()))
+    unit = _GlycanUnit(out, root, glycan, include_n_ancestors=2)
+    after = unit.clash_cost(cKDTree(static), 2.8)
+    assert after <= before

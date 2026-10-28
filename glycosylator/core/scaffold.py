@@ -1,6 +1,6 @@
 """
 The `Scaffold` class is used to represent a scaffold structure such as a protein or membrane on to which a modification in form of one or more `Glycan`s can be added.
-The Scaffold also inherets from BuildAMol and can be used in many ways similar to Molecules and Glycans. 
+The Scaffold also inherets from BuildAMol and can be used in many ways similar to Molecules and Glycans.
 However, it lacks some features such as `repeat` method.
 
 
@@ -27,7 +27,7 @@ In the first we use default "pythonic" methods to properly attach the glycan to 
 
     import glycosylator as gl
 
-    # load some Glycans from pickle files 
+    # load some Glycans from pickle files
     # (if we have already some processed ones...)
     my_prot = gl.Scaffold.load("my_protein.pkl")
     my_glycan = gl.Glycan.load("my_glycan.pkl")
@@ -64,16 +64,16 @@ Attaching to a list of residues
 
 Often we want to modify a number of residues in the same way, for example when we want to attach a glycan to all
 residues in a protein that match a specific sequence pattern (e.g. all N-glycosylation sequons). We can do this by providing
-a list of `residues` to the `attach` method. 
+a list of `residues` to the `attach` method.
 
 .. code-block:: python
 
     # find all ASN residues in the protein
     residues_to_modify = my_prot.get_residues("ASN", by="name")
-    
+
     # now attach the glycan to all ASN residues
     my_prot.attach(my_glycan, link, residues=residues_to_modify)
-  
+
 This code will automatically add the glycan to all ASN residues in the list `residues_to_modify`.
 """
 
@@ -285,7 +285,7 @@ class Scaffold(entity.BaseEntity):
         internal_bonds = set(self._internal_bonds)
 
         self.fill()
-        new = entity.BaseEntity.copy(self)
+        new = entity.BaseEntity.copy(self, n=1)
         for bond in internal_bonds:
             bond = new.get_atom(bond[0].serial_number), new.get_atom(
                 bond[1].serial_number
@@ -1121,11 +1121,14 @@ class Scaffold(entity.BaseEntity):
                     self._bonds.remove(b)
 
             self._internal_residues.add(residue)
+        return self
 
     def fill(self):
         """
         Fill the structure with the residues that were removed by the `hollow_out` method.
         """
+        if len(self._internal_residues) == 0:
+            return self
         for residue in self._internal_residues:
             chain = residue.parent
             chain.add(residue)
@@ -1138,6 +1141,7 @@ class Scaffold(entity.BaseEntity):
 
         self._internal_bonds.clear()
         self._internal_residues.clear()
+        return self
 
     def to_pdb(self, filename: str, symmetric: bool = False):
         self.fill()  # fill the structure before writing it to a file
@@ -1223,7 +1227,6 @@ class Scaffold(entity.BaseEntity):
         if mol.attach_residue is None:
             mol.attach_residue = 1
 
-
         if not inplace:
             scaffold = self.copy()
         else:
@@ -1259,7 +1262,8 @@ class Scaffold(entity.BaseEntity):
 
         _topology = _topology or resources.get_default_topology()
 
-        adx = self.count_atoms()
+        adx = self.count_atoms() + 1
+        rdx = self.count_residues() + 1
 
         # ==========================================================
         #          attach Glycan to multiple residues
@@ -1313,6 +1317,8 @@ class Scaffold(entity.BaseEntity):
 
                 # new policy for adding residues
                 for res in _mol.get_residues():
+                    res.serial_number = rdx
+                    rdx += 1
                     _chain.link(res)
                     for atom in res.child_list:
                         atom.serial_number = adx
