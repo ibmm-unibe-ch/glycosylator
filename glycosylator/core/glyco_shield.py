@@ -372,6 +372,8 @@ class GlycoShield:
         record_conformations = save_conformations_to is not None
         if record_conformations:
             save_conformations_to = Path(save_conformations_to)
+            if not save_conformations_to.exists():
+                save_conformations_to.mkdir(parents=True, exist_ok=True)
             self.conformations = []
 
             def save_model(model):
@@ -418,9 +420,9 @@ class GlycoShield:
                     v.add(glycan, style={"stick": {"color": "lightblue"}})
 
                     if capture_full_scaffold:
-                        save_model(self.scaffold._model)
+                        save_model(self.scaffold)
                     else:
-                        save_model(glycan._model)
+                        save_model(glycan)
 
                     for _ in range(repeats):
                         sampled_edges = edge_sampler(glycan, glycan_graph)
@@ -457,9 +459,9 @@ class GlycoShield:
 
                                 v.add(glycan, style={"stick": {"color": "lightblue"}})
                                 if capture_full_scaffold:
-                                    save_model(self.scaffold._model)
+                                    save_model(self.scaffold)
                                 else:
-                                    save_model(glycan._model)
+                                    save_model(glycan)
                         bar.update(1)
 
                     # now reset the glycan to its original conformation
@@ -468,14 +470,13 @@ class GlycoShield:
 
                 if record_conformations:
                     _id = glycan.id.split("/")[-1]
-                    if capture_full_scaffold:
-                        confs = self.scaffold.copy()
-                    else:
-                        confs = glycan.copy()
-
-                    for i in self.conformations[1:]:
-                        confs.add_model(i)
-
+                    confs = self.conformations[0]
+                    
+                    for idx, i in enumerate(self.conformations[1:]):
+                        confs.add_model()
+                        confs.set_model(idx + 1)
+                        confs.set_coords(i.get_coords())
+                    confs.set_model(0)
                     confs.to_pdb(save_conformations_to / f"{_id}_conformations.pdb")
 
         exposures /= len(self.scaffold.glycans) * repeats * len(angle_range)
