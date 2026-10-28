@@ -1,17 +1,17 @@
 """
-Glycans are represented by the `Glycan` class. The `Glycan` is actually just a derivative of a `buildamol.Molecule` with some additional methods and attributes to handle glycan-specific operations. 
-The `Glycan` class is used to represent glycan molecules and is used to generate glycan molecules from IUPAC strings, graph structures, or to extend/crop glycan molecules to match a given IUPAC string. 
+Glycans are represented by the `Glycan` class. The `Glycan` is actually just a derivative of a `buildamol.Molecule` with some additional methods and attributes to handle glycan-specific operations.
+The `Glycan` class is used to represent glycan molecules and is used to generate glycan molecules from IUPAC strings, graph structures, or to extend/crop glycan molecules to match a given IUPAC string.
 The `Glycan` class also has methods to draw 2D (SNFG) and 3D representations of the glycan molecule.
 
 Making Glycans from IUPAC strings
 ---------------------------------
 The IUPAC nomenclature has been widely established to describe glycans in textual form because their SMILES tend to be very long and cumbersome to work with.
 `Glycans` have a `from_iupac` method that can read an IUPAC string and produce a 3D model for the glycan. Alternatively one may use the top-level `read_iupac` function
-to the same effect, or pass an IUPAC string to the `glycan` function. 
+to the same effect, or pass an IUPAC string to the `glycan` function.
 
 .. code-block:: python
 
-    import glycosylator as gl 
+    import glycosylator as gl
 
     my_glycan = gl.read_iupac("my new glycan", "Man(b1-4)Glc")
 
@@ -45,13 +45,13 @@ we can do something like this:
     import glycosylator as gl
     import buildamol as bam
 
-    # get a glucose 
+    # get a glucose
     glc = gl.glycan("GLC")
 
     # now use buildamol directly to modify
     # the molecule
     bam.phosphorylate(glc, at_atom="C6")
-    glc.remove_atoms("O6", "HO6")
+    glc.drop_atoms("O6", "HO6")
 
 """
 
@@ -66,6 +66,9 @@ import buildamol.core as core
 from buildamol.extensions.bio.glycans.glycan import (
     _segments_to_mol as _parse_iupac_graph,
 )
+
+
+from deprecated import deprecated
 
 import pandas as pd
 
@@ -623,7 +626,7 @@ class Glycan(core.Molecule):
         ]
         for segment in present_segments:
             if not full._glycan_tree.has_matching_segment(*segment):
-                obj.remove_residues(
+                obj.drop_residues(
                     *[i for i in obj.get_residues() if i.matches(segment[0])]
                 )
 

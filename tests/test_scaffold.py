@@ -172,7 +172,7 @@ def test_attach_glycan_to_residue_list():
 
 
 def test_attach_glycan_with_sequon():
-    glycan = gl.Glycan.from_pdb(base.MANNOSE9)
+    glycan = gl.Glycan.from_json(base.MANNOSE9)
     scaffold = gl.Protein.from_pdb(base.PROTEIN)
 
     scaffold.reindex()
@@ -180,7 +180,7 @@ def test_attach_glycan_with_sequon():
     glycan.infer_bonds(restrict_residues=False)
     scaffold.infer_bonds()
 
-    assert len(glycan.residues) == 11
+    assert len(glycan.residues) == 8
 
     scaffold.attach(glycan, sequon="O-linked")
 
@@ -188,7 +188,7 @@ def test_attach_glycan_with_sequon():
 
 
 def test_attach_with_operator_inplace():
-    glycan = gl.Glycan.from_pdb(base.MANNOSE9)
+    glycan = gl.Glycan.from_json(base.MANNOSE9)
     scaffold = gl.Protein.from_pdb(base.PROTEIN)
 
     scaffold.reindex()
@@ -196,7 +196,7 @@ def test_attach_with_operator_inplace():
     glycan.infer_bonds(restrict_residues=False)
     scaffold.infer_bonds()
 
-    assert len(glycan.residues) == 11
+    assert len(glycan.residues) == 8
 
     link = gl.linkage("ND2", "C1", None, ["O1", "HO1"])
     scaffold % link @ scaffold.get_residues("ASN", by="name", chain="A")[0]
@@ -206,7 +206,7 @@ def test_attach_with_operator_inplace():
 
 
 def test_attach_with_operator_inplace_twice():
-    glycan = gl.Glycan.from_pdb(base.MANNOSE9)
+    glycan = gl.Glycan.from_json(base.MANNOSE9)
     scaffold = gl.Protein.from_pdb(base.PROTEIN)
 
     scaffold.reindex()
@@ -214,7 +214,7 @@ def test_attach_with_operator_inplace_twice():
     glycan.infer_bonds(restrict_residues=False)
     scaffold.infer_bonds()
 
-    assert len(glycan.residues) == 11
+    assert len(glycan.residues) == 8
 
     link = gl.linkage("ND2", "C1", None, ["O1", "HO1"])
     scaffold % link @ scaffold.get_residues("ASN", by="name", chain="A")[0]
@@ -227,7 +227,7 @@ def test_attach_with_operator_inplace_twice():
 
 
 def test_attach_with_operator_copy():
-    glycan = gl.Glycan.from_pdb(base.MANNOSE9)
+    glycan = gl.Glycan.from_json(base.MANNOSE9)
     scaffold = gl.Protein.from_pdb(base.PROTEIN)
 
     scaffold.reindex()
@@ -235,7 +235,7 @@ def test_attach_with_operator_copy():
     glycan.infer_bonds(restrict_residues=False)
     scaffold.infer_bonds()
 
-    assert len(glycan.residues) == 11
+    assert len(glycan.residues) == 8
 
     scaffold @ scaffold.get_residues("ASN", by="name", chain="A")[0]
     out = scaffold + glycan
@@ -306,3 +306,17 @@ def test_find_glycans():
         glycan.draw2d(ax=axs[i])
         axs[i].set_title(f"glycan {i+1}")
     plt.show()
+
+
+def test_attach_inplace():
+
+    asn = gl.Protein.from_molecule(gl.get_compound("ASN"))
+    glycan = gl.glycan("GLC")
+
+    assert sum(1 for i in asn.structure.get_residues()) == 1
+    out = asn.attach(glycan, residues=[1], inplace=False)
+    assert out is not asn
+    assert len(out.glycans) == 1
+    assert len(asn.glycans) == 0
+    assert sum(1 for i in out.structure.get_residues()) == 2
+    assert sum(1 for i in asn.structure.get_residues()) == 1

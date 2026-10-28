@@ -25,7 +25,7 @@ available_charmm_patches = {}
 Mapping of all patches that are available from CHARMM
 (only those that have ICs are included). 
 """
-for patch in buildamol.get_default_topology().linkages:
+for patch in get_default_topology().linkages:
     prefix = patch.id[:2] if patch.id[:1].isdigit() else patch.id[:3]
     available_charmm_patches.setdefault(prefix, [])
     if patch.has_IC:

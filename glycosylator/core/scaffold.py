@@ -1,6 +1,6 @@
 """
 The `Scaffold` class is used to represent a scaffold structure such as a protein or membrane on to which a modification in form of one or more `Glycan`s can be added.
-The Scaffold also inherets from BuildAMol and can be used in many ways similar to Molecules and Glycans. 
+The Scaffold also inherets from BuildAMol and can be used in many ways similar to Molecules and Glycans.
 However, it lacks some features such as `repeat` method.
 
 
@@ -27,7 +27,7 @@ In the first we use default "pythonic" methods to properly attach the glycan to 
 
     import glycosylator as gl
 
-    # load some Glycans from pickle files 
+    # load some Glycans from pickle files
     # (if we have already some processed ones...)
     my_prot = gl.Scaffold.load("my_protein.pkl")
     my_glycan = gl.Glycan.load("my_glycan.pkl")
@@ -64,16 +64,16 @@ Attaching to a list of residues
 
 Often we want to modify a number of residues in the same way, for example when we want to attach a glycan to all
 residues in a protein that match a specific sequence pattern (e.g. all N-glycosylation sequons). We can do this by providing
-a list of `residues` to the `attach` method. 
+a list of `residues` to the `attach` method.
 
 .. code-block:: python
 
     # find all ASN residues in the protein
     residues_to_modify = my_prot.get_residues("ASN", by="name")
-    
+
     # now attach the glycan to all ASN residues
     my_prot.attach(my_glycan, link, residues=residues_to_modify)
-  
+
 This code will automatically add the glycan to all ASN residues in the list `residues_to_modify`.
 """
 
@@ -285,7 +285,7 @@ class Scaffold(entity.BaseEntity):
         internal_bonds = set(self._internal_bonds)
 
         self.fill()
-        new = entity.BaseEntity.copy(self)
+        new = entity.BaseEntity.copy(self, n=1)
         for bond in internal_bonds:
             bond = new.get_atom(bond[0].serial_number), new.get_atom(
                 bond[1].serial_number
@@ -591,8 +591,13 @@ class Scaffold(entity.BaseEntity):
         self._set_bonds(*glycan.get_bonds())
 
     def find_glycans(
-        self, chain: str = "same", infer_bonds: bool = False, autolabel: bool = False
-    ):
+        self,
+        chain: str = "same",
+        infer_bonds: bool = False,
+        autolabel: bool = False,
+        strict: bool = True,
+        only_allow_anchors: list = None,
+    ) -> dict:
         """
         Find existing glycans in the scaffold structure.
 
@@ -606,7 +611,35 @@ class Scaffold(entity.BaseEntity):
             If True, all atomic bonds are inferred for the glycans. This is useful if you do not want to infer the bonds for the entire structure and only need the data for the glycans.
         autolabel : bool
             Whether to autolabel the atoms in the glycans according to the IUPAC naming scheme. This requires that all bonds are available for the glycans. If you are unsure, also set `infer_bonds` to True. Note however, that due to aberrant bonding patterns in larger glycans the automatic labelling might not always work as expected!
+        strict: bool
+            If True (default), glycans that cannot be associated to a scaffold residue or other glycan will raise an error. Otherwise a warning will be issued instead.
+        only_allow_anchors: list
+            A list of residue names that are allowed to provide anchor atoms for glycans. If None, all residues are allowed.
+
+        Returns
+        -------
+        dict
+            A dictionary of the glycans that were found. The keys are the anchor atoms of the glycans and the values are the Glycan objects.
         """
+
+        if strict:
+
+            def _handle_unassociated(runs, ref, yet_to_add):
+                if runs > ref:
+                    raise RuntimeError(
+                        f"Cannot infer glycan association for at least one of {yet_to_add}"
+                    )
+
+        else:
+
+            def _handle_unassociated(runs, ref, yet_to_add):
+                if runs > ref:
+                    warnings.warn(
+                        f"Cannot infer glycan association for at least one of {yet_to_add}",
+                        RuntimeWarning,
+                    )
+                    yet_to_add.pop(0)  # remove the first element to avoid infinite loop
+
         ref_residues = resources.reference_glycan_residue_ids()
         _glycan_residues = [r for r in self.get_residues() if r.resname in ref_residues]
         glycan_residues = np.empty(len(_glycan_residues), dtype=object)
@@ -626,9 +659,15 @@ class Scaffold(entity.BaseEntity):
 
         yet_to_add = set(glycan_residues)
 
-        scaffold_residues = np.array(
-            list((set(self.get_residues()).difference(yet_to_add))), dtype=object
-        )
+        scaffold_residues = set(self.get_residues()).difference(yet_to_add)
+        if only_allow_anchors is not None:
+            scaffold_residues = [
+                r for r in scaffold_residues if r.resname in only_allow_anchors
+            ]
+        else:
+            scaffold_residues = list(scaffold_residues)
+
+        scaffold_residues = np.array(scaffold_residues, dtype=object)
         scaffold_residue_centers = np.array([r.coord for r in scaffold_residues])
 
         glycans = {}
@@ -685,7 +724,7 @@ class Scaffold(entity.BaseEntity):
                 continue
 
             # create the glycan
-            glycan_residue.parent.detach_child(glycan_residue.get_id())
+            glycan_residue.parent.unlink(glycan_residue)
             glycan = Glycan.empty("glycan" + str(gdx))
             glycan.add_residues(glycan_residue, adjust_seqid=False)
             glycan.set_root(incoming_root)
@@ -697,8 +736,9 @@ class Scaffold(entity.BaseEntity):
         # then parse through all glycans to find the ones that are attached
         # to other glycan residues
         if len(yet_to_add) > 0:
+            yet_to_add = list(yet_to_add)
             runs = 0
-            ref = len(yet_to_add)
+            ref = len(yet_to_add) * 3
             preemptive_mapping = {}
             while len(yet_to_add) > 0:
                 glycan_residue = yet_to_add.pop()
@@ -709,15 +749,13 @@ class Scaffold(entity.BaseEntity):
                 )
                 mask = (0 < d) & (d < 10)
                 if not np.any(mask):
-                    yet_to_add.add(glycan_residue)
+                    yet_to_add.insert(0, glycan_residue)
                     runs += 1
-                    if runs > ref * 3:
-                        raise RuntimeError(
-                            f"Cannot infer glycan association for at least one of {yet_to_add}"
-                        )
+                    _handle_unassociated(runs, ref, yet_to_add)
                     continue
+
                 close_residues = glycan_residues[mask]
-                close_by_atoms = list((i for r in close_residues for i in r.child_list))
+                close_by_atoms = [i for r in close_residues for i in r.child_list]
                 close_by_atom_coords = np.array([a.coord for a in close_by_atoms])
 
                 residue_atoms = glycan_residue.child_list
@@ -728,12 +766,9 @@ class Scaffold(entity.BaseEntity):
                 _match_mask = (dists < max_length) & (dists > min_length)
 
                 if not np.any(_match_mask):
-                    yet_to_add.add(glycan_residue)
+                    yet_to_add.insert(0, glycan_residue)
                     runs += 1
-                    if runs > ref * 3:
-                        raise RuntimeError(
-                            f"Cannot infer glycan association for at least one of {yet_to_add}"
-                        )
+                    _handle_unassociated(runs, ref, yet_to_add)
                     continue
 
                 # now get the bonding atoms
@@ -744,12 +779,9 @@ class Scaffold(entity.BaseEntity):
                     if incoming_root.element in _acceptable_glycan_root_atoms:
                         break
                 else:
-                    yet_to_add.add(glycan_residue)
+                    yet_to_add.insert(0, glycan_residue)
                     runs += 1
-                    if runs > ref * 3:
-                        raise RuntimeError(
-                            f"Cannot infer glycan association for at least one of {yet_to_add}"
-                        )
+                    _handle_unassociated(runs, ref, yet_to_add)
                     continue
 
                 for j in _matching_y_indices:
@@ -758,12 +790,9 @@ class Scaffold(entity.BaseEntity):
                         break
 
                 else:
-                    yet_to_add.add(glycan_residue)
+                    yet_to_add.insert(0, glycan_residue)
                     runs += 1
-                    if runs > ref * 3:
-                        raise RuntimeError(
-                            f"Cannot infer glycan association for at least one of {yet_to_add}"
-                        )
+                    _handle_unassociated(runs, ref, yet_to_add)
                     continue
 
                 # get the glycan that the close_by_residue is part of
@@ -777,36 +806,52 @@ class Scaffold(entity.BaseEntity):
                     )
                     continue
 
+                glycan_residue.parent.unlink(glycan_residue)
                 glycan.add_residues(glycan_residue, adjust_seqid=False)
                 glycan._set_bond(close_by_root, incoming_root)
                 self._set_bond(close_by_root, incoming_root)
                 residue_mapping[glycan_residue] = glycan
-                yet_to_add.discard(glycan_residue)
+                if glycan_residue in yet_to_add:
+                    yet_to_add.remove(glycan_residue)
 
             # now add any residues which could not be added directly
             # to the glycans
-            for glycan_residue, (
-                close_by_residue,
-                glycan_root,
-                close_by_root,
-            ) in preemptive_mapping.items():
-                glycan = residue_mapping.get(close_by_residue, None)
-                if glycan is None:
-                    warnings.warn(
-                        RuntimeWarning(
-                            "[weird residue] No close-by glycan found for: "
-                            + str(close_by_residue)
-                            + " @ "
-                            + str(close_by_residue.full_id)
-                        )
-                    )
-                    continue
+            runs = 0
+            ref = len(preemptive_mapping) * 3
+            successfully_added = set()
+            for _ in range(ref):
+                for glycan_residue, (
+                    close_by_residue,
+                    glycan_root,
+                    close_by_root,
+                ) in preemptive_mapping.items():
+                    if len(successfully_added) == len(preemptive_mapping):
+                        break
+                    if glycan_residue in successfully_added:
+                        continue
 
-                glycan.add_residues(glycan_residue, adjust_seqid=False)
-                glycan._set_bond(close_by_root, glycan_root)
-                self._set_bond(close_by_root, glycan_root)
-                residue_mapping[glycan_residue] = glycan
-                yet_to_add.discard(glycan_residue)
+                    glycan = residue_mapping.get(close_by_residue, None)
+                    if glycan is None:
+                        runs += 1
+                        if runs > ref:
+                            warnings.warn(
+                                RuntimeWarning(
+                                    "[weird residue] No close-by glycan found for: "
+                                    + str(close_by_residue)
+                                    + " @ "
+                                    + str(close_by_residue.full_id)
+                                )
+                            )
+                        continue
+
+                    glycan_residue.parent.unlink(glycan_residue)
+                    glycan.add_residues(glycan_residue, adjust_seqid=False)
+                    glycan._set_bond(close_by_root, glycan_root)
+                    self._set_bond(close_by_root, glycan_root)
+                    residue_mapping[glycan_residue] = glycan
+                    if glycan_residue in yet_to_add:
+                        yet_to_add.remove(glycan_residue)
+                    successfully_added.add(glycan_residue)
 
         # postprocessing
         if chain == "new":
@@ -816,7 +861,7 @@ class Scaffold(entity.BaseEntity):
         for root, glycan in glycans.items():
 
             for res in glycan.get_residues():
-                glycan._set_bonds(*self.get_bonds(res))
+                glycan._set_bonds(self.get_bonds(res))
 
             if infer_bonds:
                 glycan.infer_bonds(restrict_residues=True)
@@ -837,12 +882,11 @@ class Scaffold(entity.BaseEntity):
             for res in glycan.get_residues():
                 if _chain.child_dict.get(res.get_id(), None):
                     continue
-                _chain.child_list.append(res)
-                _chain.child_dict[res.get_id()] = res
+                _chain.link(res)
 
             glycan_chain_map[glycan] = _chain
-            self._AtomGraph.migrate_bonds(glycan._AtomGraph)
             self._set_bonds(*glycan.get_bonds())
+            # self._AtomGraph.migrate_bonds(glycan._AtomGraph)
             glycan._scaffold = self
 
         self._attached_glycans.update(glycans)
@@ -909,10 +953,17 @@ class Scaffold(entity.BaseEntity):
             The glycan to remove
         """
         if glycan not in self._attached_glycans.values():
+            glycan = self.get_glycan(glycan)
+        if glycan not in self._attached_glycans.values():
             raise ValueError(f"Glycan '{glycan}' not found")
         chain = self._glycan_chain_mapping[glycan]
         for res in glycan.get_residues():
-            chain.detach_child(res.get_id())
+            chain.unlink(res)
+            self._AtomGraph.remove_nodes_from(res.child_list)
+
+        for bond in glycan.get_bonds():
+            self._remove_bond(*bond)
+
         root = next(k for k, v in self._attached_glycans.items() if v == glycan)
         self._attached_glycans.pop(root)
         self._glycan_chain_mapping.pop(glycan)
@@ -920,8 +971,9 @@ class Scaffold(entity.BaseEntity):
         glycan._scaffold = None
 
         # re add a hydrogen to the root atom
-        hydrogenator = structural.Hydrogenator()
-        hydrogenator.add_hydrogens(root, self)
+        if self.get_neighbors(root, 1):
+            hydrogenator = structural.Hydrogenator()
+            hydrogenator.add_hydrogens(root, self)
         return self
 
     def count_glycans(self) -> int:
@@ -1069,11 +1121,14 @@ class Scaffold(entity.BaseEntity):
                     self._bonds.remove(b)
 
             self._internal_residues.add(residue)
+        return self
 
     def fill(self):
         """
         Fill the structure with the residues that were removed by the `hollow_out` method.
         """
+        if len(self._internal_residues) == 0:
+            return self
         for residue in self._internal_residues:
             chain = residue.parent
             chain.add(residue)
@@ -1086,6 +1141,7 @@ class Scaffold(entity.BaseEntity):
 
         self._internal_bonds.clear()
         self._internal_residues.clear()
+        return self
 
     def to_pdb(self, filename: str, symmetric: bool = False):
         self.fill()  # fill the structure before writing it to a file
@@ -1171,15 +1227,20 @@ class Scaffold(entity.BaseEntity):
         if mol.attach_residue is None:
             mol.attach_residue = 1
 
+        if not inplace:
+            scaffold = self.copy()
+        else:
+            scaffold = self
+
         # first check if all residues are present in the scaffold and all have a linkage defined to attach the glycans
         # either from provided input or default linkages
         if residues is not None:
             if isinstance(residues, (str, int, base_classes.Residue)):
                 residues = [residues]
-            must_have_glyco_linkage = self._linkage is None and link is None
+            must_have_glyco_linkage = scaffold._linkage is None and link is None
             _residues = []
             for res in residues:
-                res = self.get_residue(res)
+                res = scaffold.get_residue(res)
                 if not res:
                     raise ValueError(f"Residue '{res}' not found")
                 _residues.append(res)
@@ -1191,22 +1252,18 @@ class Scaffold(entity.BaseEntity):
                         )
             residues = _residues
 
-        elif self.attach_residue is None:
+        elif scaffold.attach_residue is None:
             raise ValueError(
                 "Either a list of residues or an attach_residue must be available to glycosylate anything."
             )
 
-        elif self.attach_residue is not None:
-            residues = [self.attach_residue]
+        elif scaffold.attach_residue is not None:
+            residues = [scaffold.attach_residue]
 
         _topology = _topology or resources.get_default_topology()
 
-        if not inplace:
-            scaffold = self.copy()
-        else:
-            scaffold = self
-
-        adx = self.count_atoms()
+        adx = self.count_atoms() + 1
+        rdx = self.count_residues() + 1
 
         # ==========================================================
         #          attach Glycan to multiple residues
@@ -1260,6 +1317,8 @@ class Scaffold(entity.BaseEntity):
 
                 # new policy for adding residues
                 for res in _mol.get_residues():
+                    res.serial_number = rdx
+                    rdx += 1
                     _chain.link(res)
                     for atom in res.child_list:
                         atom.serial_number = adx
