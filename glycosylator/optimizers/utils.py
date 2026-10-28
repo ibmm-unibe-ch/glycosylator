@@ -2,9 +2,11 @@
 This module contains additional utility functions for the optimizers that are Glycosylator specific.
 """
 
+import buildamol.base_classes as base_classes
 import buildamol.graphs.residue_graph as residue_graph
 import buildamol.structural as structural
 import numpy as np
+from scipy.spatial.distance import cdist
 
 
 def make_scaffold_graph(
@@ -57,7 +59,7 @@ def make_scaffold_graph(
 
     _flat_residues = list(scaffold.get_residues())
     _res_coords = [res.coord for res in _flat_residues]
-    dists = structural.cdist(_res_coords, _res_coords) < 8.0
+    dists = cdist(_res_coords, _res_coords) < 8.0
 
     for root, glycan in glycan_gen:
 
@@ -101,7 +103,40 @@ def make_scaffold_graph(
             _rotatable_edges.extend(incoming)
             G.add_edges_from(incoming)
 
+            # the incoming edges only carry the glycan if the anchor side chain
+            # (e.g. CA-CB-CG-ND2) and the glycan root atom are connected in the graph
+            root_atom = glycan.root_atom
+            if root_atom.parent in G:
+                G.add_edge(root_atom, root_atom.parent)
+            for a, b in scaffold.get_bonds(root_residue):
+                if (
+                    a.parent is root_residue
+                    and b.parent is root_residue
+                    and a.element != "H"
+                    and b.element != "H"
+                    and a in G
+                    and b in G
+                ):
+                    G.add_edge(a, b)
+
         _atoms_to_fill_in.clear()
+
+    # atoms that were added without any edges (e.g. neighbouring atoms that belong to the glycan itself)
+    # must be connected to a bonded partner or their residue so that they move along during rotations
+    for node in list(G.nodes):
+        if not isinstance(node, base_classes.Atom) or G.degree[node] > 0:
+            continue
+        partner = next(
+            (n for n in scaffold.get_neighbors(node) if n in G and G.degree[n] > 0),
+            None,
+        )
+        if partner is not None:
+            G.add_edge(partner, node)
+        elif node.parent in G:
+            G.add_edge(node, node.parent)
+
+    # the descendant cache is only invalidated by new nodes, not new edges
+    G.clear_cache()
 
     return G, _rotatable_edges
 
