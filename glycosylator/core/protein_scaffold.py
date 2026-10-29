@@ -2,7 +2,7 @@
 Attaching to residues matching a sequence pattern
 -------------------------------------------------
 
-The `Protein` class offers the `find_glycosylation_sites` method which accepts a `regex` pattern to search 
+The `Protein` class offers the `find_glycosylation_sites` method which accepts a `regex` pattern to search
 the protein sequence for matching residues. This is useful for attaching to all residues that match a specific sequence pattern,
 such as all N-glycosylation sequons. The `find_glycosylation_sites` method returns a dictionary keyed by chain-id containing lists of matching residues.
 For convenience, the `Protein`'s `attach` method accepts a `sequon` argument where a regex pattern can directly be provided to do the searching automatically.
@@ -11,7 +11,7 @@ if not a corresponding `{}-glyco` linkage is defined in the default linkages (e.
 
 .. code-block:: python
 
-    import glycosylator as gl 
+    import glycosylator as gl
 
     my_prot = gl.protein("my_protein.pkl")
     my_glycan = gl.glycan("my_glycan.pkl")
@@ -348,7 +348,16 @@ class Protein(Scaffold):
         glycans : bool
             If True, the glycans are drawn.
         """
-        viewer = super().py3dmol(style, color)
+        if len(self.glycans) > 0 and glycans and style != "cartoon":
+            _protein_only = self.copy()
+            for g in _protein_only.glycans:
+                _protein_only.remove_glycan(g)
+            _protein_only.cleanup()
+            viewer = super(type(_protein_only), _protein_only).py3dmol(
+                style=style, color=color
+            )
+        else:
+            viewer = super().py3dmol(style=style, color=color)
         if glycans:
             for glycan in self.get_glycans().values():
                 v = glycan.py3dmol(style=glycan_style, color=glycan_color)
